@@ -9,8 +9,8 @@ receivers:
   prometheus:
     config:
       scrape_configs:
-        - job_name: 'spring-boot-actuator'
-          scrape_interval: 30s
+        - job_name: 'spring-boot-apps'
+          scrape_interval: 15s
           metrics_path: '/actuator/prometheus'
           static_configs:
             - targets:
@@ -24,51 +24,57 @@ receivers:
 
 processors:
   batch:
-    send_batch_size: 1000
+    send_batch_size: 1024
     timeout: 5s
+
   resource:
     attributes:
-      - key: deployment.environment
-        value: "local"
-        action: insert
-      - key: cluster.name
-        value: "java-spring-boot-cluster"
-        action: insert
+      - action: upsert
+        key: deployment.environment
+        value: local
+      - action: upsert
+        key: service.namespace
+        value: spring-cloud-microservices
 
 exporters:
-  otlphttp/splunk:
-    endpoint: "https://ingest.sg0.splunkcloud.com:443/v2/trace"
+  otlphttp:
+    endpoint: https://ingest.sg0.splunkcloud.com/v2/trace
     headers:
-      X-SF-Token: "dzVEKcon2Tw_JWhpabcJbg"
+      X-SF-Token: dzVEKcon2Tw_JWhpabcJbg
     compression: gzip
     tls:
       insecure: false
 
-  otlphttp/splunk-metrics:
-    endpoint: "https://ingest.sg0.splunkcloud.com:443/v2/datapoint"
+  otlphttp/metrics:
+    endpoint: https://ingest.sg0.splunkcloud.com/v2/datapoint
     headers:
-      X-SF-Token: "dzVEKcon2Tw_JWhpabcJbg"
+      X-SF-Token: dzVEKcon2Tw_JWhpabcJbg
     compression: gzip
     tls:
       insecure: false
+
+  prometheus:
+    endpoint: 0.0.0.0:8889
 
   logging:
-    log_level: debug
+    verbosity: detailed
+
+extensions:
+  zpages:
+    endpoint: 0.0.0.0:55679
 
 service:
-  telemetry:
-    logs:
-      level: debug
+  extensions: [zpages]
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch, resource]
-      exporters: [otlphttp/splunk, logging]
+      exporters: [otlphttp, logging]
     metrics:
       receivers: [otlp, prometheus]
       processors: [batch, resource]
-      exporters: [otlphttp/splunk-metrics, logging]
+      exporters: [otlphttp/metrics, prometheus, logging]
     logs:
-      receivers: []
+      receivers: [otlp]
       processors: [batch, resource]
-      exporters: [otlphttp/splunk, logging]
+      exporters: [otlphttp, logging]

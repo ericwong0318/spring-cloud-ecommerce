@@ -211,6 +211,9 @@ mvn spring-boot:run -pl order-service
 # Build all modules
 mvn clean install -DskipTests
 
+# Build all Docker images
+./build-images.sh
+
 # Run unit tests
 mvn test
 
@@ -219,6 +222,19 @@ mvn verify -Dskip.unit.tests=true
 
 # Code coverage report
 mvn jacoco:report
+```
+
+#### Makefile targets
+```bash
+make build-all    # build all service images with --network=host
+make build <svc>  # build a specific service image
+make test         # run unit tests
+make verify       # run integration tests
+make up           # docker-compose up -d
+make down         # docker-compose down
+make logs         # follow docker-compose logs
+make clean        # Maven clean + docker prune
+make help         # list all targets
 ```
 
 ---
@@ -324,20 +340,113 @@ Standard Spring Authorization Server schema (clients, users, tokens, etc.)
 ## Deployment
 
 ### Docker Images
-Each service has a multi-stage Dockerfile. Build all images:
+Each service has a multi-stage Dockerfile with OpenTelemetry Java agent (v2.8.0).
+
+Build all images locally (requires Docker daemon):
 ```bash
-mvn spring-boot:build-image -Pdocker
+# Build all images
+docker compose build
+
+# Build a single service
+docker compose build config-server
+
+# OR use the Makefile
+make build-all
 ```
+
+> **OrbStack**: The OTel agent download may fail in some network setups. The Dockerfile uses `wget --timeout=30` with `mkdir -p /app` pre-created to handle this.
 
 ### Docker Compose
 ```bash
-docker-compose up -d        # start
+docker-compose up -d        # start full stack (with otel-collector)
 docker-compose down         # stop
 docker-compose logs -f      # view logs
+docker-compose build        # rebuild images
 ```
 
-### Kubernetes (future)
-Manifests will live under `k8s/` (TODO).
+### Kubernetes (OrbStack Recommended)
+This project includes Kubernetes manifests in `k8s/` for deploying to OrbStack's built-in Kubernetes cluster.
+
+#### Prerequisites
+- OrbStack app running (provides Docker + single-node K8s)
+- `kubectl` configured for `orbstack` context: `kubectl config use-context orbstack`
+
+#### Deploy Splunk OTel Collector
+```bash
+helm repo add splunk-otel-collector-chart https://signalfx.github.io/splunk-otel-collector-chart
+helm repo update
+
+helm install splunk-otel-collector splunk-otel-collector-chart/splunk-otel-collector \
+  --namespace splunk-otel --create-namespace \
+  --set "splunkObservability.accessToken=YOUR_TOKEN,\
+  clusterName=java-spring-boot,\
+  splunkObservability.realm=sg0,\
+  splunkObservability.profilingEnabled=true,\
+  environment=prod,\
+  operator.enabled=false,\
+  operatorcrds.install=false,\
+  agent.discovery.enabled=true"
+```
+
+> **Note**: The operator is disabled (`operator.enabled=false`) to avoid webhook race conditions in single-node clusters. Auto-instrumentation via namespace annotation is still available.
+
+#### Deploy Services
+```bash
+# Create namespace with auto-instrumentation label
+kubectl create namespace ecommerce
+kubectl label namespace ecommerce instrumentation.opentelemetry.io/inject-java=true --overwrite
+
+# Apply all service deployments
+kubectl apply -f k8s/deployments.yaml
+
+# Check status
+kubectl get pods -n ecommerce
+kubectl get svc -n ecommerce
+```
+
+#### Build & Load Images into OrbStack
+```bash
+# Build all images with host networking (required for OrbStack)
+./build-images.sh
+
+# Images are now available in OrbStack's Docker daemon
+# No registry push needed for local dev
+```
+
+#### Access Services
+```bash
+# Gateway (exposed on port 80)
+kubectl port-forward -n ecommerce svc/gateway 8080:80
+
+# Config Server
+kubectl port-forward -n ecommerce svc/config-server 8888:8888
+
+# Eureka Dashboard
+kubectl port-forward -n ecommerce svc/eureka-server 8761:8761
+
+# Product API
+kubectl port-forward -n ecommerce svc/product 8081:8081
+```
+
+#### Verify Observability
+```bash
+# Check OTel agent status
+kubectl logs -n splunk-otel daemonset/splunk-otel-collector-agent
+
+# Check cluster receiver
+kubectl logs -n splunk-otel deploy/splunk-otel-collector-k8s-cluster-receiver
+
+# View app logs with OTel annotations
+kubectl logs -n ecommerce -l app=gateway
+```
+
+### Cleanup
+```bash
+# Remove all resources
+kubectl delete namespace ecommerce
+helm uninstall splunk-otel-collector -n splunk-otel
+kubectl delete namespace splunk-otel
+```
 
 ---
 

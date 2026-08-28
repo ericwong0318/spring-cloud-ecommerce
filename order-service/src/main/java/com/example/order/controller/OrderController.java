@@ -67,8 +67,8 @@ public class OrderController {
         return orderRepository.findById(id)
                 .flatMap(existingOrder ->
                         orderRepository.deleteById(existingOrder.getId())
-                                .then(Mono.just(ResponseEntity.<Void>noContent().build()))
+                                .then(Mono.just(ResponseEntity.<Void>noContent().<Void>build()))
                 )
-                .defaultIfEmpty(ResponseEntity.notFound().build());
+                .switchIfEmpty(Mono.just(ResponseEntity.<Void>notFound().<Void>build()));
     }
 }

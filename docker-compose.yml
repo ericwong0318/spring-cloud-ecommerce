@@ -30,6 +30,7 @@ services:
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=config-server
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
       interval: 10s
@@ -56,6 +57,7 @@ services:
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=eureka-server
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
@@ -86,6 +88,7 @@ services:
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=auth-server
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
@@ -118,6 +121,7 @@ services:
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=gateway
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
@@ -152,6 +156,7 @@ services:
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=product
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
@@ -184,6 +189,7 @@ services:
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=category
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
@@ -216,6 +222,7 @@ services:
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=order-service
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
