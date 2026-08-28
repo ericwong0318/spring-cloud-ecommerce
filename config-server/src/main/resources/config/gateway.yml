@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: product-service
+          uri: lb://product
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - StripPrefix=1
+        - id: category-service
+          uri: lb://category
+          predicates:
+            - Path=/api/categories/**
+          filters:
+            - StripPrefix=1
+    config:
+      import: optional:configserver:http://localhost:8888
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,gateway
+  endpoint:
+    health:
+      show-details: always
