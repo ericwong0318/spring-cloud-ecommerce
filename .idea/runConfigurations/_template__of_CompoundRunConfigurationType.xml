@@ -1,7 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="true" type="CompoundRunConfigurationType">
-    <toRun name="EmployeeApplication" type="Application" />
-    <toRun name="EurekaServerApplication" type="Application" />
-    <method v="2" />
-  </configuration>
-</component>
