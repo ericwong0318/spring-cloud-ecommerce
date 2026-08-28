@@ -19,6 +19,8 @@
         <module>product</module>
         <module>category</module>
         <module>auth-server</module>
+        <module>order-service</module>
+        <module>system-test</module>
     </modules>
 
     <properties>
