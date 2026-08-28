@@ -7,14 +7,16 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="product" />
+        <module name="category" />
         <module name="eureka-server" />
         <module name="gateway" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel target="23" />
+    <bytecodeTargetLevel target="19" />
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="category" options="-parameters" />
       <module name="eureka-server" options="-parameters" />
       <module name="gateway" options="-parameters" />
       <module name="product" options="-parameters" />
