@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   otel-collector:
     image: ghcr.io/open-telemetry/opentelemetry-collector-releases/otel-collector-contrib:0.110.0
@@ -8,15 +6,15 @@ services:
     volumes:
       - ./otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "8888:8888"   # Prometheus metrics
-      - "8889:8889"   # Prometheus exporter metrics
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
     environment:
-      - SPLUNK_ACCESS_TOKEN=${SPLUNK_ACCESS_TOKEN}
-      - SPLUNK_INGEST_URL=${SPLUNK_INGEST_URL}
+      SPLUNK_ACCESS_TOKEN: ${SPLUNK_ACCESS_TOKEN}
+      SPLUNK_INGEST_URL: ${SPLUNK_INGEST_URL}
     networks:
       - spring-cloud-network
+    restart: unless-stopped
 
   config-server:
     build:
@@ -27,8 +25,11 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=config-server
-      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=config-server
+      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_METRICS_EXPORTER=otlp
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
       interval: 10s
@@ -36,6 +37,9 @@ services:
       retries: 5
     networks:
       - spring-cloud-network
+    depends_on:
+      otel-collector:
+        condition: service_healthy
 
   eureka-server:
     build:
@@ -47,10 +51,15 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=eureka-server
-      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=eureka-server
+      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_METRICS_EXPORTER=otlp
     depends_on:
       config-server:
+        condition: service_healthy
+      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
@@ -59,6 +68,7 @@ services:
       retries: 5
     networks:
       - spring-cloud-network
+    restart: unless-stopped
 
   auth-server:
     build:
@@ -71,12 +81,17 @@ services:
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=auth-server
-      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=auth-server
+      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_METRICS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
@@ -85,6 +100,7 @@ services:
       retries: 5
     networks:
       - spring-cloud-network
+    restart: unless-stopped
 
   gateway:
     build:
@@ -97,14 +113,19 @@ services:
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=gateway
-      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=gateway
+      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_METRICS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
       auth-server:
+        condition: service_healthy
+      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
@@ -113,6 +134,7 @@ services:
       retries: 5
     networks:
       - spring-cloud-network
+    restart: unless-stopped
 
   product:
     build:
@@ -125,12 +147,17 @@ services:
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=product
-      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=product
+      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_METRICS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
@@ -139,6 +166,7 @@ services:
       retries: 5
     networks:
       - spring-cloud-network
+    restart: unless-stopped
 
   category:
     build:
@@ -151,12 +179,17 @@ services:
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=category
-      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=category
+      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_METRICS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
@@ -165,6 +198,7 @@ services:
       retries: 5
     networks:
       - spring-cloud-network
+    restart: unless-stopped
 
   order-service:
     build:
@@ -177,12 +211,17 @@ services:
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=order-service
-      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=order-service
+      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_METRICS_EXPORTER=otlp
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
@@ -191,6 +230,7 @@ services:
       retries: 5
     networks:
       - spring-cloud-network
+    restart: unless-stopped
 
 networks:
   spring-cloud-network:

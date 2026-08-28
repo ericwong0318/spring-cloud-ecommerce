@@ -9,10 +9,18 @@ receivers:
   prometheus:
     config:
       scrape_configs:
-        - job_name: 'otel-collector'
-          scrape_interval: 10s
+        - job_name: 'spring-boot-actuator'
+          scrape_interval: 30s
+          metrics_path: '/actuator/prometheus'
           static_configs:
-            - targets: ['config-server:8888', 'eureka-server:8761', 'gateway:8080', 'product:8081', 'category:8082', 'auth-server:9000', 'order-service:8083']
+            - targets:
+              - 'config-server:8888'
+              - 'eureka-server:8761'
+              - 'gateway:8080'
+              - 'product:8081'
+              - 'category:8082'
+              - 'auth-server:9000'
+              - 'order-service:8083'
 
 processors:
   batch:
@@ -29,21 +37,28 @@ processors:
 
 exporters:
   otlphttp/splunk:
-    endpoint: "https://ingest.sg0.splunkcloud.com/v2/trace"
+    endpoint: "https://ingest.sg0.splunkcloud.com:443/v2/trace"
     headers:
-      Splunk-AccessToken: "dzVEKcon2Tw_JWhpabcJbg"
+      X-SF-Token: "dzVEKcon2Tw_JWhpabcJbg"
     compression: gzip
+    tls:
+      insecure: false
 
   otlphttp/splunk-metrics:
-    endpoint: "https://ingest.sg0.splunkcloud.com/v2/datapoint"
+    endpoint: "https://ingest.sg0.splunkcloud.com:443/v2/datapoint"
     headers:
-      Splunk-AccessToken: "dzVEKcon2Tw_JWhpabcJbg"
+      X-SF-Token: "dzVEKcon2Tw_JWhpabcJbg"
     compression: gzip
+    tls:
+      insecure: false
 
   logging:
-    log_level: info
+    log_level: debug
 
 service:
+  telemetry:
+    logs:
+      level: debug
   pipelines:
     traces:
       receivers: [otlp]
