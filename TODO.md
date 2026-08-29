@@ -17,7 +17,7 @@
 - [x] Add unit tests for order-service
 - [x] Add unit tests for inventory-service
 - [x] Add unit tests for notification-service
-- [ ] Add unit tests for auth-server (mostly configuration, minimal testable logic)
+- [x] Add unit tests for auth-server
 
 ## Documentation
 - [x] Update README with test running instructions
