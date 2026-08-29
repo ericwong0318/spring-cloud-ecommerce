@@ -51,13 +51,15 @@ public class AuthorizationServerConfig {
     @Value("${spring.security.oauth2.authorizationserver.issuer-uri:http://localhost:9000}")
     private String issuerUri;
 
-    @Bean
+@Bean
     @Order(1)
+    @SuppressWarnings("deprecation")
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-        OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
-        http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
-            .oidc(oidc -> {}); // consent page handled separately
+        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = 
+            new OAuth2AuthorizationServerConfigurer();
+        authorizationServerConfigurer.oidc(oidc -> {});
         
+        http.apply(authorizationServerConfigurer);
         http.exceptionHandling(exceptions -> exceptions
                 .defaultAuthenticationEntryPointFor(
                         new LoginUrlAuthenticationEntryPoint("/login"),
