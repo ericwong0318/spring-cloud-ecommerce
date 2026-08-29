@@ -4,7 +4,6 @@ import com.example.common.dto.ProductDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,11 +11,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
-@RequiredArgsConstructor
 @Tag(name = "Product", description = "Product management APIs")
 public class ProductController {
 
     private final ProductService productService;
+
+    public ProductController(ProductService productService) {
+        this.productService = productService;
+    }
 
     @GetMapping("/health")
     @Operation(summary = "Health check", description = "Returns a simple message to confirm the service is running")

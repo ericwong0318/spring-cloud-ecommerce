@@ -1,32 +1,44 @@
 package com.example.product;
 
-import io.restassured.RestAssured;
-import org.junit.jupiter.api.BeforeEach;
+import com.example.common.dto.ProductDto;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.is;
+import java.math.BigDecimal;
+import java.util.List;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = ProductApplication.class, properties = {
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration"
-})
-@ActiveProfiles("test")
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(ProductController.class)
+@Import(ProductController.class)
 class ProductIntegrationTest {
 
-    @TestConfiguration
-    @Order(1)
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private ProductService productService;
+
+    @Configuration
     static class TestSecurityConfig {
         @Bean
-        public SecurityFilterChain filterChain(org.springframework.security.config.annotation.web.builders.HttpSecurity http) throws Exception {
+        @Primary
+        SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
             http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
@@ -34,20 +46,48 @@ class ProductIntegrationTest {
         }
     }
 
-    @LocalServerPort
-    int port;
+    @Test
+    void whenAllProductsRetrieved_thenReturn200() throws Exception {
+        ProductDto product = ProductDto.builder()
+                .id(1L)
+                .name("Test Product")
+                .description("Description")
+                .price(BigDecimal.valueOf(99.99))
+                .categoryId(1L)
+                .build();
+        when(productService.getAllProducts()).thenReturn(List.of(product));
 
-    @BeforeEach
-    void setUp() {
-        RestAssured.baseURI = "http://localhost:" + port;
+        mockMvc.perform(get("/api/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].name").value("Test Product"))
+                .andExpect(jsonPath("$[0].price").value(99.99));
     }
 
     @Test
-    void whenAllProductsRetrieved_thenReturn200() {
-        given()
-                .when()
-                .get("/api/products")
-                .then()
-                .statusCode(200);
+    void whenProductCreated_thenReturn201() throws Exception {
+        ProductDto created = ProductDto.builder()
+                .id(1L)
+                .name("New Product")
+                .description("Description")
+                .price(BigDecimal.valueOf(49.99))
+                .categoryId(1L)
+                .build();
+        when(productService.createProduct(any(ProductDto.class))).thenReturn(created);
+
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "name": "New Product",
+                                    "description": "Description",
+                                    "price": 49.99,
+                                    "categoryId": 1
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.name").value("New Product"))
+                .andExpect(jsonPath("$.price").value(49.99));
     }
 }
