@@ -28,7 +28,7 @@ This platform is a distributed E-Commerce system demonstrating modern microservi
 - 🌐 **API Gateway** — Centralized routing with Spring Cloud Gateway
 - 🔍 **Service Discovery** — Netflix Eureka for dynamic service registration
 - ⚙️ **Centralized Configuration** — Spring Cloud Config Server (Git backend)
-- 📊 **Observability** — Actuator, Prometheus metrics, OpenAPI/Swagger
+- 📊 **Observability** — OpenTelemetry, Splunk Observability Cloud
 - 🐳 **Containerization** — Multi-stage Docker builds
 - ♻️ **Resilience** — Resilience4j circuit breakers, retries, rate limiters
 
@@ -75,13 +75,13 @@ This platform is a distributed E-Commerce system demonstrating modern microservi
                           │  oauth2_db         │
                           └────────────────────┘
 
-   ┌─────────────────────────────────────────────────────────────────┐
-   │                    INFRASTRUCTURE LAYER                          │
-   │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-   │  │ Config Srv :8888 │  │ Eureka Srv :8761 │  │  Prometheus  │   │
-   │  │ (Git backend)    │  │ (Service Reg.)   │  │  + Grafana   │   │
-   │  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-   └─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+    │                    INFRASTRUCTURE LAYER                          │
+    │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
+    │  │ Config Srv :8888 │  │ Eureka Srv :8761 │  │ Splunk OTel  │   │
+    │  │ (Git backend)    │  │ (Service Reg.)   │  │  Collector   │   │
+    │  └──────────────────┘  └──────────────────┘  └──────────────┘   │
+    └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Request Flow (Authenticated Order Placement)
@@ -110,7 +110,7 @@ This platform is a distributed E-Commerce system demonstrating modern microservi
 | Pattern | Implementation |
 |---------|----------------|
 | **Synchronous** | `WebClient` / `RestClient` between services |
-| **Asynchronous** | (Future) Kafka/RabbitMQ for event-driven flows |
+| **Asynchronous** | RabbitMQ for event-driven flows (order events, product events) |
 | **Service Discovery** | Eureka + `@LoadBalanced` `RestClient` |
 | **Configuration** | `bootstrap.yml` → Config Server → Git repo |
 | **Security** | OAuth2 JWT validated at Gateway; propagated downstream |
@@ -129,12 +129,14 @@ This platform is a distributed E-Commerce system demonstrating modern microservi
 | **product** | 8081 | WebFlux + JPA | PostgreSQL (product_db) | Product catalog CRUD |
 | **category** | 8082 | WebMVC + JPA | PostgreSQL (category_db) | Category management CRUD |
 | **order-service** | 8083 | WebFlux + R2DBC | PostgreSQL (order_db) | Reactive order processing |
+  | **inventory-service** | 8084 | WebFlux + R2DBC | PostgreSQL (inventory_db) | Inventory management, stock reservation |
+  | **notification-service** | 8085 | WebFlux + JPA | PostgreSQL (notification_db) | Email notifications via RabbitMQ |
 
 ### Service Dependencies & Start Order
 
 ```
 config-server  →  eureka-server  →  auth-server  →  gateway  →  business services
-    (8888)          (8761)           (9000)         (8080)    (8081/8082/8083)
+     (8888)          (8761)           (9000)         (8080)    (8081/8082/8083/8084/8085)
 ```
 
 ---
@@ -153,7 +155,8 @@ config-server  →  eureka-server  →  auth-server  →  gateway  →  business
 | **API Gateway** | Spring Cloud Gateway (reactive) |
 | **Security** | Spring Security, Spring Authorization Server (OAuth2/JWT) |
 | **Resilience** | Resilience4j (Circuit Breaker, Retry, Rate Limiter, Bulkhead) |
-| **Observability** | Spring Actuator, Micrometer, Prometheus |
+| **Message Broker** | RabbitMQ |
+| **Observability** | OpenTelemetry, Splunk Observability Cloud |
 | **API Docs** | SpringDoc OpenAPI 3 (Swagger UI) |
 | **Container** | Docker (multi-stage builds), Docker Compose |
 | **Testing** | JUnit 5, Mockito, RestAssured, Testcontainers |
@@ -187,13 +190,15 @@ curl http://localhost:8080/actuator/health   # gateway
 curl http://localhost:8081/actuator/health   # product
 curl http://localhost:8082/actuator/health   # category
 curl http://localhost:8083/actuator/health   # order
+curl http://localhost:8084/actuator/health   # inventory
+curl http://localhost:8085/actuator/health   # notification
 ```
 
 ### Local Development (without Docker)
 
 ```bash
 # Start infrastructure first
-docker-compose up -d postgres config-server eureka-server
+docker-compose up -d postgres rabbitmq config-server eureka-server
 
 # Then start services in order
 mvn spring-boot:run -pl config-server
@@ -203,6 +208,8 @@ mvn spring-boot:run -pl gateway
 mvn spring-boot:run -pl product
 mvn spring-boot:run -pl category
 mvn spring-boot:run -pl order-service
+mvn spring-boot:run -pl inventory-service
+mvn spring-boot:run -pl notification-service
 ```
 
 ### Build & Test
@@ -212,7 +219,7 @@ mvn spring-boot:run -pl order-service
 mvn clean install -DskipTests
 
 # Build all Docker images
-./build-images.sh
+mvn spring-boot:build-image -Pdocker
 
 # Run unit tests
 mvn test
@@ -245,10 +252,11 @@ Each service exposes OpenAPI/Swagger documentation:
 
 | Service | Swagger UI | OpenAPI JSON |
 |---------|-----------|--------------|
-| Gateway | http://localhost:8080/swagger-ui.html | http://localhost:8080/v3/api-docs |
 | Product | http://localhost:8081/swagger-ui.html | http://localhost:8081/v3/api-docs |
 | Category | http://localhost:8082/swagger-ui.html | http://localhost:8082/v3/api-docs |
 | Order | http://localhost:8083/swagger-ui.html | http://localhost:8083/v3/api-docs |
+| Inventory | http://localhost:8084/swagger-ui.html | http://localhost:8084/v3/api-docs |
+| Notification | http://localhost:8085/swagger-ui.html | http://localhost:8085/v3/api-docs |
 | Auth | http://localhost:9000/swagger-ui.html | http://localhost:9000/v3/api-docs |
 
 ### Sample Product API
@@ -465,14 +473,17 @@ GitHub Actions (`.github/workflows/ci.yml`):
 
 | Module | Unit Tests | Integration Tests |
 |--------|-----------|-------------------|
-| config-server | 1 | 0 |
-| eureka-server | 1 | 0 |
-| gateway | 1 | 0 |
+| config-server | 0 | 0 |
+| eureka-server | 0 | 0 |
+| gateway | 0 | 0 |
 | product | 1 | 1 |
 | category | 1 | 2 |
-| order-service | 0 | 0 (TODO) |
-| auth-server | 0 | 0 (TODO) |
-| **Total** | **5** | **3** |
+| auth-server | 0 | 0 |
+| order-service | 0 | 0 |
+| inventory-service | 0 | 0 |
+| notification-service | 0 | 0 |
+| system-test | 0 | 4 (Testcontainers) |
+| **Total** | **2** | **7** |
 
 Test patterns:
 - **Unit** — `@SpringBootTest` with `contextLoads()`

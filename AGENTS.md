@@ -1,13 +1,17 @@
 # AGENTS.md - Spring Cloud Microservices Platform
 
 ## Project Overview
-Multi-module Maven project with 6 services:
+Multi-module Maven project with 11 services:
 - `config-server` - Spring Cloud Config Server (Git backend)
 - `eureka-server` - Service discovery (Netflix Eureka)
 - `gateway` - Spring Cloud Gateway (routes + OAuth2 resource server)
 - `product` - Product domain service (WebFlux + JPA)
 - `category` - Category domain service (WebMVC + JPA)
 - `auth-server` - Spring Authorization Server (OAuth2/JWT)
+- `order-service` - Order domain service (WebFlux + R2DBC)
+- `inventory-service` - Inventory domain service (WebFlux + R2DBC)
+- `notification-service` - Notification service (WebFlux + JPA)
+- `system-test` - System-level integration tests (Testcontainers)
 
 ## Build & Test Commands
 ```bash
@@ -17,7 +21,7 @@ mvn clean install -DskipTests
 # Run tests for specific module
 mvn test -pl product
 
-# Run integration tests (requires Testcontainers)
+# Run integration tests (requires Testcontainers + Docker/OrbStack)
 mvn verify -Dskip.unit.tests=true
 
 # Build Docker images (requires Docker daemon)
@@ -36,6 +40,9 @@ mvn spring-boot:run -pl gateway
 mvn spring-boot:run -pl product
 mvn spring-boot:run -pl category
 mvn spring-boot:run -pl auth-server
+mvn spring-boot:run -pl order-service
+mvn spring-boot:run -pl inventory-service
+mvn spring-boot:run -pl notification-service
 ```
 
 ## Key Conventions
@@ -53,6 +60,9 @@ mvn spring-boot:run -pl auth-server
 | product | 8081 |
 | category | 8082 |
 | auth-server | 9000 |
+| order-service | 8083 |
+| inventory-service | 8084 |
+| notification-service | 8085 |
 
 ## Configuration
 - Local config: `config-server/src/main/resources/config/` (Git repo)
@@ -62,6 +72,7 @@ mvn spring-boot:run -pl auth-server
 ## Testing
 - Unit: `*Test.java` (Surefire)
 - Integration: `*IntegrationTest.java` (Failsafe + Testcontainers)
+- System: `system-test` module (Testcontainers + PostgreSQL)
 - Contract: Pact (TODO)
 
 ## CI Pipeline (GitHub Actions)
@@ -73,6 +84,7 @@ mvn spring-boot:run -pl auth-server
 3. **OAuth2 tokens** issued by auth-server (`http://localhost:9000/oauth2/token`)
 4. **OpenAPI docs**: `/swagger-ui.html` on each service, `/v3/api-docs` for JSON
 5. **Actuator endpoints**: `/actuator/health`, `/actuator/prometheus`, `/actuator/info`
+6. **Testcontainers** requires Docker/OrbStack running; uses `docker-java` 3.4+ for Docker API 1.40+
 
 ## Development Workflow
 1. Modify code in module
