@@ -24,7 +24,6 @@ This guide covers the observability stack for the Spring Cloud Microservices pla
 │           Listens on host port 4317                               │
 │                                                                  │
 │  Receives: traces, metrics, logs from Java agents               │
-│  Scrapes: /actuator/prometheus from all services                 │
 └─────────────────────────────┬───────────────────────────────────┘
                               │ OTLP HTTP (traces + metrics)
                               │ X-SF-Token header with access token

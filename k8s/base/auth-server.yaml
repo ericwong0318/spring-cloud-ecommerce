@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-server
+  namespace: ecommerce
+  labels:
+    app: auth-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-server
+  template:
+    metadata:
+      labels:
+        app: auth-server
+    spec:
+      containers:
+        - name: auth-server
+          image: auth-server:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - configMapRef:
+                name: spring-cloud-config
+            - secretRef:
+                name: spring-cloud-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "auth-server"
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres:5432/oauth2_db"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: spring-cloud-secrets
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: spring-cloud-secrets
+                  key: POSTGRES_PASSWORD
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9000
+            initialDelaySeconds: 45
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9000
+            initialDelaySeconds: 35
+            periodSeconds: 10
+          resources:
+            limits:
+              memory: "768Mi"
+              cpu: "750m"
+            requests:
+              memory: "384Mi"
+              cpu: "350m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-server
+  namespace: ecommerce
+spec:
+  selector:
+    app: auth-server
+  ports:
+    - port: 9000
+      targetPort: 9000
+  type: ClusterIP

@@ -1,12 +1,13 @@
 package com.example.order.repository;
 
 import com.example.order.model.Order;
-import org.springframework.data.repository.reactive.ReactiveCrudRepository;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-public interface OrderRepository extends ReactiveCrudRepository<Order, Long> {
-    Flux<Order> findByCustomerId(String customerId);
-    Mono<Order> findByIdAndCustomerId(Long id, String customerId);
-    Flux<Order> findByStatus(String status);
+import java.util.List;
+
+@Repository
+public interface OrderRepository extends JpaRepository<Order, Long> {
+    List<Order> findByCustomerId(String customerId);
+    List<Order> findByStatus(String status);
 }

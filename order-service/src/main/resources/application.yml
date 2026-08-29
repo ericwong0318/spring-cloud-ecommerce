@@ -25,6 +25,21 @@ spring:
       enabled: false
     discovery:
       enabled: true
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 5s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 3
+        max-concurrency: 10
+        prefetch: 10
 
 eureka:
   client:
@@ -39,3 +54,13 @@ management:
   endpoint:
     health:
       show-details: always
+
+rabbitmq:
+  exchange:
+    order: order.exchange
+  queue:
+    order-events: order.events.queue
+  routing-key:
+    order-created: order.created
+    order-updated: order.updated
+    order-cancelled: order.cancelled

@@ -1,0 +1,208 @@
+global:
+  namespace: ecommerce
+  imageRegistry: ""
+  imagePullPolicy: IfNotPresent
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
+  postgres:
+    host: postgres
+    port: 5432
+    username: postgres
+    password: postgres
+  eureka:
+    serviceUrl: http://eureka-server:8761/eureka/
+  configServer:
+    uri: http://config-server:8888
+  otel:
+    endpoint: http://otel-collector:4317
+    protocol: grpc
+  splunk:
+    accessToken: ""
+    ingestUrl: ""
+    realm: sg0
+
+configServer:
+  enabled: true
+  replicaCount: 1
+  image: config-server
+  tag: latest
+  port: 8888
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
+  env: {}
+
+eurekaServer:
+  enabled: true
+  replicaCount: 1
+  image: eureka-server
+  tag: latest
+  port: 8761
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
+  env: {}
+
+authServer:
+  enabled: true
+  replicaCount: 1
+  image: auth-server
+  tag: latest
+  port: 9000
+  database: oauth2_db
+  resources:
+    limits:
+      memory: 768Mi
+      cpu: 750m
+    requests:
+      memory: 384Mi
+      cpu: 350m
+  env: {}
+
+gateway:
+  enabled: true
+  replicaCount: 2
+  image: gateway
+  tag: latest
+  port: 8080
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
+  env: {}
+
+product:
+  enabled: true
+  replicaCount: 2
+  image: product
+  tag: latest
+  port: 8081
+  database: product_db
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
+  env: {}
+
+category:
+  enabled: true
+  replicaCount: 2
+  image: category
+  tag: latest
+  port: 8082
+  database: category_db
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
+  env: {}
+
+orderService:
+  enabled: true
+  replicaCount: 2
+  image: order-service
+  tag: latest
+  port: 8083
+  database: order_db
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
+  env: {}
+
+inventoryService:
+  enabled: true
+  replicaCount: 2
+  image: inventory-service
+  tag: latest
+  port: 8084
+  database: inventory_db
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
+  env: {}
+
+notificationService:
+  enabled: true
+  replicaCount: 2
+  image: notification-service
+  tag: latest
+  port: 8085
+  database: notification_db
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
+  env: {}
+
+postgres:
+  enabled: true
+  image: postgres:16
+  persistence:
+    enabled: true
+    size: 10Gi
+
+rabbitmq:
+  enabled: true
+  image: rabbitmq:3.13-management
+  persistence:
+    enabled: true
+    size: 5Gi
+
+otelCollector:
+  enabled: true
+  image: ghcr.io/open-telemetry/opentelemetry-collector-releases/otel-collector-contrib:0.110.0
+  splunk:
+    enabled: false
+    accessToken: ""
+    ingestUrl: ""
+    realm: sg0
+
+ingress:
+  enabled: true
+  className: nginx
+  host: ecommerce.example.com
+  tls:
+    enabled: true
+    secretName: ecommerce-tls
+    issuer: letsencrypt-prod
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+networkPolicy:
+  enabled: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

@@ -21,6 +21,8 @@ receivers:
               - 'category:8082'
               - 'auth-server:9000'
               - 'order-service:8083'
+              - 'inventory-service:8084'
+              - 'notification-service:8085'
 
 processors:
   batch:
@@ -38,17 +40,17 @@ processors:
 
 exporters:
   otlphttp:
-    endpoint: https://ingest.sg0.splunkcloud.com/v2/trace
+    endpoint: ${env:SPLUNK_INGEST_URL}
     headers:
-      X-SF-Token: dzVEKcon2Tw_JWhpabcJbg
+      X-SF-Token: ${env:SPLUNK_ACCESS_TOKEN}
     compression: gzip
     tls:
       insecure: false
 
   otlphttp/metrics:
-    endpoint: https://ingest.sg0.splunkcloud.com/v2/datapoint
+    endpoint: ${env:SPLUNK_INGEST_URL}
     headers:
-      X-SF-Token: dzVEKcon2Tw_JWhpabcJbg
+      X-SF-Token: ${env:SPLUNK_ACCESS_TOKEN}
     compression: gzip
     tls:
       insecure: false

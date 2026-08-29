@@ -1,0 +1,14 @@
+apiVersion: v2
+name: spring-cloud-ecommerce
+description: Spring Cloud E-Commerce Microservices Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - spring-boot
+  - spring-cloud
+  - microservices
+  - ecommerce
+maintainers:
+  - name: Platform Team
+    email: platform@example.com

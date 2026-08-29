@@ -1,58 +1,66 @@
 package com.example.product;
 
+import com.example.common.dto.ProductDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@RequestMapping("/api/products")
+@RequiredArgsConstructor
 @Tag(name = "Product", description = "Product management APIs")
 public class ProductController {
 
-    private final DiscoveryClient discoveryClient;
-    private final RestClient restClient;
+    private final ProductService productService;
 
-    public ProductController(DiscoveryClient discoveryClient, RestClient.Builder restClientBuilder) {
-        this.discoveryClient = discoveryClient;
-        this.restClient = restClientBuilder.build();
-    }
-
-    @GetMapping("/")
+    @GetMapping("/health")
     @Operation(summary = "Health check", description = "Returns a simple message to confirm the service is running")
-    public String helloWorld() {
+    public String health() {
         return "Product service is running.";
     }
 
-    @GetMapping("/api/products")
+    @GetMapping
     @Operation(summary = "List all products", description = "Returns a list of all products")
-    public List<Product> getAllProducts() {
-        // In a real app, this would come from a repository
-        return List.of(
-                new Product(1L, "Laptop", "High-performance laptop", 999.99),
-                new Product(2L, "Phone", "Latest smartphone", 699.99)
-        );
+    public List<ProductDto> getAllProducts() {
+        return productService.getAllProducts();
     }
 
-    @GetMapping("/api/products/category/{categoryId}")
-    @Operation(summary = "Get products by category", description = "Calls Category service to get products for a category")
-    public ResponseEntity<String> getProductsByCategory(Long categoryId) {
-        List<ServiceInstance> instances = discoveryClient.getInstances("category");
-        if (instances.isEmpty()) {
-            return ResponseEntity.status(503).body("Category service unavailable");
-        }
-        
-        String url = instances.get(0).getUri() + "/categories/" + categoryId;
-        String category = restClient.get()
-                .uri(url)
-                .retrieve()
-                .body(String.class);
-        
-        return ResponseEntity.ok("Products for category: " + category);
+    @GetMapping("/{id}")
+    @Operation(summary = "Get product by ID", description = "Returns a single product by its ID")
+    public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
+    }
+
+    @GetMapping("/category/{categoryId}")
+    @Operation(summary = "Get products by category", description = "Returns products for a specific category")
+    public List<ProductDto> getProductsByCategory(@PathVariable Long categoryId) {
+        return productService.getProductsByCategory(categoryId);
+    }
+
+    @PostMapping
+    @Operation(summary = "Create a new product", description = "Creates a new product")
+    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody ProductDto productDto) {
+        ProductDto created = productService.createProduct(productDto);
+        return ResponseEntity.status(201).body(created);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update a product", description = "Updates an existing product")
+    public ResponseEntity<ProductDto> updateProduct(
+            @PathVariable Long id,
+            @Valid @RequestBody ProductDto productDto) {
+        return ResponseEntity.ok(productService.updateProduct(id, productDto));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a product", description = "Deletes a product by its ID")
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+        productService.deleteProduct(id);
+        return ResponseEntity.noContent().build();
     }
 }

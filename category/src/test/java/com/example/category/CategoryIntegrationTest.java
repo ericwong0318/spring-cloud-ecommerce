@@ -45,6 +45,6 @@ class CategoryIntegrationTest {
                 .when()
                 .post("/categories")
                 .then()
-                .statusCode(200);
+                .statusCode(201);
     }
 }

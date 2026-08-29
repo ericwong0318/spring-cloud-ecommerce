@@ -1,0 +1,129 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: ecommerce
+
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: config-server
+      spec:
+        replicas: 2
+    target:
+      kind: Deployment
+      labelSelector: app=config-server
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: eureka-server
+      spec:
+        replicas: 2
+    target:
+      kind: Deployment
+      labelSelector: app=eureka-server
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: auth-server
+      spec:
+        replicas: 2
+    target:
+      kind: Deployment
+      labelSelector: app=auth-server
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: gateway
+      spec:
+        replicas: 3
+    target:
+      kind: Deployment
+      labelSelector: app=gateway
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: product
+      spec:
+        replicas: 3
+    target:
+      kind: Deployment
+      labelSelector: app=product
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: category
+      spec:
+        replicas: 3
+    target:
+      kind: Deployment
+      labelSelector: app=category
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: order-service
+      spec:
+        replicas: 3
+    target:
+      kind: Deployment
+      labelSelector: app=order-service
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: inventory-service
+      spec:
+        replicas: 3
+    target:
+      kind: Deployment
+      labelSelector: app=inventory-service
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: notification-service
+      spec:
+        replicas: 3
+    target:
+      kind: Deployment
+      labelSelector: app=notification-service
+
+configMapGenerator:
+  - name: spring-cloud-config
+    behavior: merge
+    literals:
+      - SPRING_PROFILES_ACTIVE=prod
+
+images:
+  - name: config-server
+    newTag: latest
+  - name: eureka-server
+    newTag: latest
+  - name: auth-server
+    newTag: latest
+  - name: gateway
+    newTag: latest
+  - name: product
+    newTag: latest
+  - name: category
+    newTag: latest
+  - name: order-service
+    newTag: latest
+  - name: inventory-service
+    newTag: latest
+  - name: notification-service
+    newTag: latest
+
+commonAnnotations:
+  environment: production
+  managed-by: kustomize

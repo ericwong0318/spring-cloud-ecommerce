@@ -13,6 +13,7 @@
     <description>Production-ready microservices with Eureka, Gateway, Config Server, OAuth2, Observability</description>
 
 <modules>
+        <module>common</module>
         <module>config-server</module>
         <module>eureka-server</module>
         <module>gateway</module>
@@ -126,6 +127,13 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+
+            <!-- Common Library -->
+            <dependency>
+                <groupId>org.example</groupId>
+                <artifactId>common</artifactId>
+                <version>${project.version}</version>
             </dependency>
 
             <!-- Explicit versions for common dependencies (avoid BOM resolution issues) -->

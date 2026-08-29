@@ -1,5 +1,30 @@
 spring:
     application:
         name: product
+    rabbitmq:
+        host: localhost
+        port: 5672
+        username: guest
+        password: guest
+        virtual-host: /
+        connection-timeout: 5s
+        publisher-confirm-type: correlated
+        publisher-returns: true
+        listener:
+            simple:
+                acknowledge-mode: manual
+                concurrency: 3
+                max-concurrency: 10
+                prefetch: 10
 server:
     port: 8082
+
+rabbitmq:
+    exchange:
+        product: product.exchange
+    queue:
+        product-events: product.events.queue
+    routing-key:
+        product-created: product.created
+        product-updated: product.updated
+        product-deleted: product.deleted

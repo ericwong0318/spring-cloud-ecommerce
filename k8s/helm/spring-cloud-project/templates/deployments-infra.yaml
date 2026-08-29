@@ -1,0 +1,141 @@
+{{- if .Values.configServer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}-config-server
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: config-server
+spec:
+  replicas: {{ .Values.configServer.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "spring-cloud-project.selectorLabels" . | nindent 6 }}
+      app: config-server
+  template:
+    metadata:
+      labels:
+        {{- include "spring-cloud-project.selectorLabels" . | nindent 8 }}
+        app: config-server
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "true"
+    spec:
+      containers:
+        - name: config-server
+          image: "{{ .Values.global.imageRegistry }}{{ .Values.configServer.image }}:{{ .Values.configServer.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.configServer.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}-config
+            - secretRef:
+                name: {{ .Chart.Name }}-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: config-server
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.global.profile | default "prod" }}
+            - name: SPRING_CLOUD_CONFIG_URI
+              value: {{ .Values.global.configServer.uri }}
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              value: {{ .Values.global.eureka.serviceUrl }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.global.otel.endpoint }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: {{ .Values.global.otel.protocol }}
+            - name: OTEL_PROPAGATORS
+              value: {{ .Values.global.otel.propagators | default "w3c,tracecontext" }}
+            - name: OTEL_METRICS_EXPORTER
+              value: {{ .Values.global.otel.metricsExporter | default "otlp" }}
+            - name: OTEL_LOGS_EXPORTER
+              value: {{ .Values.global.otel.logsExporter | default "otlp" }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.configServer.resources | nindent 12 }}
+{{- end }}
+---
+{{- if .Values.eurekaServer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}-eureka-server
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: eureka-server
+spec:
+  replicas: {{ .Values.eurekaServer.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "spring-cloud-project.selectorLabels" . | nindent 6 }}
+      app: eureka-server
+  template:
+    metadata:
+      labels:
+        {{- include "spring-cloud-project.selectorLabels" . | nindent 8 }}
+        app: eureka-server
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "true"
+    spec:
+      containers:
+        - name: eureka-server
+          image: "{{ .Values.global.imageRegistry }}{{ .Values.eurekaServer.image }}:{{ .Values.eurekaServer.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.eurekaServer.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}-config
+            - secretRef:
+                name: {{ .Chart.Name }}-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: eureka-server
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.global.profile | default "prod" }}
+            - name: SPRING_CLOUD_CONFIG_URI
+              value: {{ .Values.global.configServer.uri }}
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              value: {{ .Values.global.eureka.serviceUrl }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.global.otel.endpoint }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: {{ .Values.global.otel.protocol }}
+            - name: OTEL_PROPAGATORS
+              value: {{ .Values.global.otel.propagators | default "w3c,tracecontext" }}
+            - name: OTEL_METRICS_EXPORTER
+              value: {{ .Values.global.otel.metricsExporter | default "otlp" }}
+            - name: OTEL_LOGS_EXPORTER
+              value: {{ .Values.global.otel.logsExporter | default "otlp" }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.eurekaServer.resources | nindent 12 }}
+{{- end }}

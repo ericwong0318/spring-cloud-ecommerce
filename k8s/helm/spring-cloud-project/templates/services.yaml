@@ -1,0 +1,188 @@
+{{- if .Values.configServer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-config-server
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: config-server
+spec:
+  type: {{ .Values.configServer.serviceType | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.configServer.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
+    app: config-server
+{{- end }}
+---
+{{- if .Values.eurekaServer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-eureka-server
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: eureka-server
+spec:
+  type: {{ .Values.eurekaServer.serviceType | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.eurekaServer.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
+    app: eureka-server
+{{- end }}
+---
+{{- if .Values.authServer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-auth-server
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: auth-server
+spec:
+  type: {{ .Values.authServer.serviceType | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.authServer.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
+    app: auth-server
+{{- end }}
+---
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-gateway
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: gateway
+spec:
+  type: {{ .Values.gateway.serviceType | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.gateway.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
+    app: gateway
+{{- end }}
+---
+{{- if .Values.product.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-product
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: product
+spec:
+  type: {{ .Values.product.serviceType | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.product.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
+    app: product
+{{- end }}
+---
+{{- if .Values.category.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-category
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: category
+spec:
+  type: {{ .Values.category.serviceType | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.category.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
+    app: category
+{{- end }}
+---
+{{- if .Values.orderService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-order-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: order-service
+spec:
+  type: {{ .Values.orderService.serviceType | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.orderService.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
+    app: order-service
+{{- end }}
+---
+{{- if .Values.inventoryService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-inventory-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: inventory-service
+spec:
+  type: {{ .Values.inventoryService.serviceType | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.inventoryService.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
+    app: inventory-service
+{{- end }}
+---
+{{- if .Values.notificationService.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-notification-service
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: notification-service
+spec:
+  type: {{ .Values.notificationService.serviceType | default "ClusterIP" }}
+  ports:
+    - port: {{ .Values.notificationService.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
+    app: notification-service
+{{- end }}

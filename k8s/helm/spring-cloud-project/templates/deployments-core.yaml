@@ -1,0 +1,153 @@
+{{- if .Values.authServer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}-auth-server
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: auth-server
+spec:
+  replicas: {{ .Values.authServer.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "spring-cloud-project.selectorLabels" . | nindent 6 }}
+      app: auth-server
+  template:
+    metadata:
+      labels:
+        {{- include "spring-cloud-project.selectorLabels" . | nindent 8 }}
+        app: auth-server
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "true"
+    spec:
+      containers:
+        - name: auth-server
+          image: "{{ .Values.global.imageRegistry }}{{ .Values.authServer.image }}:{{ .Values.authServer.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.authServer.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}-config
+            - secretRef:
+                name: {{ .Chart.Name }}-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: auth-server
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.global.profile | default "prod" }}
+            - name: SPRING_CLOUD_CONFIG_URI
+              value: {{ .Values.global.configServer.uri }}
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              value: {{ .Values.global.eureka.serviceUrl }}
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://{{ .Values.global.postgres.host }}:{{ .Values.global.postgres.port }}/{{ .Values.authServer.database }}
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Chart.Name }}-secrets
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Chart.Name }}-secrets
+                  key: POSTGRES_PASSWORD
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.global.otel.endpoint }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: {{ .Values.global.otel.protocol }}
+            - name: OTEL_PROPAGATORS
+              value: {{ .Values.global.otel.propagators | default "w3c,tracecontext" }}
+            - name: OTEL_METRICS_EXPORTER
+              value: {{ .Values.global.otel.metricsExporter | default "otlp" }}
+            - name: OTEL_LOGS_EXPORTER
+              value: {{ .Values.global.otel.logsExporter | default "otlp" }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 35
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.authServer.resources | nindent 12 }}
+{{- end }}
+---
+{{- if .Values.gateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}-gateway
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: gateway
+spec:
+  replicas: {{ .Values.gateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "spring-cloud-project.selectorLabels" . | nindent 6 }}
+      app: gateway
+  template:
+    metadata:
+      labels:
+        {{- include "spring-cloud-project.selectorLabels" . | nindent 8 }}
+        app: gateway
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "true"
+    spec:
+      containers:
+        - name: gateway
+          image: "{{ .Values.global.imageRegistry }}{{ .Values.gateway.image }}:{{ .Values.gateway.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ .Chart.Name }}-config
+            - secretRef:
+                name: {{ .Chart.Name }}-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: gateway
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.global.profile | default "prod" }}
+            - name: SPRING_CLOUD_CONFIG_URI
+              value: {{ .Values.global.configServer.uri }}
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              value: {{ .Values.global.eureka.serviceUrl }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.global.otel.endpoint }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: {{ .Values.global.otel.protocol }}
+            - name: OTEL_PROPAGATORS
+              value: {{ .Values.global.otel.propagators | default "w3c,tracecontext" }}
+            - name: OTEL_METRICS_EXPORTER
+              value: {{ .Values.global.otel.metricsExporter | default "otlp" }}
+            - name: OTEL_LOGS_EXPORTER
+              value: {{ .Values.global.otel.logsExporter | default "otlp" }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+{{- end }}

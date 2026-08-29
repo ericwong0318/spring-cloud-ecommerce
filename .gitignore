@@ -45,3 +45,9 @@ build/
 # OS specific
 Thumbs.db
 .DS_Store
+
+# Environment files
+.env
+
+# Kubernetes/Otel Collector secrets
+otel-collector/otel-collector-config.yaml

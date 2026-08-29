@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: category
+  namespace: ecommerce
+  labels:
+    app: category
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: category
+  template:
+    metadata:
+      labels:
+        app: category
+    spec:
+      containers:
+        - name: category
+          image: category:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef:
+                name: spring-cloud-config
+            - secretRef:
+                name: spring-cloud-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "category"
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres:5432/category_db"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: spring-cloud-secrets
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: spring-cloud-secrets
+                  key: POSTGRES_PASSWORD
+            - name: SPRING_RABBITMQ_HOST
+              value: "rabbitmq"
+            - name: SPRING_RABBITMQ_PORT
+              value: "5672"
+            - name: SPRING_RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: spring-cloud-secrets
+                  key: RABBITMQ_USER
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: spring-cloud-secrets
+                  key: RABBITMQ_PASSWORD
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: category
+  namespace: ecommerce
+spec:
+  selector:
+    app: category
+  ports:
+    - port: 8082
+      targetPort: 8082
+  type: ClusterIP
