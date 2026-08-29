@@ -13,11 +13,11 @@
 
 ## Other
 - [x] Verify auth-server warning about deprecated applyDefaultSecurity - No warning found
-- [ ] Check order-service, inventory-service, notification-service have no tests - CONFIRMED: No tests exist
-- [ ] Add unit tests for order-service
-- [ ] Add unit tests for inventory-service
-- [ ] Add unit tests for notification-service
-- [ ] Add unit tests for auth-server
+- [x] Check order-service, inventory-service, notification-service have no tests - CONFIRMED: No tests exist
+- [x] Add unit tests for order-service
+- [x] Add unit tests for inventory-service
+- [x] Add unit tests for notification-service
+- [ ] Add unit tests for auth-server (mostly configuration, minimal testable logic)
 
 ## Documentation
 - [ ] Update README with test running instructions
