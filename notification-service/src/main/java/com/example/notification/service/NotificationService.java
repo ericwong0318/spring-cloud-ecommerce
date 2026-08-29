@@ -1,5 +1,7 @@
 package com.example.notification.service;
 
+import com.example.common.dto.NotificationDto;
+import com.example.notification.mapper.NotificationMapper;
 import com.example.notification.model.Notification;
 import com.example.notification.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final EmailService emailService;
+    private final NotificationMapper notificationMapper;
 
     @Transactional
     public void sendNotification(Notification notification) {
@@ -33,6 +36,14 @@ public class NotificationService {
             notification.setErrorMessage(e.getMessage());
             notificationRepository.save(notification);
         }
+    }
+
+    @Transactional
+    public NotificationDto createNotification(NotificationDto notificationDto) {
+        Notification notification = notificationMapper.toEntity(notificationDto);
+        notification.setStatus(Notification.NotificationStatus.PENDING);
+        Notification saved = notificationRepository.save(notification);
+        return notificationMapper.toDto(saved);
     }
 
     @Transactional
