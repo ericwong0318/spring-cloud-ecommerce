@@ -92,3 +92,16 @@ mvn spring-boot:run -pl notification-service
 3. `mvn verify -pl <module>` - run integration tests (Testcontainers)
 4. `mvn clean install -DskipTests` - build all
 5. `docker-compose up -d` - run full stack locally
+
+# Unit Testing Rules
+
+## Guidelines
+- Follow the **AAA pattern**: Arrange, Act, Assert.
+- Use descriptive names like `it('should return X when Y', ...)`.
+- Mock all external API calls and database connections.
+- Do not test private functions directly.
+
+## Workflow
+1. Analyze the target function inputs and outputs.
+2. Identify happy path and edge-case scenarios.
+3. Write clean, isolated test code.
