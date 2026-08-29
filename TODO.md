@@ -20,6 +20,6 @@
 - [ ] Add unit tests for auth-server (mostly configuration, minimal testable logic)
 
 ## Documentation
-- [ ] Update README with test running instructions
-- [ ] Document Docker/OrbStack setup for Testcontainers
-- [ ] Document service startup order
+- [x] Update README with test running instructions
+- [x] Document Docker/OrbStack setup for Testcontainers
+- [x] Document service startup order

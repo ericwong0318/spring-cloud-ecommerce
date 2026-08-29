@@ -479,18 +479,152 @@ GitHub Actions (`.github/workflows/ci.yml`):
 | product | 1 | 1 |
 | category | 1 | 2 |
 | auth-server | 0 | 0 |
-| order-service | 0 | 0 |
-| inventory-service | 0 | 0 |
-| notification-service | 0 | 0 |
+| order-service | 12 | 0 |
+| inventory-service | 14 | 0 |
+| notification-service | 7 | 0 |
 | system-test | 0 | 4 (Testcontainers) |
-| **Total** | **2** | **7** |
+| **Total** | **34** | **7** |
 
 Test patterns:
-- **Unit** — `@SpringBootTest` with `contextLoads()`
+- **Unit** — `@SpringBootTest` with mocked dependencies (Mockito)
 - **Integration** — RestAssured with random port + test security config
 - **Database** — Testcontainers (PostgreSQL) for integration tests
+- **System** — Full stack E2E tests in `system-test` module
+
+### Running Tests
+
+```bash
+# Run all unit tests (no Docker required)
+mvn test
+
+# Run tests for a specific module
+mvn test -pl product
+mvn test -pl order-service
+mvn test -pl inventory-service
+mvn test -pl notification-service
+
+# Run integration tests (requires Docker/OrbStack for Testcontainers)
+mvn verify -Dskip.unit.tests=true
+
+# Run system tests (full stack E2E)
+mvn test -pl system-test
+
+# Code coverage report
+mvn clean verify jacoco:report
+# Reports at: */target/site/jacoco/index.html
+```
 
 ---
+
+## Testcontainers Setup (Docker/OrbStack)
+
+Testcontainers is used for integration/system tests requiring real PostgreSQL containers.
+
+### Prerequisites
+- **Docker** or **OrbStack** running
+- Docker daemon accessible at `unix:///var/run/docker.sock`
+
+### OrbStack Configuration (macOS)
+OrbStack provides Docker-compatible API. No special config needed:
+
+```bash
+# Verify OrbStack is running
+docker version
+# Should show: Server: Docker Engine - Community, API Version: 1.54
+
+# Test Testcontainers connection
+docker run --rm testcontainers/ryuk:0.12.0
+```
+
+### Testcontainers Version
+This project uses **Testcontainers 1.21.4** (configured in root `pom.xml`):
+- Includes `docker-java 3.4.2` — supports Docker API 1.40+
+- Compatible with OrbStack / Docker 29.x
+
+### Troubleshooting
+| Issue | Solution |
+|-------|----------|
+| `Could not find a valid Docker environment` | Ensure OrbStack/Docker is running; check `docker ps` |
+| `Ryuk container failed to start` | Increase Docker resources (memory ≥ 4GB) |
+| `Connection refused to unix:///var/run/docker.sock` | OrbStack: Settings → General → "Expose Docker socket" |
+| Tests timeout on CI | Set `TESTCONTAINERS_RYUK_DISABLED=true` and add cleanup |
+
+---
+
+## Service Startup Order
+
+Services must start in dependency order:
+
+```
+config-server (8888) 
+    → eureka-server (8761) 
+    → auth-server (9000) 
+    → gateway (8080) 
+    → product (8081) 
+    → category (8082) 
+    → order-service (8083) 
+    → inventory-service (8084) 
+    → notification-service (8085)
+```
+
+### Why This Order?
+| Service | Depends On | Reason |
+|---------|------------|--------|
+| eureka-server | config-server | Fetches config from Config Server |
+| auth-server | config-server, eureka | Config + service registration |
+| gateway | config-server, eureka, auth-server | Routes need auth + discovery |
+| business services | config-server, eureka | Config + registration + gateway routing |
+
+### Docker Compose
+Handles dependencies automatically via `depends_on` with health checks:
+
+```bash
+docker-compose up -d  # starts in correct order
+```
+
+### Local Development (Manual)
+```bash
+# Terminal 1: Config Server
+mvn spring-boot:run -pl config-server
+
+# Terminal 2: Eureka Server (wait for config-server health)
+mvn spring-boot:run -pl eureka-server
+
+# Terminal 3: Auth Server (wait for eureka health)
+mvn spring-boot:run -pl auth-server
+
+# Terminal 4: Gateway (wait for auth-server health)
+mvn spring-boot:run -pl gateway
+
+# Terminals 5-9: Business services (any order after gateway)
+mvn spring-boot:run -pl product
+mvn spring-boot:run -pl category
+mvn spring-boot:run -pl order-service
+mvn spring-boot:run -pl inventory-service
+mvn spring-boot:run -pl notification-service
+```
+
+### Verify Health Before Proceeding
+```bash
+# Check each service is UP before starting dependents
+curl http://localhost:8888/actuator/health   # config-server
+curl http://localhost:8761/actuator/health   # eureka-server
+curl http://localhost:9000/actuator/health   # auth-server
+curl http://localhost:8080/actuator/health   # gateway
+curl http://localhost:8081/actuator/health   # product
+curl http://localhost:8082/actuator/health   # category
+curl http://localhost:8083/actuator/health   # order-service
+curl http://localhost:8084/actuator/health   # inventory-service
+curl http://localhost:8085/actuator/health   # notification-service
+```
+
+### Common Startup Issues
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `Connection refused` to Config Server | Started eureka before config | Start config-server first |
+| `No instances available` in Eureka | Service not registered | Wait for health check to pass |
+| `401 Unauthorized` at Gateway | Auth server not ready | Wait for auth-server health |
+| Tests fail with `Could not resolve placeholder` | Config not loaded | Ensure bootstrap.yml active |
 
 ## License
 MIT
