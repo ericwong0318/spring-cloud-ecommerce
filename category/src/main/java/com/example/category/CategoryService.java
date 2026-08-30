@@ -4,8 +4,8 @@ import com.example.common.dto.CategoryDto;
 import com.example.common.event.OutboxEventPublisher;
 import com.example.common.event.ProductEvent;
 import com.example.common.exception.ResourceNotFoundException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,14 +13,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class CategoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(CategoryService.class);
 
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
     private final OutboxEventPublisher outboxEventPublisher;
+
+    public CategoryService(CategoryRepository categoryRepository, CategoryMapper categoryMapper, OutboxEventPublisher outboxEventPublisher) {
+        this.categoryRepository = categoryRepository;
+        this.categoryMapper = categoryMapper;
+        this.outboxEventPublisher = outboxEventPublisher;
+    }
 
     @Transactional(readOnly = true)
     public List<CategoryDto> getAllCategories() {
@@ -57,21 +63,27 @@ public class CategoryService {
     private CategoryDto buildCategoryTree(Category category) {
         CategoryDto dto = categoryMapper.toDto(category);
         if (category.getChildren() != null && !category.getChildren().isEmpty()) {
-            dto.setChildren(category.getChildren().stream()
+            return new CategoryDto(
+                dto.id(),
+                dto.name(),
+                dto.description(),
+                dto.parentId(),
+                category.getChildren().stream()
                     .map(this::buildCategoryTree)
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toList())
+            );
         }
         return dto;
     }
 
     @Transactional
     public CategoryDto createCategory(CategoryDto categoryDto) {
-        log.info("Creating category: {}", categoryDto.getName());
+        log.info("Creating category: {}", categoryDto.name());
         Category category = categoryMapper.toEntity(categoryDto);
         
-        if (categoryDto.getParentId() != null) {
-            Category parent = categoryRepository.findById(categoryDto.getParentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Parent Category", categoryDto.getParentId()));
+        if (categoryDto.parentId() != null) {
+            Category parent = categoryRepository.findById(categoryDto.parentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent Category", categoryDto.parentId()));
             category.setParent(parent);
         }
         
@@ -86,8 +98,8 @@ public class CategoryService {
         Category existing = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
 
-        existing.setName(categoryDto.getName());
-        existing.setDescription(categoryDto.getDescription());
+        existing.setName(categoryDto.name());
+        existing.setDescription(categoryDto.description());
 
         Category saved = categoryRepository.save(existing);
         publishCategoryEvent(ProductEvent.EventType.CATEGORY_UPDATED, saved);
