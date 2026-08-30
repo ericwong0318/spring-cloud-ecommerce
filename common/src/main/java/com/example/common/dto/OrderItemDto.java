@@ -26,6 +26,12 @@ public class OrderItemDto {
     @Schema(description = "Product ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long productId;
 
+    @Schema(description = "Variant ID", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
+    private Long variantId;
+
+    @Schema(description = "SKU code", example = "LAPTOP-13-SILVER", accessMode = Schema.AccessMode.READ_ONLY)
+    private String skuCode;
+
     @Schema(description = "Product name (populated on read)", example = "Laptop", accessMode = Schema.AccessMode.READ_ONLY)
     private String productName;
 
@@ -34,8 +40,18 @@ public class OrderItemDto {
     @Schema(description = "Quantity ordered", example = "2", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer quantity;
 
+    @Schema(description = "Quantity shipped", example = "0", accessMode = Schema.AccessMode.READ_ONLY)
+    private Integer quantityShipped;
+
     @NotNull(message = "Price is required")
     @DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than 0")
     @Schema(description = "Unit price at time of order", example = "999.99", requiredMode = Schema.RequiredMode.REQUIRED)
     private BigDecimal price;
+
+    @Schema(description = "Order item status", example = "PENDING", accessMode = Schema.AccessMode.READ_ONLY)
+    private OrderItemStatus status;
+
+    public enum OrderItemStatus {
+        PENDING, RESERVED, SHIPPED, BACKORDERED, CANCELLED
+    }
 }

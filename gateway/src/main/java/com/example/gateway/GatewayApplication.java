@@ -23,6 +23,22 @@ public class GatewayApplication {
                         .path("/api/categories/**")
                         .filters(f -> f.stripPrefix(1))
                         .uri("lb://category"))
+                .route("order-service", r -> r
+                        .path("/api/orders/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://order-service"))
+                .route("inventory-service", r -> r
+                        .path("/api/inventory/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://inventory-service"))
+                .route("notification-service", r -> r
+                        .path("/api/notifications/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://notification-service"))
+                .route("payment-service", r -> r
+                        .path("/api/payments/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://payment-service"))
                 .build();
     }
 

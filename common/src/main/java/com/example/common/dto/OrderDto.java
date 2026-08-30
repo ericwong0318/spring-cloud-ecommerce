@@ -42,6 +42,9 @@ public class OrderDto {
     @Schema(description = "Order items", requiredMode = Schema.RequiredMode.REQUIRED)
     private List<OrderItemDto> items;
 
+    @Schema(description = "Order shipments", accessMode = Schema.AccessMode.READ_ONLY)
+    private List<ShipmentDto> shipments;
+
     @Schema(description = "Creation timestamp", example = "2024-01-15T10:30:00", accessMode = Schema.AccessMode.READ_ONLY)
     private LocalDateTime createdAt;
 

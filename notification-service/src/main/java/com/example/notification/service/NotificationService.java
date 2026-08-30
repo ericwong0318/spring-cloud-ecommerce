@@ -4,7 +4,9 @@ import com.example.common.dto.NotificationDto;
 import com.example.common.event.OutboxEventPublisher;
 import com.example.notification.mapper.NotificationMapper;
 import com.example.notification.model.Notification;
+import com.example.notification.model.NotificationTemplate;
 import com.example.notification.repository.NotificationRepository;
+import com.example.notification.repository.NotificationTemplateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -13,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -20,25 +23,97 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final NotificationTemplateRepository templateRepository;
     private final EmailService emailService;
+    private final SmsService smsService;
     private final NotificationMapper notificationMapper;
     private final OutboxEventPublisher outboxEventPublisher;
 
     @Transactional
     public void sendNotification(Notification notification) {
+        log.info("Sending notification {} via {}", notification.getId(), notification.getChannel());
+        
         try {
-            notification.setStatus(Notification.NotificationStatus.SENT);
-            notification.setSentAt(LocalDateTime.now());
-            emailService.sendEmail(notification.getRecipient(), notification.getSubject(), notification.getContent());
-            notificationRepository.save(notification);
-            log.info("Sent notification {} to {}", notification.getId(), notification.getRecipient());
-            publishNotificationEvent("Notification", notification.getId().toString(), "SENT", notification);
+            boolean sent = sendViaChannel(notification);
+            
+            if (sent) {
+                notification.setStatus(Notification.NotificationStatus.SENT);
+                notification.setSentAt(LocalDateTime.now());
+                notificationRepository.save(notification);
+                log.info("Sent notification {} to {} via {}", notification.getId(), notification.getRecipient(), notification.getChannel());
+                publishNotificationEvent("Notification", notification.getId().toString(), "SENT", notification);
+            } else {
+                handleSendFailure(notification);
+            }
         } catch (Exception e) {
             log.error("Failed to send notification {}", notification.getId(), e);
-            notification.setStatus(Notification.NotificationStatus.FAILED);
-            notification.setErrorMessage(e.getMessage());
+            handleSendFailure(notification, e.getMessage());
+        }
+    }
+
+    private boolean sendViaChannel(Notification notification) {
+        return switch (notification.getChannel()) {
+            case EMAIL -> sendEmail(notification);
+            case SMS -> sendSms(notification);
+            case PUSH -> sendPush(notification);
+            case IN_APP -> sendInApp(notification);
+        };
+    }
+
+    private boolean sendEmail(Notification notification) {
+        emailService.sendEmail(notification.getRecipient(), notification.getSubject(), notification.getContent());
+        return true;
+    }
+
+    private boolean sendSms(Notification notification) {
+        return smsService.sendSms(notification.getRecipient(), notification.getContent());
+    }
+
+    private boolean sendPush(Notification notification) {
+        // TODO: Implement push notification
+        log.warn("Push notification not implemented yet");
+        return false;
+    }
+
+    private boolean sendInApp(Notification notification) {
+        // TODO: Implement in-app notification
+        log.warn("In-app notification not implemented yet");
+        return false;
+    }
+
+    private void handleSendFailure(Notification notification) {
+        handleSendFailure(notification, "Unknown error");
+    }
+
+    private void handleSendFailure(Notification notification, String errorMessage) {
+        notification.setErrorMessage(errorMessage);
+        notification.setRetryCount(notification.getRetryCount() + 1);
+        
+        if (notification.getRetryCount() >= notification.getMaxRetries()) {
+            // Max retries reached - try fallback channel
+            if (notification.getFallbackChannel() != null && 
+                !notification.getFallbackChannel().equals(notification.getChannel().name())) {
+                log.info("Max retries reached for notification {}, trying fallback channel: {}", 
+                        notification.getId(), notification.getFallbackChannel());
+                notification.setChannel(Notification.NotificationChannel.valueOf(notification.getFallbackChannel()));
+                notification.setRetryCount(0); // Reset retry count for fallback
+                notification.setStatus(Notification.NotificationStatus.PENDING);
+                notificationRepository.save(notification);
+                sendNotification(notification);
+            } else {
+                // No fallback available - mark as failed
+                notification.setStatus(Notification.NotificationStatus.FAILED);
+                notificationRepository.save(notification);
+                log.error("Notification {} failed after {} retries, no fallback available", 
+                        notification.getId(), notification.getMaxRetries());
+                publishNotificationEvent("Notification", notification.getId().toString(), "FAILED", notification);
+            }
+        } else {
+            // Retry later
+            notification.setStatus(Notification.NotificationStatus.RETRYING);
             notificationRepository.save(notification);
-            publishNotificationEvent("Notification", notification.getId().toString(), "FAILED", notification);
+            log.info("Notification {} will be retried (attempt {}/{})", 
+                    notification.getId(), notification.getRetryCount(), notification.getMaxRetries());
         }
     }
 
@@ -50,39 +125,77 @@ public class NotificationService {
     public NotificationDto createNotification(NotificationDto notificationDto) {
         Notification notification = notificationMapper.toEntity(notificationDto);
         notification.setStatus(Notification.NotificationStatus.PENDING);
+        
+        // Apply template if type is specified
+        if (notificationDto.getType() != null) {
+            applyTemplate(notification);
+        }
+        
         Notification saved = notificationRepository.save(notification);
         return notificationMapper.toDto(saved);
     }
 
-    @Transactional
-    public void retryFailedNotifications() {
-        List<Notification> failedNotifications = notificationRepository.findByStatus(Notification.NotificationStatus.FAILED);
-        for (Notification notification : failedNotifications) {
-            log.info("Retrying failed notification: {}", notification.getId());
-            notification.setStatus(Notification.NotificationStatus.RETRYING);
-            notificationRepository.save(notification);
-            sendNotification(notification);
+    private void applyTemplate(Notification notification) {
+        Optional<NotificationTemplate> templateOpt = templateRepository.findByTypeAndChannel(
+                notification.getType().name(), notification.getChannel().name());
+        
+        if (templateOpt.isPresent()) {
+            NotificationTemplate template = templateOpt.get();
+            // Simple template variable replacement
+            String subject = replaceVariables(template.getSubjectTemplate(), notification);
+            String body = replaceVariables(template.getBodyTemplate(), notification);
+            notification.setSubject(subject);
+            notification.setContent(body);
         }
+    }
+
+    private String replaceVariables(String template, Notification notification) {
+        if (template == null) return "";
+        // Simple placeholder replacement: {{variable}} -> value
+        // In a real implementation, use a proper template engine like Thymeleaf or Freemarker
+        return template
+                .replace("{{orderId}}", notification.getReferenceId())
+                .replace("{{customerName}}", notification.getRecipient())
+                .replace("{{amount}}", "0.00"); // Would come from reference data
     }
 
     @Scheduled(fixedRate = 300000) // Every 5 minutes
     @Transactional
     public void processPendingNotifications() {
+        log.debug("Processing pending notifications");
         List<Notification> pendingNotifications = notificationRepository.findByStatus(Notification.NotificationStatus.PENDING);
         for (Notification notification : pendingNotifications) {
             sendNotification(notification);
         }
     }
 
-    @Scheduled(fixedRate = 600000) // Every 10 minutes
+    @Scheduled(fixedRate = 300000) // Every 5 minutes
     @Transactional
-    public void retryStaleNotifications() {
-        LocalDateTime threshold = LocalDateTime.now().minusMinutes(30);
-        List<Notification> staleNotifications = notificationRepository.findStalePendingNotifications(
-                Notification.NotificationStatus.PENDING, threshold);
-        for (Notification notification : staleNotifications) {
-            log.info("Retrying stale notification: {}", notification.getId());
+    public void retryFailedNotifications() {
+        log.debug("Retrying failed/pending notifications");
+        List<Notification> retryableNotifications = notificationRepository.findRetryableNotifications(Notification.NotificationStatus.RETRYING);
+        for (Notification notification : retryableNotifications) {
+            log.info("Retrying notification {} (attempt {}/{})", 
+                    notification.getId(), notification.getRetryCount(), notification.getMaxRetries());
             sendNotification(notification);
         }
+    }
+
+    @Transactional
+    public NotificationDto createNotificationFromTemplate(String type, String channel, String recipient, String referenceId, String referenceType) {
+        Notification notification = new Notification();
+        notification.setType(Notification.NotificationType.valueOf(type));
+        notification.setChannel(Notification.NotificationChannel.valueOf(channel));
+        notification.setRecipient(recipient);
+        notification.setReferenceId(referenceId);
+        notification.setReferenceType(referenceType);
+        notification.setStatus(Notification.NotificationStatus.PENDING);
+        notification.setMaxRetries(3);
+        notification.setFallbackChannel("SMS"); // Default fallback to SMS
+        
+        applyTemplate(notification);
+        
+        Notification saved = notificationRepository.save(notification);
+        return notificationMapper.toDto(saved);
     }
 }

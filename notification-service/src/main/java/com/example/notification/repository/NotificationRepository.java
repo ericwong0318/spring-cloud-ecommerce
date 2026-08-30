@@ -19,4 +19,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Query("SELECT n FROM Notification n WHERE n.status = :status AND n.createdAt < :threshold")
     List<Notification> findStalePendingNotifications(@Param("status") Notification.NotificationStatus status, 
                                                       @Param("threshold") LocalDateTime threshold);
+    
+    @Query("SELECT n FROM Notification n WHERE n.status = :status AND n.retryCount < n.maxRetries")
+    List<Notification> findRetryableNotifications(@Param("status") Notification.NotificationStatus status);
 }

@@ -1,6 +1,7 @@
 package com.example.order.service;
 
 import com.example.common.dto.OrderDto;
+import com.example.common.event.OutboxEventPublisher;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.model.Order;
@@ -32,6 +33,9 @@ class OrderServiceTest {
     @Mock
     private OrderMapper orderMapper;
 
+    @Mock
+    private OutboxEventPublisher outboxEventPublisher;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -51,20 +55,19 @@ class OrderServiceTest {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        order = Order.builder()
-                .id(1L)
-                .customerId("CUST-001")
-                .status("PENDING")
-                .totalAmount(new BigDecimal("1999.98"))
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+        order = new Order();
+        order.setId(1L);
+        order.setCustomerId("CUST-001");
+        order.setStatus("PENDING");
+        order.setTotalAmount(new BigDecimal("1999.98"));
+        order.setCreatedAt(LocalDateTime.now());
+        order.setUpdatedAt(LocalDateTime.now());
     }
 
     @Test
     void getAllOrders_shouldReturnListOfOrders() {
         when(orderRepository.findAll()).thenReturn(List.of(order));
-        when(orderMapper.toDto(order)).thenReturn(orderDto);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         List<OrderDto> result = orderService.getAllOrders();
 
@@ -87,7 +90,7 @@ class OrderServiceTest {
     @Test
     void getOrderById_shouldReturnOrder_whenExists() {
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderMapper.toDto(order)).thenReturn(orderDto);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         OrderDto result = orderService.getOrderById(1L);
 
@@ -112,7 +115,7 @@ class OrderServiceTest {
     @Test
     void getOrdersByCustomerId_shouldReturnOrders() {
         when(orderRepository.findByCustomerId("CUST-001")).thenReturn(List.of(order));
-        when(orderMapper.toDto(order)).thenReturn(orderDto);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         List<OrderDto> result = orderService.getOrdersByCustomerId("CUST-001");
 
@@ -141,24 +144,22 @@ class OrderServiceTest {
                 .items(Collections.emptyList())
                 .build();
 
-        Order newOrder = Order.builder()
-                .customerId("CUST-001")
-                .status("PENDING")
-                .totalAmount(new BigDecimal("1999.98"))
-                .build();
+        Order newOrder = new Order();
+        newOrder.setCustomerId("CUST-001");
+        newOrder.setStatus("PENDING");
+        newOrder.setTotalAmount(new BigDecimal("1999.98"));
 
-        Order savedOrder = Order.builder()
-                .id(1L)
-                .customerId("CUST-001")
-                .status("PENDING")
-                .totalAmount(new BigDecimal("1999.98"))
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+        Order savedOrder = new Order();
+        savedOrder.setId(1L);
+        savedOrder.setCustomerId("CUST-001");
+        savedOrder.setStatus("PENDING");
+        savedOrder.setTotalAmount(new BigDecimal("1999.98"));
+        savedOrder.setCreatedAt(LocalDateTime.now());
+        savedOrder.setUpdatedAt(LocalDateTime.now());
 
-        when(orderMapper.toEntity(inputDto)).thenReturn(newOrder);
+        when(orderMapper.toEntity(any(OrderDto.class))).thenReturn(newOrder);
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
-        when(orderMapper.toDto(savedOrder)).thenReturn(orderDto);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         OrderDto result = orderService.createOrder(inputDto);
 
@@ -179,24 +180,22 @@ class OrderServiceTest {
                 .items(Collections.emptyList())
                 .build();
 
-        Order newOrder = Order.builder()
-                .customerId("CUST-001")
-                .status("PENDING")
-                .totalAmount(null)
-                .build();
+        Order newOrder = new Order();
+        newOrder.setCustomerId("CUST-001");
+        newOrder.setStatus("PENDING");
+        newOrder.setTotalAmount(null);
 
-        Order savedOrder = Order.builder()
-                .id(1L)
-                .customerId("CUST-001")
-                .status("PENDING")
-                .totalAmount(BigDecimal.ZERO)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+        Order savedOrder = new Order();
+        savedOrder.setId(1L);
+        savedOrder.setCustomerId("CUST-001");
+        savedOrder.setStatus("PENDING");
+        savedOrder.setTotalAmount(BigDecimal.ZERO);
+        savedOrder.setCreatedAt(LocalDateTime.now());
+        savedOrder.setUpdatedAt(LocalDateTime.now());
 
-        when(orderMapper.toEntity(inputDto)).thenReturn(newOrder);
+        when(orderMapper.toEntity(any(OrderDto.class))).thenReturn(newOrder);
         when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
-        when(orderMapper.toDto(savedOrder)).thenReturn(orderDto);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         OrderDto result = orderService.createOrder(inputDto);
 
@@ -214,18 +213,17 @@ class OrderServiceTest {
                 .items(Collections.emptyList())
                 .build();
 
-        Order updatedOrder = Order.builder()
-                .id(1L)
-                .customerId("CUST-001")
-                .status("CONFIRMED")
-                .totalAmount(new BigDecimal("2999.98"))
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+        Order updatedOrder = new Order();
+        updatedOrder.setId(1L);
+        updatedOrder.setCustomerId("CUST-001");
+        updatedOrder.setStatus("CONFIRMED");
+        updatedOrder.setTotalAmount(new BigDecimal("2999.98"));
+        updatedOrder.setCreatedAt(LocalDateTime.now());
+        updatedOrder.setUpdatedAt(LocalDateTime.now());
 
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenReturn(updatedOrder);
-        when(orderMapper.toDto(updatedOrder)).thenReturn(orderDto);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         OrderDto result = orderService.updateOrder(1L, updateDto);
 

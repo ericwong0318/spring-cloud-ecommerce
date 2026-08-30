@@ -1,10 +1,19 @@
 package com.example.notification.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "notifications")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Notification {
 
     @Id
@@ -25,6 +34,11 @@ public class Notification {
     private NotificationType type;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "channel", nullable = false)
+    @Builder.Default
+    private NotificationChannel channel = NotificationChannel.EMAIL;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private NotificationStatus status = NotificationStatus.PENDING;
 
@@ -36,6 +50,17 @@ public class Notification {
 
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
+
+    @Column(name = "retry_count", nullable = false)
+    @Builder.Default
+    private Integer retryCount = 0;
+
+    @Column(name = "max_retries", nullable = false)
+    @Builder.Default
+    private Integer maxRetries = 3;
+
+    @Column(name = "fallback_channel", length = 20)
+    private String fallbackChannel;
 
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
@@ -58,106 +83,14 @@ public class Notification {
     }
 
     public enum NotificationType {
+        ORDER_CONFIRMATION, PAYMENT_SUCCESS, PAYMENT_FAILED, SHIPMENT_NOTIFICATION, LOW_STOCK_ALERT
+    }
+
+    public enum NotificationChannel {
         EMAIL, SMS, PUSH, IN_APP
     }
 
     public enum NotificationStatus {
         PENDING, SENT, FAILED, RETRYING
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getRecipient() {
-        return recipient;
-    }
-
-    public void setRecipient(String recipient) {
-        this.recipient = recipient;
-    }
-
-    public String getSubject() {
-        return subject;
-    }
-
-    public void setSubject(String subject) {
-        this.subject = subject;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public NotificationType getType() {
-        return type;
-    }
-
-    public void setType(NotificationType type) {
-        this.type = type;
-    }
-
-    public NotificationStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(NotificationStatus status) {
-        this.status = status;
-    }
-
-    public String getReferenceId() {
-        return referenceId;
-    }
-
-    public void setReferenceId(String referenceId) {
-        this.referenceId = referenceId;
-    }
-
-    public String getReferenceType() {
-        return referenceType;
-    }
-
-    public void setReferenceType(String referenceType) {
-        this.referenceType = referenceType;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
-
-    public LocalDateTime getSentAt() {
-        return sentAt;
-    }
-
-    public void setSentAt(LocalDateTime sentAt) {
-        this.sentAt = sentAt;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

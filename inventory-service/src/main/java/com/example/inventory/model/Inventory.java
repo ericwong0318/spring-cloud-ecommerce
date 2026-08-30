@@ -12,11 +12,17 @@ public class Inventory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "product_id", nullable = false, unique = true)
+    @Column(name = "variant_id", nullable = false, unique = true)
+    private Long variantId;
+
+    @Column(name = "product_id", nullable = false)
     private Long productId;
 
     @Column(name = "product_name", nullable = false)
     private String productName;
+
+    @Column(name = "sku_code", length = 100)
+    private String skuCode;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity = 0;
@@ -55,6 +61,14 @@ public class Inventory {
         this.id = id;
     }
 
+    public Long getVariantId() {
+        return variantId;
+    }
+
+    public void setVariantId(Long variantId) {
+        this.variantId = variantId;
+    }
+
     public Long getProductId() {
         return productId;
     }
@@ -69,6 +83,14 @@ public class Inventory {
 
     public void setProductName(String productName) {
         this.productName = productName;
+    }
+
+    public String getSkuCode() {
+        return skuCode;
+    }
+
+    public void setSkuCode(String skuCode) {
+        this.skuCode = skuCode;
     }
 
     public Integer getQuantity() {

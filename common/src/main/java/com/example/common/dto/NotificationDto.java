@@ -36,8 +36,12 @@ public class NotificationDto {
     private String content;
 
     @NotNull(message = "Type is required")
-    @Schema(description = "Notification type", example = "EMAIL", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Notification type", example = "ORDER_CONFIRMATION", requiredMode = Schema.RequiredMode.REQUIRED)
     private NotificationType type;
+
+    @NotNull(message = "Channel is required")
+    @Schema(description = "Notification channel", example = "EMAIL", requiredMode = Schema.RequiredMode.REQUIRED)
+    private NotificationChannel channel;
 
     @Schema(description = "Notification status", example = "PENDING", accessMode = Schema.AccessMode.READ_ONLY)
     private NotificationStatus status;
@@ -51,6 +55,15 @@ public class NotificationDto {
     @Schema(description = "Error message if failed", example = "SMTP connection timeout", accessMode = Schema.AccessMode.READ_ONLY)
     private String errorMessage;
 
+    @Schema(description = "Retry count", example = "0", accessMode = Schema.AccessMode.READ_ONLY)
+    private Integer retryCount;
+
+    @Schema(description = "Max retries", example = "3", accessMode = Schema.AccessMode.READ_ONLY)
+    private Integer maxRetries;
+
+    @Schema(description = "Fallback channel", example = "SMS", accessMode = Schema.AccessMode.READ_ONLY)
+    private String fallbackChannel;
+
     @Schema(description = "Sent timestamp", example = "2024-01-15T10:30:00", accessMode = Schema.AccessMode.READ_ONLY)
     private LocalDateTime sentAt;
 
@@ -61,6 +74,10 @@ public class NotificationDto {
     private LocalDateTime updatedAt;
 
     public enum NotificationType {
+        ORDER_CONFIRMATION, PAYMENT_SUCCESS, PAYMENT_FAILED, SHIPMENT_NOTIFICATION, LOW_STOCK_ALERT
+    }
+
+    public enum NotificationChannel {
         EMAIL, SMS, PUSH, IN_APP
     }
 

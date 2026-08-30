@@ -35,9 +35,9 @@ public class InventoryEventListener {
         log.info("Received product event: {}", event);
         
         switch (ProductEvent.EventType.valueOf(event.getEventType())) {
-            case CREATED -> handleProductCreated(event);
-            case UPDATED -> handleProductUpdated(event);
-            case DELETED -> handleProductDeleted(event);
+            case CREATED, VARIANT_CREATED -> handleProductOrVariantCreated(event);
+            case UPDATED, VARIANT_UPDATED -> handleProductOrVariantUpdated(event);
+            case DELETED, VARIANT_DELETED -> handleProductOrVariantDeleted(event);
         }
     }
 
@@ -57,43 +57,94 @@ public class InventoryEventListener {
         }
     }
 
-    private void handleProductCreated(ProductEvent event) {
-        Inventory inventory = new Inventory();
-        inventory.setProductId(event.getProductId());
-        inventory.setProductName(event.getProductName());
-        inventory.setQuantity(0);
-        inventory.setReservedQuantity(0);
-        inventory.setReorderLevel(10);
-        inventoryRepository.save(inventory);
-        log.info("Created inventory for product: {}", event.getProductId());
+    private void handleProductOrVariantCreated(ProductEvent event) {
+        if (event.getVariantId() != null) {
+            // Create inventory for variant
+            Inventory inventory = new Inventory();
+            inventory.setVariantId(event.getVariantId());
+            inventory.setProductId(event.getProductId());
+            inventory.setProductName(event.getProductName());
+            inventory.setSkuCode(event.getSkuCode());
+            inventory.setQuantity(0);
+            inventory.setReservedQuantity(0);
+            inventory.setReorderLevel(10);
+            inventoryRepository.save(inventory);
+            log.info("Created inventory for variant: {}", event.getVariantId());
+        } else if (event.getProductId() != null) {
+            // Legacy product creation (backward compatibility)
+            Inventory inventory = new Inventory();
+            inventory.setProductId(event.getProductId());
+            inventory.setProductName(event.getProductName());
+            inventory.setQuantity(0);
+            inventory.setReservedQuantity(0);
+            inventory.setReorderLevel(10);
+            inventoryRepository.save(inventory);
+            log.info("Created inventory for product: {}", event.getProductId());
+        }
     }
 
-    private void handleProductUpdated(ProductEvent event) {
-        inventoryRepository.findByProductId(event.getProductId())
-                .ifPresent(inventory -> {
-                    inventory.setProductName(event.getProductName());
-                    inventoryRepository.save(inventory);
-                    log.info("Updated inventory for product: {}", event.getProductId());
-                });
+    private void handleProductOrVariantUpdated(ProductEvent event) {
+        if (event.getVariantId() != null) {
+            inventoryRepository.findByVariantId(event.getVariantId())
+                    .ifPresent(inventory -> {
+                        inventory.setProductName(event.getProductName());
+                        inventory.setSkuCode(event.getSkuCode());
+                        inventoryRepository.save(inventory);
+                        log.info("Updated inventory for variant: {}", event.getVariantId());
+                    });
+        } else if (event.getProductId() != null) {
+            inventoryRepository.findByProductId(event.getProductId())
+                    .ifPresent(inventory -> {
+                        inventory.setProductName(event.getProductName());
+                        inventoryRepository.save(inventory);
+                        log.info("Updated inventory for product: {}", event.getProductId());
+                    });
+        }
     }
 
-    private void handleProductDeleted(ProductEvent event) {
-        inventoryRepository.findByProductId(event.getProductId())
-                .ifPresent(inventoryRepository::delete);
-        log.info("Deleted inventory for product: {}", event.getProductId());
+    private void handleProductOrVariantDeleted(ProductEvent event) {
+        if (event.getVariantId() != null) {
+            inventoryRepository.findByVariantId(event.getVariantId())
+                    .ifPresent(inventoryRepository::delete);
+            log.info("Deleted inventory for variant: {}", event.getVariantId());
+        } else if (event.getProductId() != null) {
+            inventoryRepository.findByProductId(event.getProductId())
+                    .ifPresent(inventoryRepository::delete);
+            log.info("Deleted inventory for product: {}", event.getProductId());
+        }
     }
 
     private void handleOrderCreated(OrderEvent event) {
         for (OrderEvent.OrderItem item : event.getItems()) {
-            BigDecimal price = item.getPrice();
-            inventoryService.reserveStock(item.getProductId(), item.getQuantity());
+            Long variantId = item.getVariantId();
+            Long productId = item.getProductId();
+            Integer quantity = item.getQuantity();
+            
+            if (variantId != null) {
+                InventoryService.ReservationResult result = inventoryService.reserveStock(variantId, quantity);
+                if (result.getBackorderedQuantity() > 0) {
+                    log.warn("Partial reservation for variant {}: reserved={}, backordered={}", 
+                            variantId, result.getReservedQuantity(), result.getBackorderedQuantity());
+                }
+            } else if (productId != null) {
+                // Legacy productId-based reservation
+                inventoryService.reserveStockByProductId(productId, quantity);
+            }
         }
         log.info("Reserved stock for order: {}", event.getOrderId());
     }
 
     private void handleOrderCancelled(OrderEvent event) {
         for (OrderEvent.OrderItem item : event.getItems()) {
-            inventoryService.releaseReservation(item.getProductId(), item.getQuantity());
+            Long variantId = item.getVariantId();
+            Long productId = item.getProductId();
+            Integer quantity = item.getQuantity();
+            
+            if (variantId != null) {
+                inventoryService.releaseReservation(variantId, quantity);
+            } else if (productId != null) {
+                inventoryService.releaseReservationByProductId(productId, quantity);
+            }
         }
         log.info("Released reservation for order: {}", event.getOrderId());
     }

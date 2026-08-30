@@ -49,7 +49,8 @@ class NotificationServiceTest {
                 .recipient("customer@example.com")
                 .subject("Test Subject")
                 .content("Test Content")
-                .type(NotificationDto.NotificationType.EMAIL)
+                .type(NotificationDto.NotificationType.ORDER_CONFIRMATION)
+                .channel(NotificationDto.NotificationChannel.EMAIL)
                 .status(NotificationDto.NotificationStatus.PENDING)
                 .referenceId("100")
                 .referenceType("ORDER")
@@ -62,7 +63,8 @@ class NotificationServiceTest {
         notification.setRecipient("customer@example.com");
         notification.setSubject("Test Subject");
         notification.setContent("Test Content");
-        notification.setType(Notification.NotificationType.EMAIL);
+        notification.setType(Notification.NotificationType.ORDER_CONFIRMATION);
+        notification.setChannel(Notification.NotificationChannel.EMAIL);
         notification.setStatus(Notification.NotificationStatus.PENDING);
         notification.setReferenceId("100");
         notification.setReferenceType("ORDER");
@@ -123,7 +125,8 @@ class NotificationServiceTest {
         failedNotification.setRecipient("customer@example.com");
         failedNotification.setSubject("Retry Subject");
         failedNotification.setContent("Retry Content");
-        failedNotification.setType(Notification.NotificationType.EMAIL);
+        failedNotification.setType(Notification.NotificationType.ORDER_CONFIRMATION);
+        failedNotification.setChannel(Notification.NotificationChannel.EMAIL);
         failedNotification.setStatus(Notification.NotificationStatus.FAILED);
         failedNotification.setErrorMessage("Previous error");
         failedNotification.setCreatedAt(LocalDateTime.now());
@@ -163,7 +166,8 @@ class NotificationServiceTest {
         pendingNotification.setRecipient("customer@example.com");
         pendingNotification.setSubject("Pending Subject");
         pendingNotification.setContent("Pending Content");
-        pendingNotification.setType(Notification.NotificationType.EMAIL);
+        pendingNotification.setType(Notification.NotificationType.ORDER_CONFIRMATION);
+        pendingNotification.setChannel(Notification.NotificationChannel.EMAIL);
         pendingNotification.setStatus(Notification.NotificationStatus.PENDING);
         pendingNotification.setCreatedAt(LocalDateTime.now());
         pendingNotification.setUpdatedAt(LocalDateTime.now());
