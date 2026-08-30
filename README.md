@@ -118,6 +118,67 @@ This platform is a distributed E-Commerce system demonstrating modern microservi
 
 ---
 
+## Domain Model Specification
+
+This section describes the core domain model for Order Management & Payments.
+
+### Problem Statement
+
+The system needs a robust, compliant order-to-payment flow that respects legal/regulatory constraints (charging only for stock that is actually reserved) while maintaining loose coupling between Order, Inventory, and Payment bounded contexts.
+
+### Solution
+
+A decoupled, event-driven architecture where:
+
+- **Order** is the aggregate root; it owns OrderItems with per-line status (PENDING, RESERVED, SHIPPED, BACKORDERED, CANCELLED).
+- **Inventory** manages stock and reserves via `reservedQuantity`; it publishes `ReservationExpiredEvent` when a reservation exceeds 15 minutes.
+- **Payment** authorizes the full `orderTotal` at order creation but captures only `reservedTotal` (sum of RESERVED OrderItems) upon order confirmation. Backordered items trigger a separate billing event.
+- **Events** are published directly to RabbitMQ with publisher confirms; consumers use database idempotency tables.
+- **ShipmentItems** are denormalized copies linked by `orderItemId` (no cross-aggregate cascades).
+- **Cancellation** is driven by Inventory → `ReservationExpiredEvent` → order-service transitions Order to CANCELLED.
+
+### User Stories
+
+1. **Place Order** — As a customer, I want to place an order with multiple line items in one transaction
+2. **Order Status** — As a customer, I want to see my order status (PENDING, RESERVED, SHIPPED, DELIVERED, CANCELLED)
+3. **Reserve Inventory** — As a merchant, I want to reserve inventory for each order item before confirming payment
+4. **Capture Payment for Reserved Only** — As a merchant, I want to capture payment only for reserved items (not backordered ones)
+5. **Auto-Cancel Expired Reservations** — As a system, I want to automatically cancel orders whose reservations expire after 15 minutes
+6. **Multi-Shipping** — As a system, I want to ship orders in multiple shipments from different warehouses
+7. **Shipment Tracking** — As a system, I want to track shipments with tracking numbers and carrier information
+8. **Notifications** — As a customer, I want to receive notifications at key milestones (order placed, reserved, shipped, delivered)
+9. **Auth/Capture Flow** — As a payment provider, I want to authorize full order amount at creation, capture only reserved portion upon confirmation
+10. **Idempotency Keys** — As a payment service, I want to support idempotency keys to ensure exactly-once charging
+11. **Backorders** — As a system, I want to handle backorders transparently — reserve what's available, backorder the remainder
+12. **Partial Refunds** — As a system, I want to support partial refunds for cancelled orders
+13. **Consolidated View** — As an operator, I want to view all active orders, reservations, and shipments
+14. **Bounded Contexts** — As a developer, I want clear bounded contexts with well-defined responsibilities
+
+### Technical Clarifications
+
+- **Reservation TTL**: Fixed 15 minutes; no extension mechanism. Payment delays beyond 15 min result in reservation expiry and potential oversell (business risk accepted).
+- **Payment Authorization**: Full `orderTotal` is authorized at order creation; only `reservedTotal` (sum of RESERVED OrderItems) is captured upon confirmation. Backordered items are charged separately via a backorder billing event.
+- **Idempotency**: Every payment request includes a unique `idempotencyKey` (UUID) to guarantee exactly-once charging.
+- **ShipmentItems**: Denormalized copy with `orderItemId` reference; no cross-aggregate cascades (Inventory → ShipmentItems via OrderItem status transitions).
+- **Event Delivery**: RabbitMQ direct publishing with publisher confirms; consumers use `processed_events(event_id PK, processed_at)` table for idempotency.
+- **Outbox**: Replaced by direct RabbitMQ publishing (simpler, lower latency). Outbox pattern was considered but rejected due to operational complexity.
+
+### Schema Changes
+
+- **OrderItem** — add `status` (PENDING, RESERVED, SHIPPED, BACKORDERED, CANCELLED), `reservedAt` (timestamp)
+- **Order** — no structural changes (already has status enum)
+- **Inventory** — no structural changes (already has `reservedQuantity`)
+- **Payment** — new `PaymentEvent` enum values (SUCCESS, FAILED, REFUNDED)
+- **New event**: `ReservationExpiredEvent` (triggered by Inventory when reservation > 15 min)
+
+### API Contracts
+
+- **OrderService** — `POST /orders` (creates Order + OrderItems), `PUT /orders/{id}/cancel`, `GET /orders/{id}`, `POST /orders/{id}/reserve` (internal), `POST /orders/{id}/capture` (internal)
+- **PaymentService** — `POST /payments/authorize`, `POST /payments/{id}/capture`, `POST /payments/{id}/refund`
+- **Event consumption** — `ReservationExpiredEvent` consumed by `order-service` to transition Order to CANCELLED
+
+---
+
 ## Services
 
 | Service | Port | Framework | Database | Purpose |
@@ -491,6 +552,16 @@ Test patterns:
 - **Database** — Testcontainers (PostgreSQL) for integration tests
 - **System** — Full stack E2E tests in `system-test` module
 
+### Testing Decisions
+
+- **External behavior testing**: Tests verify order state transitions, reservation expiry, payment authorization/capture, and cancellation flow.
+- **Unit tests**: Each service module has unit tests for core logic (status transitions, reservation calculations, payment flows).
+- **Integration tests**: End-to-end tests for order → reserve → capture → cancel → cancellation flow; payment authorization/capture; shipment creation.
+- **Prior art**: Existing `system-test` module already uses Testcontainers for PostgreSQL; similar pattern is used for payment and order integration tests.
+- **Idempotency tests**: Verify that duplicate payment requests with same idempotency key produce the same result.
+- **Reservation expiry tests**: Simulate time passing beyond 15 minutes and verify order cancellation.
+- **Backorder flow**: Test partial reservation + backorder scenario; verify backordered items are charged separately.
+
 ### Running Tests
 
 ```bash
@@ -548,6 +619,27 @@ This project uses **Testcontainers 1.21.4** (configured in root `pom.xml`):
 | `Ryuk container failed to start` | Increase Docker resources (memory ≥ 4GB) |
 | `Connection refused to unix:///var/run/docker.sock` | OrbStack: Settings → General → "Expose Docker socket" |
 | Tests timeout on CI | Set `TESTCONTAINERS_RYUK_DISABLED=true` and add cleanup |
+
+---
+
+## Out of Scope
+
+The following are explicitly out of scope for the current domain model implementation:
+- **Notification service enhancements** (beyond basic email/SMS templates)
+- **Advanced fraud detection** (beyond basic idempotency)
+- **Multi-region deployment** (infrastructure concerns, not domain model)
+- **Audit logging** (separate compliance module)
+- **Real-time analytics dashboards** (operational tooling)
+
+---
+
+## Further Notes
+
+- The `ReservationExpiredEvent` is the key seam connecting Inventory → OrderService → Payment (indirectly). This is the highest-seeming seam for testing.
+- Payment authorization captures the full order amount but only captures reserved stock — this prevents charging for backordered items.
+- ShipmentItems are denormalized for performance; the primary source of truth remains OrderItem status.
+- All event publishing uses RabbitMQ with publisher confirms; consumers rely on idempotency tables for safety.
+- The `order-service` is responsible for cancelling orders when reservations expire, keeping the bounded context clean.
 
 ---
 
