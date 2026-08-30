@@ -9,14 +9,16 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderEvent {
+public class OrderEvent implements BaseEvent {
 
     private String eventType;
+    private UUID eventId;
     private Long orderId;
     private String customerId;
     private String customerEmail;
@@ -44,10 +46,11 @@ public class OrderEvent {
         PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
     }
 
-    public static OrderEvent created(Long orderId, String customerId, String customerEmail,
-                                     BigDecimal totalAmount, List<OrderItem> items) {
+public static OrderEvent created(Long orderId, String customerId, String customerEmail,
+                                      BigDecimal totalAmount, List<OrderItem> items) {
         return OrderEvent.builder()
                 .eventType(EventType.CREATED.name())
+                .eventId(UUID.randomUUID())
                 .orderId(orderId)
                 .customerId(customerId)
                 .customerEmail(customerEmail)
@@ -59,9 +62,10 @@ public class OrderEvent {
     }
 
     public static OrderEvent cancelled(Long orderId, String customerId, String customerEmail,
-                                       List<OrderItem> items) {
+                                        List<OrderItem> items) {
         return OrderEvent.builder()
                 .eventType(EventType.CANCELLED.name())
+                .eventId(UUID.randomUUID())
                 .orderId(orderId)
                 .customerId(customerId)
                 .customerEmail(customerEmail)
@@ -73,8 +77,39 @@ public class OrderEvent {
     public static OrderEvent statusChanged(Long orderId, OrderStatus status) {
         return OrderEvent.builder()
                 .eventType(EventType.UPDATED.name())
+                .eventId(UUID.randomUUID())
                 .orderId(orderId)
                 .status(status)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+    
+    public static OrderEvent shipped(Long orderId, String customerId, String customerEmail,
+                                      BigDecimal totalAmount, List<OrderItem> items) {
+        return OrderEvent.builder()
+                .eventType(EventType.SHIPPED.name())
+                .eventId(UUID.randomUUID())
+                .orderId(orderId)
+                .customerId(customerId)
+                .customerEmail(customerEmail)
+                .totalAmount(totalAmount)
+                .status(OrderStatus.SHIPPED)
+                .items(items)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+    
+    public static OrderEvent delivered(Long orderId, String customerId, String customerEmail,
+                                        BigDecimal totalAmount, List<OrderItem> items) {
+        return OrderEvent.builder()
+                .eventType(EventType.DELIVERED.name())
+                .eventId(UUID.randomUUID())
+                .orderId(orderId)
+                .customerId(customerId)
+                .customerEmail(customerEmail)
+                .totalAmount(totalAmount)
+                .status(OrderStatus.DELIVERED)
+                .items(items)
                 .timestamp(LocalDateTime.now())
                 .build();
     }

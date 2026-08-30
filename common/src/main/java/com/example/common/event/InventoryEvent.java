@@ -7,14 +7,16 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class InventoryEvent {
+public class InventoryEvent implements BaseEvent {
 
     private String eventType;
+    private UUID eventId;
     private Long productId;
     private String productName;
     private Integer quantity;
@@ -32,6 +34,7 @@ public class InventoryEvent {
     public static InventoryEvent created(Long productId, String productName) {
         return InventoryEvent.builder()
                 .eventType(EventType.CREATED.name())
+                .eventId(UUID.randomUUID())
                 .productId(productId)
                 .productName(productName)
                 .quantity(0)
@@ -44,6 +47,7 @@ public class InventoryEvent {
     public static InventoryEvent reserved(Long productId, Integer reservedQuantity, Integer availableQuantity) {
         return InventoryEvent.builder()
                 .eventType(EventType.RESERVED.name())
+                .eventId(UUID.randomUUID())
                 .productId(productId)
                 .reservedQuantity(reservedQuantity)
                 .availableQuantity(availableQuantity)
@@ -54,6 +58,7 @@ public class InventoryEvent {
     public static InventoryEvent released(Long productId, Integer reservedQuantity, Integer availableQuantity) {
         return InventoryEvent.builder()
                 .eventType(EventType.RELEASED.name())
+                .eventId(UUID.randomUUID())
                 .productId(productId)
                 .reservedQuantity(reservedQuantity)
                 .availableQuantity(availableQuantity)
@@ -64,6 +69,7 @@ public class InventoryEvent {
     public static InventoryEvent confirmed(Long productId, Integer quantity, Integer availableQuantity) {
         return InventoryEvent.builder()
                 .eventType(EventType.CONFIRMED.name())
+                .eventId(UUID.randomUUID())
                 .productId(productId)
                 .quantity(quantity)
                 .availableQuantity(availableQuantity)
@@ -74,8 +80,43 @@ public class InventoryEvent {
     public static InventoryEvent lowStock(Long productId, Integer availableQuantity, Integer reorderLevel) {
         return InventoryEvent.builder()
                 .eventType(EventType.LOW_STOCK.name())
+                .eventId(UUID.randomUUID())
                 .productId(productId)
                 .availableQuantity(availableQuantity)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+    
+    public static InventoryEvent stockAdded(Long productId, Integer quantity, Integer availableQuantity) {
+        return InventoryEvent.builder()
+                .eventType(EventType.STOCK_ADDED.name())
+                .eventId(UUID.randomUUID())
+                .productId(productId)
+                .quantity(quantity)
+                .availableQuantity(availableQuantity)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+    
+    public static InventoryEvent updated(Long productId, String productName, Integer quantity, Integer reservedQuantity, Integer availableQuantity, BigDecimal costPrice) {
+        return InventoryEvent.builder()
+                .eventType(EventType.UPDATED.name())
+                .eventId(UUID.randomUUID())
+                .productId(productId)
+                .productName(productName)
+                .quantity(quantity)
+                .reservedQuantity(reservedQuantity)
+                .availableQuantity(availableQuantity)
+                .costPrice(costPrice)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+    
+    public static InventoryEvent deleted(Long productId) {
+        return InventoryEvent.builder()
+                .eventType(EventType.DELETED.name())
+                .eventId(UUID.randomUUID())
+                .productId(productId)
                 .timestamp(LocalDateTime.now())
                 .build();
     }

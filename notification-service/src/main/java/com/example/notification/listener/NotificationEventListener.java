@@ -1,7 +1,9 @@
 package com.example.notification.listener;
 
-import com.example.notification.event.OrderEvent;
-import com.example.notification.event.PaymentEvent;
+import com.example.common.event.BaseEvent;
+import com.example.common.event.IdempotentEventProcessor;
+import com.example.common.event.OrderEvent;
+import com.example.common.event.PaymentEvent;
 import com.example.notification.model.Notification;
 import com.example.notification.repository.NotificationRepository;
 import com.example.notification.service.EmailService;
@@ -20,10 +22,15 @@ public class NotificationEventListener {
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final IdempotentEventProcessor idempotentEventProcessor;
 
     @RabbitListener(queues = "${rabbitmq.queue.notification-events}")
     @Transactional
     public void handleOrderEvent(OrderEvent event) {
+        idempotentEventProcessor.process(event, this::handleOrderEventInternal);
+    }
+
+    private void handleOrderEventInternal(OrderEvent event) {
         log.info("Received order event: {}", event);
         
         switch (OrderEvent.EventType.valueOf(event.getEventType())) {
@@ -36,6 +43,10 @@ public class NotificationEventListener {
     @RabbitListener(queues = "${rabbitmq.queue.notification-events}")
     @Transactional
     public void handlePaymentEvent(PaymentEvent event) {
+        idempotentEventProcessor.process(event, this::handlePaymentEventInternal);
+    }
+
+    private void handlePaymentEventInternal(PaymentEvent event) {
         log.info("Received payment event: {}", event);
         
         switch (PaymentEvent.EventType.valueOf(event.getEventType())) {

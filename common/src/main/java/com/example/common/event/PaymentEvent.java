@@ -7,14 +7,16 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PaymentEvent {
+public class PaymentEvent implements BaseEvent {
 
     private String eventType;
+    private UUID eventId;
     private Long paymentId;
     private Long orderId;
     private String customerId;
@@ -33,10 +35,11 @@ public class PaymentEvent {
         SUCCESS, FAILED, REFUNDED, PENDING
     }
 
-    public static PaymentEvent success(Long paymentId, Long orderId, String customerId, String customerEmail,
-                                       BigDecimal amount, String currency, String transactionId) {
+public static PaymentEvent success(Long paymentId, Long orderId, String customerId, String customerEmail,
+                                        BigDecimal amount, String currency, String transactionId) {
         return PaymentEvent.builder()
                 .eventType(EventType.SUCCESS.name())
+                .eventId(UUID.randomUUID())
                 .paymentId(paymentId)
                 .orderId(orderId)
                 .customerId(customerId)
@@ -50,9 +53,10 @@ public class PaymentEvent {
     }
 
     public static PaymentEvent failed(Long paymentId, Long orderId, String customerId, String customerEmail,
-                                      BigDecimal amount, String currency) {
+                                       BigDecimal amount, String currency) {
         return PaymentEvent.builder()
                 .eventType(EventType.FAILED.name())
+                .eventId(UUID.randomUUID())
                 .paymentId(paymentId)
                 .orderId(orderId)
                 .customerId(customerId)
@@ -60,6 +64,23 @@ public class PaymentEvent {
                 .amount(amount)
                 .currency(currency)
                 .status(PaymentStatus.FAILED)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+    
+    public static PaymentEvent refunded(Long paymentId, Long orderId, String customerId, String customerEmail,
+                                         BigDecimal amount, String currency, String transactionId) {
+        return PaymentEvent.builder()
+                .eventType(EventType.REFUNDED.name())
+                .eventId(UUID.randomUUID())
+                .paymentId(paymentId)
+                .orderId(orderId)
+                .customerId(customerId)
+                .customerEmail(customerEmail)
+                .amount(amount)
+                .currency(currency)
+                .status(PaymentStatus.REFUNDED)
+                .transactionId(transactionId)
                 .timestamp(LocalDateTime.now())
                 .build();
     }

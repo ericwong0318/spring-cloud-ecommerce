@@ -9,14 +9,16 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProductEvent {
+public class ProductEvent implements BaseEvent {
 
     private String eventType;
+    private UUID eventId;
     private Long productId;
     private String productName;
     private BigDecimal price;
@@ -30,6 +32,7 @@ public class ProductEvent {
     public static ProductEvent created(Long productId, String productName, BigDecimal price, Long categoryId) {
         return ProductEvent.builder()
                 .eventType(EventType.CREATED.name())
+                .eventId(UUID.randomUUID())
                 .productId(productId)
                 .productName(productName)
                 .price(price)
@@ -41,6 +44,7 @@ public class ProductEvent {
     public static ProductEvent updated(Long productId, String productName, BigDecimal price, Long categoryId) {
         return ProductEvent.builder()
                 .eventType(EventType.UPDATED.name())
+                .eventId(UUID.randomUUID())
                 .productId(productId)
                 .productName(productName)
                 .price(price)
@@ -52,6 +56,7 @@ public class ProductEvent {
     public static ProductEvent deleted(Long productId) {
         return ProductEvent.builder()
                 .eventType(EventType.DELETED.name())
+                .eventId(UUID.randomUUID())
                 .productId(productId)
                 .timestamp(LocalDateTime.now())
                 .build();
