@@ -2,10 +2,13 @@ package com.example.inventory.service;
 
 import com.example.common.event.OutboxEventPublisher;
 import com.example.common.event.InventoryEvent;
+import com.example.common.event.ReservationExpiredEvent;
 import com.example.inventory.model.Inventory;
 import com.example.inventory.repository.InventoryRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,13 +17,28 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class InventoryService {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryService.class);
 
     private final InventoryRepository inventoryRepository;
     private final OutboxEventPublisher outboxEventPublisher;
+    private final RabbitTemplate rabbitTemplate;
+
+    @Value("${rabbitmq.exchange.inventory}")
+    private String inventoryExchange;
+
+    @Value("${rabbitmq.routing-key.reservation-expired}")
+    private String reservationExpiredRoutingKey;
+
+    public InventoryService(InventoryRepository inventoryRepository,
+                            OutboxEventPublisher outboxEventPublisher,
+                            RabbitTemplate rabbitTemplate) {
+        this.inventoryRepository = inventoryRepository;
+        this.outboxEventPublisher = outboxEventPublisher;
+        this.rabbitTemplate = rabbitTemplate;
+    }
 
     /**
      * Reserve stock for a variant. Supports partial reservation with backorder.
@@ -214,12 +232,31 @@ public class InventoryService {
         for (Inventory inventory : staleReservations) {
             int releasedQuantity = inventory.getReservedQuantity();
             if (releasedQuantity > 0) {
+                // Create a copy of the order item ID for the event
+                // Note: We need the OrderItem ID which we don't have directly in Inventory
+                // For now, we'll publish with the variantId and let the consumer handle it
+                // In a full implementation, we'd track the OrderItem ID
+                
                 inventory.setReservedQuantity(0);
                 inventoryRepository.save(inventory);
                 log.info("Released stale reservation for variant {}: {} units", inventory.getVariantId(), releasedQuantity);
                 publishInventoryEvent(InventoryEvent.released(inventory.getVariantId(), 0, inventory.getQuantity()));
+                
+                // Publish ReservationExpiredEvent for order cancellation
+                publishReservationExpiredEvent(inventory.getVariantId(), releasedQuantity, threshold);
             }
         }
+    }
+
+    private void publishReservationExpiredEvent(Long variantId, Integer quantityReleased, LocalDateTime reservationExpiresAt) {
+        ReservationExpiredEvent event = ReservationExpiredEvent.expired(
+                null, // orderItemId - we don't have this in Inventory, consumer will find by variantId
+                variantId,
+                quantityReleased,
+                reservationExpiresAt
+        );
+        rabbitTemplate.convertAndSend(inventoryExchange, reservationExpiredRoutingKey, event);
+        log.info("Published ReservationExpiredEvent for variant {}: quantityReleased={}", variantId, quantityReleased);
     }
 
     public static class InsufficientStockException extends RuntimeException {

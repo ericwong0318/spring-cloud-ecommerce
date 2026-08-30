@@ -18,6 +18,9 @@ public class RabbitMQConfig {
     @Value("${rabbitmq.exchange.order}")
     private String orderExchange;
 
+    @Value("${rabbitmq.exchange.inventory}")
+    private String inventoryExchange;
+
     @Value("${rabbitmq.queue.inventory-events}")
     private String inventoryEventsQueue;
 
@@ -35,6 +38,14 @@ public class RabbitMQConfig {
 
     @Value("${rabbitmq.routing-key.order-cancelled}")
     private String orderCancelledRoutingKey;
+
+    @Value("${rabbitmq.routing-key.reservation-expired}")
+    private String reservationExpiredRoutingKey;
+
+    @Bean
+    public TopicExchange inventoryExchange() {
+        return new TopicExchange(inventoryExchange, true, false);
+    }
 
     @Bean
     public TopicExchange productExchange() {

@@ -6,9 +6,9 @@ import com.example.inventory.repository.InventoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -29,7 +29,9 @@ class InventoryServiceTest {
     @Mock
     private OutboxEventPublisher outboxEventPublisher;
 
-    @InjectMocks
+    @Mock
+    private RabbitTemplate rabbitTemplate;
+
     private InventoryService inventoryService;
 
     private Inventory inventory;
@@ -48,6 +50,23 @@ class InventoryServiceTest {
         inventory.setCostPrice(new BigDecimal("50.00"));
         inventory.setCreatedAt(LocalDateTime.now());
         inventory.setUpdatedAt(LocalDateTime.now());
+
+        // Manually instantiate the service with mocks
+        inventoryService = new InventoryService(inventoryRepository, outboxEventPublisher, rabbitTemplate);
+        
+        // Set the @Value fields via reflection since they're private
+        setField(inventoryService, "inventoryExchange", "inventory.exchange");
+        setField(inventoryService, "reservationExpiredRoutingKey", "reservation.expired");
+    }
+    
+    private void setField(Object target, String fieldName, Object value) {
+        try {
+            java.lang.reflect.Field field = InventoryService.class.getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test

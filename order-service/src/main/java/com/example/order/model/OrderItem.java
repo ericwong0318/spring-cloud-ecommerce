@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "order_items")
@@ -42,6 +43,9 @@ public class OrderItem {
     @Column(name = "quantity_shipped", nullable = false)
     @Builder.Default
     private Integer quantityShipped = 0;
+
+    @Column(name = "reserved_at")
+    private LocalDateTime reservedAt;
 
     @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal unitPrice;

@@ -66,6 +66,7 @@ rabbitmq:
   exchange:
     product: product.exchange
     order: order.exchange
+    inventory: inventory.exchange
   queue:
     inventory-events: inventory.events.queue
   routing-key:
@@ -74,3 +75,4 @@ rabbitmq:
     product-deleted: product.deleted
     order-created: order.created
     order-cancelled: order.cancelled
+    reservation-expired: reservation.expired

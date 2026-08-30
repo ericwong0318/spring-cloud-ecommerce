@@ -56,15 +56,9 @@ class IdempotentEventProcessorTest {
     void shouldProcessEventWithoutIdempotencyWhenEventIdIsNull() {
         // given
         idempotentEventProcessor = new IdempotentEventProcessor(processedEventRepository);
-        OrderEvent event = OrderEvent.builder()
-            .eventType("CREATED")
-            .orderId(1L)
-            .customerId("customer-1")
-            .customerEmail("test@example.com")
-            .totalAmount(java.math.BigDecimal.valueOf(100))
-            .status(OrderEvent.OrderStatus.PENDING)
-            .timestamp(java.time.LocalDateTime.now())
-            .build(); // eventId is null
+        OrderEvent event = OrderEvent.created(1L, "customer-1", "test@example.com",
+            java.math.BigDecimal.valueOf(100), java.util.List.of());
+        event.setEventId(null); // eventId is null
 
         // when
         idempotentEventProcessor.process(event, e -> {});
