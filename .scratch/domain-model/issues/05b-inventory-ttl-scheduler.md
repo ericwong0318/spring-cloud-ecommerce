@@ -1,6 +1,6 @@
 # 05b — Inventory: TTL Scheduler (15 min) + LOW_STOCK
 
-**What to build:** Scheduler `@Scheduled(1min)` scans `Inventory.updatedAt` > 15 min → `releaseReservation`. `LOW_STOCK` event fires on `availableQuantity ≤ reorderLevel`.
+**What to build:** Scheduler `@Scheduled(1min)` scans `OrderItem` where `status = RESERVED` and `reservedAt < now - 15 min` → releases reservation by calling `releaseReservation`. `LOW_STOCK` event fires on `availableQuantity ≤ reorderLevel`.
 
 **Blocked by:** 05a — Inventory: Reservation Core (Reserve/Confirm/Release)
 
@@ -9,15 +9,15 @@
 - [ ] Add `@EnableScheduling` to `inventory-service` configuration
 - [ ] Implement `ReservationExpiryScheduler`:
   - `@Scheduled(fixedDelay = 60000)` (1 minute)
-  - Query: `SELECT i FROM Inventory i WHERE i.reservedQuantity > 0 AND i.updatedAt < :cutoff` (cutoff = now - 15 min)
-  - For each: call `releaseReservation(inventory.getVariantId(), inventory.getReservedQuantity())`
+  - Query: `SELECT i FROM OrderItem i WHERE i.status = 'RESERVED' AND i.reservedAt < :cutoff` (cutoff = now - 15 min)
+  - For each: call `releaseReservation(i.getVariantId(), i.getQuantityOrdered())` which publishes `ReservationExpiredEvent`
   - Use DB advisory lock (`pg_advisory_lock`) to prevent multiple instances processing same reservation
 - [ ] Implement `LOW_STOCK` detection:
   - After any `quantity` or `reservedQuantity` change, check `availableQuantity <= reorderLevel`
-  - If crossed threshold (was above, now below), write `InventoryEvent.LOW_STOCK` to outbox
+  - If crossed threshold (was above, now below), publish `InventoryEvent.LOW_STOCK` directly to RabbitMQ
   - Avoid duplicate events: track last notified level or use boolean flag `lowStockNotified`
 - [ ] Add `reorderLevel` configuration per variant (default 10, overridable)
 - [ ] Integration tests:
-  - Create reservation, wait 16 min (or manipulate `updatedAt`), verify auto-release + `RELEASED` event
+  - Create reservation, manipulate `reservedAt` to > 16 min ago, verify auto-release + `ReservationExpiredEvent` + `InventoryEvent.RELEASED`
   - Reduce stock to trigger `LOW_STOCK`, verify event published once
   - Multiple scheduler instances: verify single execution via advisory lock
