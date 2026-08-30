@@ -55,6 +55,13 @@ management:
     health:
       show-details: always
 
+outbox:
+  publisher:
+    batch-size: 100
+    max-retries: 5
+    poll-interval-ms: 5000
+    exchange: outbox.exchange
+
 rabbitmq:
   exchange:
     order: order.exchange

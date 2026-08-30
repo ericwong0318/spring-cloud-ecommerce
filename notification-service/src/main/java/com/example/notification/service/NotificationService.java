@@ -1,6 +1,7 @@
 package com.example.notification.service;
 
 import com.example.common.dto.NotificationDto;
+import com.example.common.event.OutboxEventPublisher;
 import com.example.notification.mapper.NotificationMapper;
 import com.example.notification.model.Notification;
 import com.example.notification.repository.NotificationRepository;
@@ -21,6 +22,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final EmailService emailService;
     private final NotificationMapper notificationMapper;
+    private final OutboxEventPublisher outboxEventPublisher;
 
     @Transactional
     public void sendNotification(Notification notification) {
@@ -30,12 +32,18 @@ public class NotificationService {
             emailService.sendEmail(notification.getRecipient(), notification.getSubject(), notification.getContent());
             notificationRepository.save(notification);
             log.info("Sent notification {} to {}", notification.getId(), notification.getRecipient());
+            publishNotificationEvent("Notification", notification.getId().toString(), "SENT", notification);
         } catch (Exception e) {
             log.error("Failed to send notification {}", notification.getId(), e);
             notification.setStatus(Notification.NotificationStatus.FAILED);
             notification.setErrorMessage(e.getMessage());
             notificationRepository.save(notification);
+            publishNotificationEvent("Notification", notification.getId().toString(), "FAILED", notification);
         }
+    }
+
+    private void publishNotificationEvent(String aggregateType, String aggregateId, String eventType, Notification notification) {
+        outboxEventPublisher.saveEvent(aggregateType, aggregateId, eventType, notification);
     }
 
     @Transactional

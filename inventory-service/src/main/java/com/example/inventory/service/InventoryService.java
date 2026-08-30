@@ -1,5 +1,7 @@
 package com.example.inventory.service;
 
+import com.example.common.event.OutboxEventPublisher;
+import com.example.common.event.InventoryEvent;
 import com.example.inventory.model.Inventory;
 import com.example.inventory.repository.InventoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import java.util.Optional;
 public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
+    private final OutboxEventPublisher outboxEventPublisher;
 
     @Transactional
     public void reserveStock(Long productId, Integer quantity) {
@@ -27,6 +30,7 @@ public class InventoryService {
                 inventory.setReservedQuantity(inventory.getReservedQuantity() + quantity);
                 inventoryRepository.save(inventory);
                 log.info("Reserved {} units for product {}", quantity, productId);
+                publishInventoryEvent(InventoryEvent.reserved(productId, inventory.getReservedQuantity(), available - quantity));
             } else {
                 log.warn("Insufficient stock for product {}: available={}, requested={}", 
                         productId, available, quantity);
@@ -48,6 +52,7 @@ public class InventoryService {
             inventory.setReservedQuantity(newReserved);
             inventoryRepository.save(inventory);
             log.info("Released {} units reservation for product {}", quantity, productId);
+            publishInventoryEvent(InventoryEvent.released(productId, inventory.getReservedQuantity(), inventory.getQuantity() - inventory.getReservedQuantity()));
         }
     }
 
@@ -60,6 +65,7 @@ public class InventoryService {
             inventory.setReservedQuantity(inventory.getReservedQuantity() - quantity);
             inventoryRepository.save(inventory);
             log.info("Confirmed stock reduction for product {}: -{}", productId, quantity);
+            publishInventoryEvent(InventoryEvent.confirmed(productId, inventory.getQuantity(), inventory.getQuantity() - inventory.getReservedQuantity()));
         }
     }
 
@@ -71,7 +77,20 @@ public class InventoryService {
             inventory.setQuantity(inventory.getQuantity() + quantity);
             inventoryRepository.save(inventory);
             log.info("Added {} units to product {}", quantity, productId);
+            publishInventoryEvent(InventoryEvent.stockAdded(productId, inventory.getQuantity(), inventory.getQuantity() - inventory.getReservedQuantity()));
+            checkLowStock(inventory);
         }
+    }
+
+    private void checkLowStock(Inventory inventory) {
+        int available = inventory.getQuantity() - inventory.getReservedQuantity();
+        if (available <= inventory.getReorderLevel()) {
+            publishInventoryEvent(InventoryEvent.lowStock(inventory.getProductId(), available, inventory.getReorderLevel()));
+        }
+    }
+
+    private void publishInventoryEvent(InventoryEvent event) {
+        outboxEventPublisher.saveEvent("Inventory", event.getProductId().toString(), event.getEventType(), event);
     }
 
     public Optional<Inventory> getInventory(Long productId) {
