@@ -29,7 +29,8 @@ public class ProductEvent implements BaseEvent {
 
     public enum EventType {
         CREATED, UPDATED, DELETED,
-        VARIANT_CREATED, VARIANT_UPDATED, VARIANT_DELETED
+        VARIANT_CREATED, VARIANT_UPDATED, VARIANT_DELETED,
+        CATEGORY_CREATED, CATEGORY_UPDATED, CATEGORY_DELETED
     }
 
     public static ProductEvent created(Long productId, String productName, BigDecimal price, Long categoryId) {
@@ -98,6 +99,37 @@ public class ProductEvent implements BaseEvent {
                 .productId(productId)
                 .variantId(variantId)
                 .skuCode(skuCode)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static ProductEvent categoryCreated(Long categoryId, String categoryName, Long parentId) {
+        return ProductEvent.builder()
+                .eventType(EventType.CATEGORY_CREATED.name())
+                .eventId(UUID.randomUUID())
+                .productId(categoryId)
+                .productName(categoryName)
+                .categoryId(parentId)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static ProductEvent categoryUpdated(Long categoryId, String categoryName, Long parentId) {
+        return ProductEvent.builder()
+                .eventType(EventType.CATEGORY_UPDATED.name())
+                .eventId(UUID.randomUUID())
+                .productId(categoryId)
+                .productName(categoryName)
+                .categoryId(parentId)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static ProductEvent categoryDeleted(Long categoryId) {
+        return ProductEvent.builder()
+                .eventType(EventType.CATEGORY_DELETED.name())
+                .eventId(UUID.randomUUID())
+                .productId(categoryId)
                 .timestamp(LocalDateTime.now())
                 .build();
     }

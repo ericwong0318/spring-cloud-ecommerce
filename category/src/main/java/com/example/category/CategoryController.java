@@ -22,6 +22,16 @@ public class CategoryController {
         return categoryService.getAllCategories();
     }
 
+    @GetMapping("/tree")
+    public List<CategoryDto> getCategoryTree() {
+        return categoryService.getRootCategories();
+    }
+
+    @GetMapping("/tree/{rootId}")
+    public ResponseEntity<CategoryDto> getCategoryTreeByRoot(@PathVariable Long rootId) {
+        return ResponseEntity.ok(categoryService.getCategoryTree(rootId));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<CategoryDto> getCategoryById(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.getCategoryById(id));
@@ -38,6 +48,19 @@ public class CategoryController {
             @PathVariable Long id,
             @Valid @RequestBody CategoryDto categoryDto) {
         return ResponseEntity.ok(categoryService.updateCategory(id, categoryDto));
+    }
+
+    @PostMapping("/{id}/move")
+    public ResponseEntity<CategoryDto> moveSubtree(
+            @PathVariable Long id,
+            @RequestParam Long newParentId) {
+        return ResponseEntity.ok(categoryService.moveSubtree(id, newParentId));
+    }
+
+    @DeleteMapping("/{id}/cascade")
+    public ResponseEntity<Void> deleteWithCascade(@PathVariable Long id) {
+        categoryService.deleteWithCascade(id);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")
