@@ -23,10 +23,13 @@ public class ProductEvent implements BaseEvent {
     private String productName;
     private BigDecimal price;
     private Long categoryId;
+    private Long variantId;
+    private String skuCode;
     private LocalDateTime timestamp;
 
     public enum EventType {
-        CREATED, UPDATED, DELETED
+        CREATED, UPDATED, DELETED,
+        VARIANT_CREATED, VARIANT_UPDATED, VARIANT_DELETED
     }
 
     public static ProductEvent created(Long productId, String productName, BigDecimal price, Long categoryId) {
@@ -58,6 +61,43 @@ public class ProductEvent implements BaseEvent {
                 .eventType(EventType.DELETED.name())
                 .eventId(UUID.randomUUID())
                 .productId(productId)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static ProductEvent variantCreated(Long productId, Long variantId, String skuCode, BigDecimal price, Long categoryId) {
+        return ProductEvent.builder()
+                .eventType(EventType.VARIANT_CREATED.name())
+                .eventId(UUID.randomUUID())
+                .productId(productId)
+                .variantId(variantId)
+                .skuCode(skuCode)
+                .price(price)
+                .categoryId(categoryId)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static ProductEvent variantUpdated(Long productId, Long variantId, String skuCode, BigDecimal price, Long categoryId) {
+        return ProductEvent.builder()
+                .eventType(EventType.VARIANT_UPDATED.name())
+                .eventId(UUID.randomUUID())
+                .productId(productId)
+                .variantId(variantId)
+                .skuCode(skuCode)
+                .price(price)
+                .categoryId(categoryId)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static ProductEvent variantDeleted(Long productId, Long variantId, String skuCode) {
+        return ProductEvent.builder()
+                .eventType(EventType.VARIANT_DELETED.name())
+                .eventId(UUID.randomUUID())
+                .productId(productId)
+                .variantId(variantId)
+                .skuCode(skuCode)
                 .timestamp(LocalDateTime.now())
                 .build();
     }
