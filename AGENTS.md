@@ -93,6 +93,31 @@ mvn spring-boot:run -pl notification-service
 4. `mvn clean install -DskipTests` - build all
 5. `docker-compose up -d` - run full stack locally
 
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles map to: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout: `CONTEXT.md` at the repo root, with ADRs under `docs/adr/`. See `docs/agents/domain.md`.
+
+# Lombok Removal Policy
+
+**Lombok is being phased out of this codebase.** Do not add new Lombok annotations.
+
+When modifying a class that uses Lombok:
+1. Convert `@Data`, `@Getter`, `@Setter`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`, `@RequiredArgsConstructor`, `@Slf4j` to explicit code
+2. Use Java Records for DTOs where possible
+3. Use explicit constructors for dependency injection
+4. Remove `lombok` dependency and annotation processor from module's `pom.xml`
+5. Run tests to verify the change works
+
 # Unit Testing Rules
 
 ## Guidelines
