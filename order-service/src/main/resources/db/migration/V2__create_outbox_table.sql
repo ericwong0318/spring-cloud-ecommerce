@@ -12,3 +12,7 @@ CREATE TABLE event_outbox (
 
 CREATE INDEX idx_event_outbox_published_at ON event_outbox(published_at) WHERE published_at IS NULL;
 CREATE INDEX idx_event_outbox_aggregate ON event_outbox(aggregate_type, aggregate_id);
+
+-- Publication for Debezium CDC (only for tables with this publication)
+-- Run this after all services have created their outbox tables
+-- CREATE PUBLICATION debezium_outbox FOR TABLE event_outbox;
