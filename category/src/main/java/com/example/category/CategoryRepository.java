@@ -18,6 +18,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     @Query("SELECT c FROM Category c WHERE c.id = :id AND c.parent.id IN (SELECT c2.id FROM Category c2 WHERE c2.id = :ancestorId)")
     boolean existsAncestorDescendant(@Param("id") Long id, @Param("ancestorId") Long ancestorId);
 
+    @Query("SELECT c FROM Category c LEFT JOIN FETCH c.children WHERE c.id = :id")
     Optional<Category> findByIdWithChildren(Long id);
 
     @Query("SELECT c FROM Category c LEFT JOIN FETCH c.children WHERE c.id = :id")
