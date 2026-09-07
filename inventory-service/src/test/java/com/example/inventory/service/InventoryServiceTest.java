@@ -1,6 +1,5 @@
 package com.example.inventory.service;
 
-import com.example.common.event.OutboxEventPublisher;
 import com.example.inventory.model.Inventory;
 import com.example.inventory.repository.InventoryRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,9 +26,6 @@ class InventoryServiceTest {
     private InventoryRepository inventoryRepository;
 
     @Mock
-    private OutboxEventPublisher outboxEventPublisher;
-
-    @Mock
     private RabbitTemplate rabbitTemplate;
 
     private InventoryService inventoryService;
@@ -51,9 +47,7 @@ class InventoryServiceTest {
         inventory.setCreatedAt(LocalDateTime.now());
         inventory.setUpdatedAt(LocalDateTime.now());
 
-        // Manually instantiate the service with mocks
-        inventoryService = new InventoryService(inventoryRepository, outboxEventPublisher, rabbitTemplate);
-        
+        inventoryService = new InventoryService(inventoryRepository, rabbitTemplate);
         // Set the @Value fields via reflection since they're private
         setField(inventoryService, "inventoryExchange", "inventory.exchange");
         setField(inventoryService, "reservationExpiredRoutingKey", "reservation.expired");

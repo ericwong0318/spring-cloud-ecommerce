@@ -1,12 +1,16 @@
 package com.example.product;
 
 import com.example.common.dto.ProductVariantDto;
-import com.example.common.event.OutboxEventPublisher;
 import com.example.common.event.ProductEvent;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -14,15 +18,28 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class ProductVariantService {
 
-    private final ProductRepository productRepository;
+    private static final Logger log = LoggerFactory.getLogger(ProductVariantService.class);
+
+    private final com.example.product.ProductRepository productRepository;
     private final ProductVariantRepository variantRepository;
     private final ProductVariantMapper variantMapper;
-    private final OutboxEventPublisher outboxEventPublisher;
+    private final RabbitTemplate rabbitTemplate;
+    private final ObjectMapper objectMapper;
+    private final String productExchange;
+
+    public ProductVariantService(com.example.product.ProductRepository productRepository, ProductVariantRepository variantRepository,
+                                 ProductVariantMapper variantMapper, RabbitTemplate rabbitTemplate, ObjectMapper objectMapper,
+                                 @Value("${rabbitmq.exchange.product}") String productExchange) {
+        this.productRepository = productRepository;
+        this.variantRepository = variantRepository;
+        this.variantMapper = variantMapper;
+        this.rabbitTemplate = rabbitTemplate;
+        this.objectMapper = objectMapper;
+        this.productExchange = productExchange;
+    }
 
     @Transactional(readOnly = true)
     public List<ProductVariantDto> getVariantsByProductId(Long productId) {
@@ -52,14 +69,14 @@ public class ProductVariantService {
             throw new IllegalArgumentException("SKU code already exists: " + variantDto.getSkuCode());
         }
 
-        Product product = productRepository.findById(productId)
+        com.example.product.Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
 
         ProductVariant variant = variantMapper.toEntity(variantDto);
         variant.setProduct(product);
         ProductVariant saved = variantRepository.save(variant);
 
-        // Publish variant created event to outbox
+        // Publish variant created event to RabbitMQ direct
         ProductEvent event = ProductEvent.variantCreated(
                 productId, 
                 saved.getId(), 
@@ -67,8 +84,14 @@ public class ProductVariantService {
                 saved.getPrice(), 
                 product.getCategoryId()
         );
-        outboxEventPublisher.saveEvent("ProductVariant", saved.getId().toString(), "VARIANT_CREATED", event);
-        log.info("Published ProductEvent.VARIANT_CREATED to outbox for variant: {}", saved.getId());
+        try {
+            String jsonPayload = objectMapper.writeValueAsString(event);
+            rabbitTemplate.convertAndSend(productExchange, "product.variant.created", jsonPayload);
+            log.info("Published ProductEvent.VARIANT_CREATED to RabbitMQ for variant: {}", saved.getId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize ProductEvent for variant: {}", saved.getId(), e);
+            throw new RuntimeException("Failed to serialize ProductEvent", e);
+        }
 
         return variantMapper.toDto(saved);
     }
@@ -90,7 +113,7 @@ public class ProductVariantService {
         existing.setPrice(variantDto.getPrice());
         ProductVariant saved = variantRepository.save(existing);
 
-        // Publish variant updated event to outbox
+        // Publish variant updated event to RabbitMQ direct
         ProductEvent event = ProductEvent.variantUpdated(
                 saved.getProduct().getId(),
                 saved.getId(),
@@ -98,8 +121,14 @@ public class ProductVariantService {
                 saved.getPrice(),
                 saved.getProduct().getCategoryId()
         );
-        outboxEventPublisher.saveEvent("ProductVariant", saved.getId().toString(), "VARIANT_UPDATED", event);
-        log.info("Published ProductEvent.VARIANT_UPDATED to outbox for variant: {}", saved.getId());
+        try {
+            String jsonPayload = objectMapper.writeValueAsString(event);
+            rabbitTemplate.convertAndSend(productExchange, "product.variant.updated", jsonPayload);
+            log.info("Published ProductEvent.VARIANT_UPDATED to RabbitMQ for variant: {}", saved.getId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize ProductEvent for variant: {}", saved.getId(), e);
+            throw new RuntimeException("Failed to serialize ProductEvent", e);
+        }
 
         return variantMapper.toDto(saved);
     }
@@ -116,9 +145,15 @@ public class ProductVariantService {
 
         variantRepository.delete(variant);
 
-        // Publish variant deleted event to outbox
+        // Publish variant deleted event to RabbitMQ direct
         ProductEvent event = ProductEvent.variantDeleted(productId, id, skuCode);
-        outboxEventPublisher.saveEvent("ProductVariant", id.toString(), "VARIANT_DELETED", event);
-        log.info("Published ProductEvent.VARIANT_DELETED to outbox for variant: {}", id);
+        try {
+            String jsonPayload = objectMapper.writeValueAsString(event);
+            rabbitTemplate.convertAndSend(productExchange, "product.variant.deleted", jsonPayload);
+            log.info("Published ProductEvent.VARIANT_DELETED to RabbitMQ for variant: {}", id);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize ProductEvent for variant: {}", id, e);
+            throw new RuntimeException("Failed to serialize ProductEvent", e);
+        }
     }
 }

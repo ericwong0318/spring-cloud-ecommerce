@@ -1,55 +1,53 @@
 package com.example.order.controller;
 
-import com.example.common.dto.OrderDto;
+import com.example.common.dto.ShipmentDto;
+import com.example.common.dto.ShipmentItemDto;
+import com.example.common.event.OrderEvent;
+import com.example.common.exception.ResourceNotFoundException;
+import com.example.order.mapper.ShipmentMapper;
+import com.example.order.model.Shipment;
+import com.example.order.model.ShipmentItem;
+import com.example.order.repository.ShipmentRepository;
 import com.example.order.service.OrderService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/orders")
-@RequiredArgsConstructor
+@RequestMapping("/orders")
 public class OrderController {
 
-    private final OrderService orderService;
+    @Autowired
+    private OrderService orderService;
 
-    @GetMapping
-    public List<OrderDto> getAllOrders() {
-        return orderService.getAllOrders();
+    @Autowired
+    private ShipmentMapper shipmentMapper;
+
+    @Autowired
+    private ShipmentRepository shipmentRepository;
+
+    @PostMapping("/orders/{orderId}/shipment")
+    public ResponseEntity<ShipmentDto> createShipment(@PathVariable Long orderId, 
+                                                      @RequestBody com.example.common.dto.ShipmentDto shipmentDto) {
+        ShipmentDto createdShipment = orderService.createShipment(orderId, shipmentDto);
+        return ResponseEntity.ok(createdShipment);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<OrderDto> getOrderById(@PathVariable Long id) {
-        return ResponseEntity.ok(orderService.getOrderById(id));
+    @GetMapping("/orders/{orderId}/shipments")
+    public List<ShipmentDto> getShipments(@PathVariable Long orderId) {
+        return shipmentRepository.findByOrderId(orderId).stream()
+                .map(shipmentMapper::toDto)
+                .collect(Collectors.toList());
     }
 
-    @GetMapping("/customer/{customerId}")
-    public List<OrderDto> getOrdersByCustomerId(@PathVariable String customerId) {
-        return orderService.getOrdersByCustomerId(customerId);
-    }
-
-    @PostMapping
-    public ResponseEntity<OrderDto> createOrder(@Valid @RequestBody OrderDto orderDto) {
-        OrderDto created = orderService.createOrder(orderDto);
-        return ResponseEntity
-                .created(URI.create("/api/orders/" + created.getId()))
-                .body(created);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<OrderDto> updateOrder(
-            @PathVariable Long id,
-            @Valid @RequestBody OrderDto orderDto) {
-        return ResponseEntity.ok(orderService.updateOrder(id, orderDto));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
-        orderService.deleteOrder(id);
-        return ResponseEntity.noContent().build();
+    @GetMapping("/orders/{orderId}")
+    public List<ShipmentDto> getShipment(@PathVariable Long orderId) {
+        return shipmentRepository.findByOrderId(orderId).stream()
+                .map(shipmentMapper::toDto)
+                .collect(Collectors.toList());
     }
 }

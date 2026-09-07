@@ -1,19 +1,14 @@
 package com.example.product;
 
 import jakarta.persistence.*;
-import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Objects;
 
 @Entity
 @Table(name = "product_variants")
-@Getter
-@Setter
-@NoArgsConstructor
-@Builder
 public class ProductVariant {
 
     @Id
@@ -28,7 +23,6 @@ public class ProductVariant {
     private String skuCode;
 
     @Column(name = "attributes", columnDefinition = "JSONB")
-    @Builder.Default
     private Map<String, String> attributes = new HashMap<>();
 
     @Column(name = "price", precision = 10, scale = 2)
@@ -36,6 +30,9 @@ public class ProductVariant {
 
     @Column(name = "inventory_id")
     private Long inventoryId;
+
+    public ProductVariant() {
+    }
 
     public ProductVariant(Long id, Product product, String skuCode, Map<String, String> attributes, BigDecimal price, Long inventoryId) {
         this.id = id;
@@ -46,7 +43,64 @@ public class ProductVariant {
         this.inventoryId = inventoryId;
     }
 
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
     public void setProduct(Product product) {
         this.product = product;
+    }
+
+    public String getSkuCode() {
+        return skuCode;
+    }
+
+    public void setSkuCode(String skuCode) {
+        this.skuCode = skuCode;
+    }
+
+    public Map<String, String> getAttributes() {
+        return attributes;
+    }
+
+    public void setAttributes(Map<String, String> attributes) {
+        this.attributes = attributes;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public Long getInventoryId() {
+        return inventoryId;
+    }
+
+    public void setInventoryId(Long inventoryId) {
+        this.inventoryId = inventoryId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ProductVariant that = (ProductVariant) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }

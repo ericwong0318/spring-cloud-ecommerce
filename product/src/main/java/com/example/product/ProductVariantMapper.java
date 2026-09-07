@@ -3,6 +3,7 @@ package com.example.product;
 import com.example.common.dto.ProductVariantDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 import org.mapstruct.factory.Mappers;
 
 import java.util.List;
@@ -18,7 +19,6 @@ public interface ProductVariantMapper {
 
     @Mapping(target = "product", ignore = true)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "attributes", source = "attributes")
     ProductVariant toEntity(ProductVariantDto dto);
 
     List<ProductVariantDto> toDtoList(List<ProductVariant> variants);

@@ -27,6 +27,11 @@ public class OrderEvent implements BaseEvent {
     private List<OrderItem> items;
     private LocalDateTime timestamp;
 
+    private Long shipmentId;
+    private String trackingNumber;
+    private String carrier;
+    private LocalDateTime shippedAt;
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -40,6 +45,7 @@ public class OrderEvent implements BaseEvent {
         private Integer quantityShipped;
         private BigDecimal price;
         private OrderItemStatus status;
+        private LocalDateTime reservedAt;
     }
 
     public enum EventType {
@@ -70,7 +76,7 @@ public class OrderEvent implements BaseEvent {
     }
 
     public static OrderEvent cancelled(Long orderId, String customerId, String customerEmail,
-                                         List<OrderItem> items) {
+                                          List<OrderItem> items) {
         return OrderEvent.builder()
                 .eventType(EventType.CANCELLED.name())
                 .eventId(UUID.randomUUID())
@@ -93,8 +99,9 @@ public class OrderEvent implements BaseEvent {
     }
     
     public static OrderEvent shipped(Long orderId, String customerId, String customerEmail,
-                                       BigDecimal totalAmount, List<OrderItem> items) {
-        return OrderEvent.builder()
+                                       BigDecimal totalAmount, List<OrderItem> items,
+                                       Long shipmentId, String trackingNumber, String carrier, LocalDateTime shippedAt) {
+        OrderEvent event = OrderEvent.builder()
                 .eventType(EventType.SHIPPED.name())
                 .eventId(UUID.randomUUID())
                 .orderId(orderId)
@@ -104,11 +111,16 @@ public class OrderEvent implements BaseEvent {
                 .status(OrderStatus.SHIPPED)
                 .items(items)
                 .timestamp(LocalDateTime.now())
+                .shipmentId(shipmentId)
+                .trackingNumber(trackingNumber)
+                .carrier(carrier)
+                .shippedAt(shippedAt)
                 .build();
+        return event;
     }
     
     public static OrderEvent delivered(Long orderId, String customerId, String customerEmail,
-                                         BigDecimal totalAmount, List<OrderItem> items) {
+                                          BigDecimal totalAmount, List<OrderItem> items) {
         return OrderEvent.builder()
                 .eventType(EventType.DELIVERED.name())
                 .eventId(UUID.randomUUID())

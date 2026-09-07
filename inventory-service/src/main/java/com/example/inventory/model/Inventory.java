@@ -6,6 +6,16 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "inventory")
+/**
+ * Inventory entity representing stock levels for products/variants.
+ * 
+ * Fields:
+ * - variantId: Foreign key to ProductVariant (primary key for inventory)
+ * - productId: Foreign key to Product (legacy/denormalized, kept for backward compatibility)
+ * - quantity: On-hand physical stock in warehouse (available for reservation)
+ * - reservedQuantity: Quantity currently reserved but not yet confirmed/shipped
+ * - availableQuantity: Computed as quantity - reservedQuantity (available stock)
+ */
 public class Inventory {
 
     @Id

@@ -5,7 +5,6 @@ import com.example.common.dto.OrderItemDto;
 import com.example.common.dto.ShipmentDto;
 import com.example.common.dto.ShipmentItemDto;
 import com.example.common.event.OrderEvent;
-import com.example.common.event.OutboxEventPublisher;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.model.Order;
@@ -15,26 +14,46 @@ import com.example.order.model.ShipmentItem;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ShipmentRepository shipmentRepository;
     private final OrderMapper orderMapper;
-    private final OutboxEventPublisher outboxEventPublisher;
+    private final RabbitTemplate rabbitTemplate;
+    private final ObjectMapper objectMapper;
+    private final String orderExchange;
+
+    public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository,
+                        ShipmentRepository shipmentRepository, OrderMapper orderMapper,
+                        RabbitTemplate rabbitTemplate, ObjectMapper objectMapper,
+                        @Value("${rabbitmq.exchange.order}") String orderExchange) {
+        this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.shipmentRepository = shipmentRepository;
+        this.orderMapper = orderMapper;
+        this.rabbitTemplate = rabbitTemplate;
+        this.objectMapper = objectMapper;
+        this.orderExchange = orderExchange;
+    }
 
     @Transactional(readOnly = true)
     public List<com.example.common.dto.OrderDto> getAllOrders() {
@@ -77,6 +96,8 @@ public class OrderService {
             order.setTotalAmount(java.math.BigDecimal.ZERO);
         }
 
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
         // Create OrderItems from DTO items
         if (orderDto.getItems() != null) {
             for (OrderItemDto itemDto : orderDto.getItems()) {
@@ -89,13 +110,14 @@ public class OrderService {
                 item.setQuantityShipped(0);
                 item.setUnitPrice(itemDto.getPrice());
                 item.setStatus(OrderItem.OrderItemStatus.PENDING);
+                item.setReservedAt(now);
                 order.addItem(item);
             }
         }
 
         Order saved = orderRepository.save(order);
 
-        // Publish OrderEvent.CREATED to outbox
+        // Publish OrderEvent.CREATED to RabbitMQ direct
         List<OrderEvent.OrderItem> eventItems = saved.getItems().stream()
                 .map(item -> new OrderEvent.OrderItem(
                         item.getProductId(),
@@ -105,13 +127,20 @@ public class OrderService {
                         item.getQuantityOrdered(),
                         item.getQuantityShipped(),
                         item.getUnitPrice(),
-                        mapToEventItemStatus(item.getStatus())))
+                        mapToEventItemStatus(item.getStatus()),
+                        item.getReservedAt()))
                 .collect(Collectors.toList());
 
         OrderEvent event = OrderEvent.created(saved.getId(), saved.getCustomerId(),
             orderDto.getCustomerEmail(), saved.getTotalAmount(), eventItems);
-        outboxEventPublisher.saveEvent("Order", saved.getId().toString(), "CREATED", event);
-        log.info("Published OrderEvent.CREATED to outbox for order: {}", saved.getId());
+        try {
+            String jsonPayload = objectMapper.writeValueAsString(event);
+            rabbitTemplate.convertAndSend(orderExchange, "order.created", jsonPayload);
+            log.info("Published OrderEvent.CREATED to RabbitMQ for order: {}", saved.getId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize OrderEvent for order: {}", saved.getId(), e);
+            throw new RuntimeException("Failed to serialize OrderEvent", e);
+        }
 
         return orderMapper.toDto(saved);
     }
@@ -128,10 +157,15 @@ public class OrderService {
 
         Order saved = orderRepository.save(existing);
 
-        // Publish OrderEvent.UPDATED to outbox
-        OrderEvent event = OrderEvent.statusChanged(saved.getId(), mapToEventOrderStatus(saved.getStatus()));
-        outboxEventPublisher.saveEvent("Order", saved.getId().toString(), "UPDATED", event);
-        log.info("Published OrderEvent.UPDATED to outbox for order: {}", saved.getId());
+        // Publish OrderEvent.UPDATED to RabbitMQ direct
+        try {
+            String jsonPayload = objectMapper.writeValueAsString(OrderEvent.statusChanged(saved.getId(), mapToEventOrderStatus(saved.getStatus())));
+            rabbitTemplate.convertAndSend(orderExchange, "order.updated", jsonPayload);
+            log.info("Published OrderEvent.UPDATED to RabbitMQ for order: {}", saved.getId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize OrderEvent for order: {}", saved.getId(), e);
+            throw new RuntimeException("Failed to serialize OrderEvent", e);
+        }
 
         return orderMapper.toDto(saved);
     }
@@ -167,6 +201,13 @@ public class OrderService {
                     throw new IllegalArgumentException("OrderItem does not belong to this order");
                 }
 
+                int availableQuantity = orderItem.getQuantityOrdered() - orderItem.getQuantityShipped();
+                if (itemDto.getQuantity() > availableQuantity) {
+                    throw new IllegalArgumentException(
+                        String.format("Shipment quantity %d exceeds available quantity %d for order item %d",
+                            itemDto.getQuantity(), availableQuantity, orderItem.getId()));
+                }
+
                 ShipmentItem shipmentItem = new ShipmentItem();
                 shipmentItem.setOrderItem(orderItem);
                 shipmentItem.setQuantity(itemDto.getQuantity());
@@ -188,7 +229,7 @@ public class OrderService {
         // Update order status based on shipped quantities
         updateOrderStatusFromShipments(order);
 
-        // Publish OrderEvent.SHIPPED to outbox
+        // Publish OrderEvent.SHIPPED to RabbitMQ direct
         List<OrderEvent.OrderItem> eventItems = order.getItems().stream()
                 .map(item -> new OrderEvent.OrderItem(
                         item.getProductId(),
@@ -198,13 +239,21 @@ public class OrderService {
                         item.getQuantityOrdered(),
                         item.getQuantityShipped(),
                         item.getUnitPrice(),
-                        mapToEventItemStatus(item.getStatus())))
+                        mapToEventItemStatus(item.getStatus()),
+                        item.getReservedAt()))
                 .collect(Collectors.toList());
 
         OrderEvent event = OrderEvent.shipped(order.getId(), order.getCustomerId(),
-                null, order.getTotalAmount(), eventItems);
-        outboxEventPublisher.saveEvent("Order", order.getId().toString(), "SHIPPED", event);
-        log.info("Published OrderEvent.SHIPPED to outbox for order: {}", order.getId());
+                null, order.getTotalAmount(), eventItems, saved.getId(), saved.getTrackingNumber(),
+                saved.getCarrier(), saved.getShippedAt());
+        try {
+            String jsonPayload = objectMapper.writeValueAsString(event);
+            rabbitTemplate.convertAndSend(orderExchange, "order.shipped", jsonPayload);
+            log.info("Published OrderEvent.SHIPPED to RabbitMQ for order: {}", order.getId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize OrderEvent for order: {}", order.getId(), e);
+            throw new RuntimeException("Failed to serialize OrderEvent", e);
+        }
 
         return orderMapper.toDto(order).getShipments().get(order.getShipments().size() - 1);
     }
@@ -252,8 +301,15 @@ public class OrderService {
             order.setStatus(newStatus);
             orderRepository.save(order);
 
-            OrderEvent event = OrderEvent.statusChanged(order.getId(), mapToEventOrderStatus(newStatus));
-            outboxEventPublisher.saveEvent("Order", order.getId().toString(), "UPDATED", event);
+            // Publish OrderEvent.UPDATED to RabbitMQ direct
+            try {
+                String jsonPayload = objectMapper.writeValueAsString(OrderEvent.statusChanged(order.getId(), mapToEventOrderStatus(newStatus)));
+                rabbitTemplate.convertAndSend(orderExchange, "order.updated", jsonPayload);
+                log.info("Published OrderEvent.UPDATED to RabbitMQ for order: {}", order.getId());
+            } catch (JsonProcessingException e) {
+                log.error("Failed to serialize OrderEvent for order: {}", order.getId(), e);
+                throw new RuntimeException("Failed to serialize OrderEvent", e);
+            }
         }
     }
 }

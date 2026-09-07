@@ -11,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -50,6 +51,9 @@ public class OrderItemDto {
 
     @Schema(description = "Order item status", example = "PENDING", accessMode = Schema.AccessMode.READ_ONLY)
     private OrderItemStatus status;
+
+    @Schema(description = "Reservation timestamp", example = "2024-01-15T10:30:00", accessMode = Schema.AccessMode.READ_ONLY)
+    private LocalDateTime reservedAt;
 
     public enum OrderItemStatus {
         PENDING, RESERVED, SHIPPED, BACKORDERED, CANCELLED

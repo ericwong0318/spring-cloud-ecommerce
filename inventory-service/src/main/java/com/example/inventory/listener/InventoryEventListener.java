@@ -8,22 +8,30 @@ import com.example.common.event.ProductEvent;
 import com.example.inventory.model.Inventory;
 import com.example.inventory.repository.InventoryRepository;
 import com.example.inventory.service.InventoryService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
-@Slf4j
 @Component
-@RequiredArgsConstructor
 public class InventoryEventListener {
+
+    private static final Logger log = LoggerFactory.getLogger(InventoryEventListener.class);
 
     private final InventoryRepository inventoryRepository;
     private final InventoryService inventoryService;
     private final IdempotentEventProcessor idempotentEventProcessor;
+
+    public InventoryEventListener(InventoryRepository inventoryRepository,
+                                  InventoryService inventoryService,
+                                  IdempotentEventProcessor idempotentEventProcessor) {
+        this.inventoryRepository = inventoryRepository;
+        this.inventoryService = inventoryService;
+        this.idempotentEventProcessor = idempotentEventProcessor;
+    }
 
     @RabbitListener(queues = "${rabbitmq.queue.inventory-events}")
     @Transactional

@@ -1,17 +1,22 @@
 package com.example.order.service;
 
 import com.example.common.dto.OrderDto;
-import com.example.common.event.OutboxEventPublisher;
+import com.example.common.dto.OrderItemDto;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.model.Order;
+import com.example.order.model.OrderItem;
 import com.example.order.repository.OrderRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,6 +27,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,9 +41,10 @@ class OrderServiceTest {
     private OrderMapper orderMapper;
 
     @Mock
-    private OutboxEventPublisher outboxEventPublisher;
+    private RabbitTemplate rabbitTemplate;
 
-    @InjectMocks
+    private ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+
     private OrderService orderService;
 
     private OrderDto orderDto;
@@ -44,6 +52,9 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        orderService = new OrderService(orderRepository, null, null, orderMapper,
+                rabbitTemplate, objectMapper, "order.exchange");
+
         orderDto = OrderDto.builder()
                 .id(1L)
                 .customerId("CUST-001")
@@ -201,6 +212,91 @@ class OrderServiceTest {
 
         assertThat(result).isNotNull();
         verify(orderRepository).save(argThat(o -> o.getTotalAmount().equals(BigDecimal.ZERO)));
+    }
+
+    @Test
+    void createOrder_shouldSetReservedAtTimestampOnItems() {
+        OrderItemDto itemDto = OrderItemDto.builder()
+                .productId(1L)
+                .variantId(1L)
+                .quantity(2)
+                .price(new BigDecimal("999.99"))
+                .build();
+
+        OrderDto inputDto = OrderDto.builder()
+                .customerId("CUST-001")
+                .status(OrderDto.OrderStatus.PENDING)
+                .totalAmount(new BigDecimal("1999.98"))
+                .items(List.of(itemDto))
+                .build();
+
+        Order newOrder = new Order();
+        newOrder.setCustomerId("CUST-001");
+        newOrder.setStatus("PENDING");
+        newOrder.setTotalAmount(new BigDecimal("1999.98"));
+
+        Order savedOrder = new Order();
+        savedOrder.setId(1L);
+        savedOrder.setCustomerId("CUST-001");
+        savedOrder.setStatus("PENDING");
+        savedOrder.setTotalAmount(new BigDecimal("1999.98"));
+        savedOrder.setCreatedAt(LocalDateTime.now());
+        savedOrder.setUpdatedAt(LocalDateTime.now());
+
+        when(orderMapper.toEntity(any(OrderDto.class))).thenReturn(newOrder);
+        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
+
+        LocalDateTime before = LocalDateTime.now();
+        orderService.createOrder(inputDto);
+        LocalDateTime after = LocalDateTime.now();
+
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(orderCaptor.capture());
+        Order captured = orderCaptor.getValue();
+        assertThat(captured.getItems()).isNotEmpty();
+        OrderItem capturedItem = captured.getItems().get(0);
+        assertThat(capturedItem.getReservedAt()).isNotNull();
+        assertThat(capturedItem.getReservedAt()).isBetween(before, after);
+    }
+
+    @Test
+    void createOrder_shouldPublishOrderCreatedEventToRabbitMQ() {
+        OrderItemDto itemDto = OrderItemDto.builder()
+                .productId(1L)
+                .variantId(1L)
+                .skuCode("LAPTOP-13-SILVER")
+                .quantity(2)
+                .price(new BigDecimal("999.99"))
+                .build();
+
+        OrderDto inputDto = OrderDto.builder()
+                .customerId("CUST-001")
+                .status(OrderDto.OrderStatus.PENDING)
+                .totalAmount(new BigDecimal("1999.98"))
+                .items(List.of(itemDto))
+                .build();
+
+        Order newOrder = new Order();
+        newOrder.setCustomerId("CUST-001");
+        newOrder.setStatus("PENDING");
+        newOrder.setTotalAmount(new BigDecimal("1999.98"));
+
+        Order savedOrder = new Order();
+        savedOrder.setId(1L);
+        savedOrder.setCustomerId("CUST-001");
+        savedOrder.setStatus("PENDING");
+        savedOrder.setTotalAmount(new BigDecimal("1999.98"));
+        savedOrder.setCreatedAt(LocalDateTime.now());
+        savedOrder.setUpdatedAt(LocalDateTime.now());
+
+        when(orderMapper.toEntity(any(OrderDto.class))).thenReturn(newOrder);
+        when(orderRepository.save(any(Order.class))).thenReturn(savedOrder);
+        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
+
+        orderService.createOrder(inputDto);
+
+        verify(rabbitTemplate).convertAndSend(eq("order.exchange"), eq("order.created"), anyString());
     }
 
     @Test
