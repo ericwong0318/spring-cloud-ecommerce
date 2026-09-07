@@ -14,8 +14,6 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-
 @Component
 public class InventoryEventListener {
 
@@ -41,7 +39,7 @@ public class InventoryEventListener {
 
     private void handleProductEventInternal(ProductEvent event) {
         log.info("Received product event: {}", event);
-        
+
         switch (ProductEvent.EventType.valueOf(event.getEventType())) {
             case CREATED, VARIANT_CREATED -> handleProductOrVariantCreated(event);
             case UPDATED, VARIANT_UPDATED -> handleProductOrVariantUpdated(event);
@@ -57,7 +55,7 @@ public class InventoryEventListener {
 
     private void handleOrderEventInternal(OrderEvent event) {
         log.info("Received order event: {}", event);
-        
+
         switch (OrderEvent.EventType.valueOf(event.getEventType())) {
             case CREATED -> handleOrderCreated(event);
             case CANCELLED -> handleOrderCancelled(event);
@@ -78,16 +76,6 @@ public class InventoryEventListener {
             inventory.setReorderLevel(10);
             inventoryRepository.save(inventory);
             log.info("Created inventory for variant: {}", event.getVariantId());
-        } else if (event.getProductId() != null) {
-            // Legacy product creation (backward compatibility)
-            Inventory inventory = new Inventory();
-            inventory.setProductId(event.getProductId());
-            inventory.setProductName(event.getProductName());
-            inventory.setQuantity(0);
-            inventory.setReservedQuantity(0);
-            inventory.setReorderLevel(10);
-            inventoryRepository.save(inventory);
-            log.info("Created inventory for product: {}", event.getProductId());
         }
     }
 
@@ -100,13 +88,6 @@ public class InventoryEventListener {
                         inventoryRepository.save(inventory);
                         log.info("Updated inventory for variant: {}", event.getVariantId());
                     });
-        } else if (event.getProductId() != null) {
-            inventoryRepository.findByProductId(event.getProductId())
-                    .ifPresent(inventory -> {
-                        inventory.setProductName(event.getProductName());
-                        inventoryRepository.save(inventory);
-                        log.info("Updated inventory for product: {}", event.getProductId());
-                    });
         }
     }
 
@@ -115,28 +96,22 @@ public class InventoryEventListener {
             inventoryRepository.findByVariantId(event.getVariantId())
                     .ifPresent(inventoryRepository::delete);
             log.info("Deleted inventory for variant: {}", event.getVariantId());
-        } else if (event.getProductId() != null) {
-            inventoryRepository.findByProductId(event.getProductId())
-                    .ifPresent(inventoryRepository::delete);
-            log.info("Deleted inventory for product: {}", event.getProductId());
         }
     }
 
     private void handleOrderCreated(OrderEvent event) {
         for (OrderEvent.OrderItem item : event.getItems()) {
             Long variantId = item.getVariantId();
-            Long productId = item.getProductId();
             Integer quantity = item.getQuantity();
-            
+            Long orderItemId = item.getOrderItemId();
+
             if (variantId != null) {
-                InventoryService.ReservationResult result = inventoryService.reserveStock(variantId, quantity);
-                if (result.getBackorderedQuantity() > 0) {
-                    log.warn("Partial reservation for variant {}: reserved={}, backordered={}", 
-                            variantId, result.getReservedQuantity(), result.getBackorderedQuantity());
+                InventoryService.ReservationResult result = inventoryService.reserveStock(variantId, quantity, orderItemId);
+                if (result.getBackordered() > 0) {
+                    log.warn("Partial reservation for variant {}: reserved={}, backordered={}",
+                            variantId, result.getReserved(), result.getBackordered());
+                    // Publish backorder info as part of RESERVED event (already included in event)
                 }
-            } else if (productId != null) {
-                // Legacy productId-based reservation
-                inventoryService.reserveStockByProductId(productId, quantity);
             }
         }
         log.info("Reserved stock for order: {}", event.getOrderId());
@@ -145,13 +120,11 @@ public class InventoryEventListener {
     private void handleOrderCancelled(OrderEvent event) {
         for (OrderEvent.OrderItem item : event.getItems()) {
             Long variantId = item.getVariantId();
-            Long productId = item.getProductId();
             Integer quantity = item.getQuantity();
-            
+            Long orderItemId = item.getOrderItemId();
+
             if (variantId != null) {
-                inventoryService.releaseReservation(variantId, quantity);
-            } else if (productId != null) {
-                inventoryService.releaseReservationByProductId(productId, quantity);
+                inventoryService.releaseReservation(variantId, quantity, orderItemId);
             }
         }
         log.info("Released reservation for order: {}", event.getOrderId());

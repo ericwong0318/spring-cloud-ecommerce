@@ -43,6 +43,9 @@ public class Inventory {
     @Column(name = "reorder_level", nullable = false)
     private Integer reorderLevel = 10;
 
+    @Column(name = "low_stock_notified", nullable = false)
+    private Boolean lowStockNotified = false;
+
     @Column(name = "cost_price", precision = 10, scale = 2)
     private BigDecimal costPrice;
 
@@ -125,6 +128,14 @@ public class Inventory {
 
     public void setReorderLevel(Integer reorderLevel) {
         this.reorderLevel = reorderLevel;
+    }
+
+    public Boolean getLowStockNotified() {
+        return lowStockNotified;
+    }
+
+    public void setLowStockNotified(Boolean lowStockNotified) {
+        this.lowStockNotified = lowStockNotified;
     }
 
     public BigDecimal getCostPrice() {

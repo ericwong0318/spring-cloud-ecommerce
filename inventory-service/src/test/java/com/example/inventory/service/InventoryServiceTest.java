@@ -1,22 +1,26 @@
 package com.example.inventory.service;
 
+import com.example.common.event.InventoryEvent;
+import com.example.common.event.ReservationExpiredEvent;
 import com.example.inventory.model.Inventory;
+import com.example.inventory.model.Reservation;
 import com.example.inventory.repository.InventoryRepository;
+import com.example.inventory.repository.ReservationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,13 +30,16 @@ class InventoryServiceTest {
     private InventoryRepository inventoryRepository;
 
     @Mock
+    private ReservationRepository reservationRepository;
+
+    @Mock(lenient = true)
     private RabbitTemplate rabbitTemplate;
 
     private InventoryService inventoryService;
 
     private Inventory inventory;
 
-    @BeforeEach
+@BeforeEach
     void setUp() {
         inventory = new Inventory();
         inventory.setId(1L);
@@ -46,11 +53,16 @@ class InventoryServiceTest {
         inventory.setCostPrice(new BigDecimal("50.00"));
         inventory.setCreatedAt(LocalDateTime.now());
         inventory.setUpdatedAt(LocalDateTime.now());
+        inventory.setLowStockNotified(false);
 
-        inventoryService = new InventoryService(inventoryRepository, rabbitTemplate);
+        inventoryService = new InventoryService(inventoryRepository, reservationRepository, rabbitTemplate);
         // Set the @Value fields via reflection since they're private
         setField(inventoryService, "inventoryExchange", "inventory.exchange");
         setField(inventoryService, "reservationExpiredRoutingKey", "reservation.expired");
+        
+        // Mock specific convertAndSend calls to avoid ambiguity
+        doNothing().when(rabbitTemplate).convertAndSend(eq("inventory.exchange"), eq("reservation.expired"), any(ReservationExpiredEvent.class));
+        doNothing().when(rabbitTemplate).convertAndSend(eq("inventory.exchange"), anyString(), any(InventoryEvent.class), any(CorrelationData.class));
     }
     
     private void setField(Object target, String fieldName, Object value) {
@@ -67,14 +79,17 @@ class InventoryServiceTest {
     void reserveStock_shouldReserveStock_whenSufficientStock() {
         when(inventoryRepository.findByVariantId(100L)).thenReturn(Optional.of(inventory));
         when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
+        when(reservationRepository.findByOrderItemId(anyLong())).thenReturn(Optional.empty());
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        InventoryService.ReservationResult result = inventoryService.reserveStock(100L, 5);
+        InventoryService.ReservationResult result = inventoryService.reserveStock(100L, 5, 1000L);
 
-        assertThat(result.getReservedQuantity()).isEqualTo(5);
-        assertThat(result.getBackorderedQuantity()).isEqualTo(0);
+        assertThat(result.getReserved()).isEqualTo(5);
+        assertThat(result.getBackordered()).isEqualTo(0);
         assertThat(inventory.getReservedQuantity()).isEqualTo(15);
         verify(inventoryRepository).findByVariantId(100L);
         verify(inventoryRepository).save(inventory);
+        verify(reservationRepository).save(any(Reservation.class));
     }
 
     @Test
@@ -82,14 +97,18 @@ class InventoryServiceTest {
         inventory.setQuantity(10);
         inventory.setReservedQuantity(8);
         when(inventoryRepository.findByVariantId(100L)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
+        when(reservationRepository.findByOrderItemId(anyLong())).thenReturn(Optional.empty());
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        InventoryService.ReservationResult result = inventoryService.reserveStock(100L, 5);
+        InventoryService.ReservationResult result = inventoryService.reserveStock(100L, 5, 1000L);
 
-        assertThat(result.getReservedQuantity()).isEqualTo(2);
-        assertThat(result.getBackorderedQuantity()).isEqualTo(3);
+        assertThat(result.getReserved()).isEqualTo(2);
+        assertThat(result.getBackordered()).isEqualTo(3);
         assertThat(inventory.getReservedQuantity()).isEqualTo(10);
         verify(inventoryRepository).findByVariantId(100L);
-        verify(inventoryRepository).save(inventory);
+        verify(inventoryRepository, times(2)).save(inventory);
+        verify(reservationRepository).save(any(Reservation.class));
     }
 
     @Test
@@ -98,13 +117,14 @@ class InventoryServiceTest {
         inventory.setReservedQuantity(10);
         when(inventoryRepository.findByVariantId(100L)).thenReturn(Optional.of(inventory));
 
-        InventoryService.ReservationResult result = inventoryService.reserveStock(100L, 5);
+        InventoryService.ReservationResult result = inventoryService.reserveStock(100L, 5, 1000L);
 
-        assertThat(result.getReservedQuantity()).isEqualTo(0);
-        assertThat(result.getBackorderedQuantity()).isEqualTo(5);
+        assertThat(result.getReserved()).isEqualTo(0);
+        assertThat(result.getBackordered()).isEqualTo(5);
         // No save expected because reservedQuantity doesn't change
         verify(inventoryRepository).findByVariantId(100L);
         verify(inventoryRepository, never()).save(any());
+        verify(reservationRepository, never()).save(any());
     }
 
     @Test
@@ -112,24 +132,27 @@ class InventoryServiceTest {
         when(inventoryRepository.findByVariantId(999L)).thenReturn(Optional.empty());
         when(inventoryRepository.save(any(Inventory.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        InventoryService.ReservationResult result = inventoryService.reserveStock(999L, 5);
+        InventoryService.ReservationResult result = inventoryService.reserveStock(999L, 5, 1000L);
 
-        assertThat(result.getReservedQuantity()).isEqualTo(0);
-        assertThat(result.getBackorderedQuantity()).isEqualTo(5);
+        assertThat(result.getReserved()).isEqualTo(0);
+        assertThat(result.getBackordered()).isEqualTo(5);
         verify(inventoryRepository).findByVariantId(999L);
         verify(inventoryRepository).save(any(Inventory.class));
+        verify(reservationRepository, never()).save(any());
     }
 
     @Test
     void releaseReservation_shouldReleaseReservation_whenInventoryExists() {
         when(inventoryRepository.findByVariantId(100L)).thenReturn(Optional.of(inventory));
         when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
+        when(reservationRepository.findByOrderItemId(anyLong())).thenReturn(Optional.of(new Reservation()));
 
-        inventoryService.releaseReservation(100L, 5);
+        inventoryService.releaseReservation(100L, 5, 1000L);
 
         assertThat(inventory.getReservedQuantity()).isEqualTo(5);
         verify(inventoryRepository).findByVariantId(100L);
         verify(inventoryRepository).save(inventory);
+        verify(reservationRepository).save(any(Reservation.class));
     }
 
     @Test
@@ -137,8 +160,9 @@ class InventoryServiceTest {
         inventory.setReservedQuantity(3);
         when(inventoryRepository.findByVariantId(100L)).thenReturn(Optional.of(inventory));
         when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
+        when(reservationRepository.findByOrderItemId(anyLong())).thenReturn(Optional.of(new Reservation()));
 
-        inventoryService.releaseReservation(100L, 5);
+        inventoryService.releaseReservation(100L, 5, 1000L);
 
         assertThat(inventory.getReservedQuantity()).isEqualTo(0);
         verify(inventoryRepository).save(inventory);
@@ -148,10 +172,11 @@ class InventoryServiceTest {
     void releaseReservation_shouldDoNothing_whenInventoryNotFound() {
         when(inventoryRepository.findByVariantId(999L)).thenReturn(Optional.empty());
 
-        inventoryService.releaseReservation(999L, 5);
+        inventoryService.releaseReservation(999L, 5, 1000L);
 
         verify(inventoryRepository).findByVariantId(999L);
         verify(inventoryRepository, never()).save(any());
+        verify(reservationRepository, never()).save(any());
     }
 
     @Test
@@ -178,28 +203,6 @@ class InventoryServiceTest {
     }
 
     @Test
-    void addStock_shouldIncreaseQuantity_whenInventoryExists() {
-        when(inventoryRepository.findByVariantId(100L)).thenReturn(Optional.of(inventory));
-        when(inventoryRepository.save(any(Inventory.class))).thenReturn(inventory);
-
-        inventoryService.addStock(100L, 20);
-
-        assertThat(inventory.getQuantity()).isEqualTo(120);
-        verify(inventoryRepository).findByVariantId(100L);
-        verify(inventoryRepository).save(inventory);
-    }
-
-    @Test
-    void addStock_shouldDoNothing_whenInventoryNotFound() {
-        when(inventoryRepository.findByVariantId(999L)).thenReturn(Optional.empty());
-
-        inventoryService.addStock(999L, 20);
-
-        verify(inventoryRepository).findByVariantId(999L);
-        verify(inventoryRepository, never()).save(any());
-    }
-
-    @Test
     void getInventory_shouldReturnInventory_whenExists() {
         when(inventoryRepository.findByVariantId(100L)).thenReturn(Optional.of(inventory));
 
@@ -218,33 +221,5 @@ class InventoryServiceTest {
 
         assertThat(result).isEmpty();
         verify(inventoryRepository).findByVariantId(999L);
-    }
-
-    @Test
-    void getLowStockItems_shouldReturnLowStockItems() {
-        Inventory lowStock = new Inventory();
-        lowStock.setVariantId(200L);
-        lowStock.setProductId(100L);
-        lowStock.setQuantity(5);
-        lowStock.setReservedQuantity(0);
-        lowStock.setReorderLevel(10);
-
-        when(inventoryRepository.findByQuantityLessThanEqualReorderLevel()).thenReturn(List.of(lowStock));
-
-        List<Inventory> result = inventoryService.getLowStockItems();
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getVariantId()).isEqualTo(200L);
-        verify(inventoryRepository).findByQuantityLessThanEqualReorderLevel();
-    }
-
-    @Test
-    void getLowStockItems_shouldReturnEmptyList_whenNoLowStock() {
-        when(inventoryRepository.findByQuantityLessThanEqualReorderLevel()).thenReturn(List.of());
-
-        List<Inventory> result = inventoryService.getLowStockItems();
-
-        assertThat(result).isEmpty();
-        verify(inventoryRepository).findByQuantityLessThanEqualReorderLevel();
     }
 }

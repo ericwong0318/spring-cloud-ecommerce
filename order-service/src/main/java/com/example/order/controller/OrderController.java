@@ -9,7 +9,6 @@ import com.example.order.model.Shipment;
 import com.example.order.model.ShipmentItem;
 import com.example.order.repository.ShipmentRepository;
 import com.example.order.service.OrderService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,17 +20,18 @@ import java.util.stream.Collectors;
 @RequestMapping("/orders")
 public class OrderController {
 
-    @Autowired
-    private OrderService orderService;
+    private final OrderService orderService;
+    private final ShipmentMapper shipmentMapper;
+    private final ShipmentRepository shipmentRepository;
 
-    @Autowired
-    private ShipmentMapper shipmentMapper;
-
-    @Autowired
-    private ShipmentRepository shipmentRepository;
+    public OrderController(OrderService orderService, ShipmentMapper shipmentMapper, ShipmentRepository shipmentRepository) {
+        this.orderService = orderService;
+        this.shipmentMapper = shipmentMapper;
+        this.shipmentRepository = shipmentRepository;
+    }
 
     @PostMapping("/orders/{orderId}/shipment")
-    public ResponseEntity<ShipmentDto> createShipment(@PathVariable Long orderId, 
+    public ResponseEntity<ShipmentDto> createShipment(@PathVariable Long orderId,
                                                       @RequestBody com.example.common.dto.ShipmentDto shipmentDto) {
         ShipmentDto createdShipment = orderService.createShipment(orderId, shipmentDto);
         return ResponseEntity.ok(createdShipment);

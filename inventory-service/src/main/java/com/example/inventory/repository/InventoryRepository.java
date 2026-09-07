@@ -15,7 +15,8 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     Optional<Inventory> findByVariantId(Long variantId);
     Optional<Inventory> findByProductId(Long productId);
     
-    List<Inventory> findByQuantityLessThanEqualReorderLevel();
+    @Query("SELECT i FROM Inventory i WHERE i.quantity - i.reservedQuantity <= i.reorderLevel")
+    List<Inventory> findLowStockItems();
     
     @Query("SELECT i FROM Inventory i WHERE i.variantId = :variantId")
     Optional<Inventory> findByVariantIdQuery(@Param("variantId") Long variantId);

@@ -120,6 +120,7 @@ public class OrderService {
         // Publish OrderEvent.CREATED to RabbitMQ direct
         List<OrderEvent.OrderItem> eventItems = saved.getItems().stream()
                 .map(item -> new OrderEvent.OrderItem(
+                        item.getId(),
                         item.getProductId(),
                         item.getVariantId(),
                         item.getProductName(),
@@ -232,6 +233,7 @@ public class OrderService {
         // Publish OrderEvent.SHIPPED to RabbitMQ direct
         List<OrderEvent.OrderItem> eventItems = order.getItems().stream()
                 .map(item -> new OrderEvent.OrderItem(
+                        item.getId(),
                         item.getProductId(),
                         item.getVariantId(),
                         item.getProductName(),

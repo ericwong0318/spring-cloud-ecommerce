@@ -14,6 +14,8 @@ public class InventoryEvent implements BaseEvent {
     private Integer quantity;
     private Integer reservedQuantity;
     private Integer backorderedQuantity;
+    private Integer reserved;
+    private Integer backordered;
     private Integer availableQuantity;
     private BigDecimal costPrice;
     private LocalDateTime timestamp;
@@ -107,6 +109,22 @@ public class InventoryEvent implements BaseEvent {
         this.backorderedQuantity = backorderedQuantity;
     }
 
+    public Integer getReserved() {
+        return reserved;
+    }
+
+    public void setReserved(Integer reserved) {
+        this.reserved = reserved;
+    }
+
+    public Integer getBackordered() {
+        return backordered;
+    }
+
+    public void setBackordered(Integer backordered) {
+        this.backordered = backordered;
+    }
+
     public Integer getAvailableQuantity() {
         return availableQuantity;
     }
@@ -152,6 +170,8 @@ public class InventoryEvent implements BaseEvent {
         event.setProductId(productId);
         event.setReservedQuantity(reservedQuantity);
         event.setBackorderedQuantity(backorderedQuantity);
+        event.setReserved(reservedQuantity);
+        event.setBackordered(backorderedQuantity);
         event.setTimestamp(LocalDateTime.now());
         return event;
     }
