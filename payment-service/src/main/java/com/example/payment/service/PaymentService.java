@@ -1,139 +1,148 @@
 package com.example.payment.service;
 
 import com.example.common.dto.PaymentDto;
-import com.example.common.event.OutboxEventPublisher;
 import com.example.common.event.PaymentEvent;
-import com.example.payment.mapper.PaymentMapper;
-import com.example.payment.model.Payment;
+import com.example.payment.domain.Payment;
+import com.example.payment.event.PaymentEventPublisher;
 import com.example.payment.repository.PaymentRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.example.payment.repository.ProcessedEventRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class PaymentService {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
     private final PaymentRepository paymentRepository;
-    private final PaymentMapper paymentMapper;
-    private final OutboxEventPublisher outboxEventPublisher;
+    private final ProcessedEventRepository processedEventRepository;
+    private final PaymentEventPublisher eventPublisher;
+    private final TransactionalOperator transactionalOperator;
 
-    @Transactional
-    public PaymentDto authorizePayment(Long orderId, BigDecimal amount, String currency, String customerId, String customerEmail) {
+    public PaymentService(PaymentRepository paymentRepository, ProcessedEventRepository processedEventRepository,
+                          PaymentEventPublisher eventPublisher, TransactionalOperator transactionalOperator) {
+        this.paymentRepository = paymentRepository;
+        this.processedEventRepository = processedEventRepository;
+        this.eventPublisher = eventPublisher;
+        this.transactionalOperator = transactionalOperator;
+    }
+
+    public Mono<PaymentDto> authorizePayment(Long orderId, BigDecimal amount, String currency, String customerId, String customerEmail) {
         log.info("Authorizing payment for order: {}", orderId);
-        
-        // Check for existing payment with same idempotency key
+
         String idempotencyKey = "auth-" + orderId + "-" + UUID.randomUUID().toString().substring(0, 8);
-        if (paymentRepository.findByIdempotencyKey(idempotencyKey).isPresent()) {
-            log.warn("Duplicate authorization request for order: {}", orderId);
-            throw new DuplicatePaymentException("Payment already authorized for this order");
-        }
 
-        Payment payment = new Payment();
-        payment.setOrderId(orderId);
-        payment.setAmount(amount);
-        payment.setCurrency(currency);
-        payment.setStatus(Payment.PaymentStatus.AUTHORIZED);
-        payment.setIdempotencyKey(idempotencyKey);
-        payment.setAuthorizedAt(LocalDateTime.now());
-        
-        Payment saved = paymentRepository.save(payment);
-        
-        // Publish PaymentEvent.SUCCESS to outbox
-        PaymentEvent event = PaymentEvent.success(saved.getId(), orderId, customerId, customerEmail,
-                amount, currency, saved.getGatewayTransactionId());
-        outboxEventPublisher.saveEvent("Payment", saved.getId().toString(), "SUCCESS", event);
-        log.info("Published PaymentEvent.SUCCESS to outbox for payment: {}", saved.getId());
-        
-        return paymentMapper.toDto(saved);
+        return paymentRepository.findByIdempotencyKey(idempotencyKey)
+                .flatMap(existing -> {
+                    log.warn("Duplicate authorization request for order: {}", orderId);
+                    return Mono.<PaymentDto>error(new DuplicatePaymentException("Payment already authorized for this order"));
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    Payment payment = Payment.authorize(orderId, amount, currency, idempotencyKey);
+
+                    return paymentRepository.save(payment)
+                            .flatMap(saved -> {
+                                PaymentEvent event = PaymentEvent.success(saved.id(), orderId, customerId, customerEmail,
+                                        amount, currency, saved.gatewayTransactionId());
+                                return eventPublisher.publish(event)
+                                        .thenReturn(saved);
+                            })
+                            .map(this::toDto);
+                }))
+                .as(transactionalOperator::transactional);
     }
 
-    @Transactional
-    public PaymentDto capturePayment(Long paymentId, String gatewayTransactionId) {
+    public Mono<PaymentDto> capturePayment(Long paymentId, String gatewayTransactionId) {
         log.info("Capturing payment: {}", paymentId);
-        
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new PaymentNotFoundException("Payment not found: " + paymentId));
-        
-        if (payment.getStatus() != Payment.PaymentStatus.AUTHORIZED) {
-            throw new IllegalStateException("Payment must be in AUTHORIZED status to capture. Current status: " + payment.getStatus());
-        }
-        
-        payment.setStatus(Payment.PaymentStatus.CAPTURED);
-        payment.setGatewayTransactionId(gatewayTransactionId);
-        payment.setCapturedAt(LocalDateTime.now());
-        
-        Payment saved = paymentRepository.save(payment);
-        
-        // Publish PaymentEvent.SUCCESS for capture
-        PaymentEvent event = PaymentEvent.success(saved.getId(), saved.getOrderId(), 
-                null, null, saved.getAmount(), saved.getCurrency(), gatewayTransactionId);
-        outboxEventPublisher.saveEvent("Payment", saved.getId().toString(), "SUCCESS", event);
-        log.info("Published PaymentEvent.SUCCESS (capture) to outbox for payment: {}", saved.getId());
-        
-        return paymentMapper.toDto(saved);
+
+        return paymentRepository.findById(paymentId)
+                .switchIfEmpty(Mono.error(new PaymentNotFoundException("Payment not found: " + paymentId)))
+                .flatMap(payment -> {
+                    if (!payment.canCapture()) {
+                        return Mono.error(new IllegalStateException("Payment must be in AUTHORIZED status to capture. Current status: " + payment.status()));
+                    }
+
+                    Payment updated = payment.capture(gatewayTransactionId);
+
+                    return paymentRepository.save(updated)
+                            .flatMap(saved -> {
+                                PaymentEvent event = PaymentEvent.success(saved.id(), saved.orderId(),
+                                        null, null, saved.amount(), saved.currency(), gatewayTransactionId);
+                                return eventPublisher.publish(event)
+                                        .thenReturn(saved);
+                            })
+                            .map(this::toDto);
+                })
+                .as(transactionalOperator::transactional);
     }
 
-    @Transactional
-    public PaymentDto refundPayment(Long paymentId, BigDecimal amount, String reason) {
+    public Mono<PaymentDto> refundPayment(Long paymentId, BigDecimal amount, String reason) {
         log.info("Refunding payment: {} amount: {}", paymentId, amount);
-        
-        Payment payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new PaymentNotFoundException("Payment not found: " + paymentId));
-        
-        if (payment.getStatus() != Payment.PaymentStatus.CAPTURED && 
-            payment.getStatus() != Payment.PaymentStatus.PARTIALLY_REFUNDED) {
-            throw new IllegalStateException("Payment must be CAPTURED or PARTIALLY_REFUNDED to refund. Current status: " + payment.getStatus());
-        }
-        
-        if (amount.compareTo(payment.getAmount()) > 0) {
-            throw new IllegalArgumentException("Refund amount cannot exceed payment amount");
-        }
-        
-        Payment.PaymentStatus newStatus = amount.compareTo(payment.getAmount()) == 0 
-                ? Payment.PaymentStatus.REFUNDED 
-                : Payment.PaymentStatus.PARTIALLY_REFUNDED;
-        
-        payment.setStatus(newStatus);
-        payment.setRefundedAt(LocalDateTime.now());
-        
-        Payment saved = paymentRepository.save(payment);
-        
-        // Publish PaymentEvent.REFUNDED
-        PaymentEvent event = PaymentEvent.refunded(saved.getId(), saved.getOrderId(), 
-                null, null, amount, saved.getCurrency(), saved.getGatewayTransactionId());
-        outboxEventPublisher.saveEvent("Payment", saved.getId().toString(), "REFUNDED", event);
-        log.info("Published PaymentEvent.REFUNDED to outbox for payment: {}", saved.getId());
-        
-        return paymentMapper.toDto(saved);
+
+        return paymentRepository.findById(paymentId)
+                .switchIfEmpty(Mono.error(new PaymentNotFoundException("Payment not found: " + paymentId)))
+                .flatMap(payment -> {
+                    if (!payment.canRefund()) {
+                        return Mono.error(new IllegalStateException("Payment must be CAPTURED or PARTIALLY_REFUNDED to refund. Current status: " + payment.status()));
+                    }
+
+                    if (!payment.isAmountValid(amount)) {
+                        return Mono.error(new IllegalArgumentException("Refund amount cannot exceed payment amount"));
+                    }
+
+                    Payment updated = payment.refund(amount);
+
+                    return paymentRepository.save(updated)
+                            .flatMap(saved -> {
+                                PaymentEvent event = PaymentEvent.refunded(saved.id(), saved.orderId(),
+                                        null, null, amount, saved.currency(), saved.gatewayTransactionId());
+                                return eventPublisher.publish(event)
+                                        .thenReturn(saved);
+                            })
+                            .map(this::toDto);
+                })
+                .as(transactionalOperator::transactional);
     }
 
-    @Transactional(readOnly = true)
-    public PaymentDto getPaymentById(Long id) {
-        Payment payment = paymentRepository.findById(id)
-                .orElseThrow(() -> new PaymentNotFoundException("Payment not found: " + id));
-        return paymentMapper.toDto(payment);
+    public Mono<PaymentDto> getPaymentById(Long id) {
+        return paymentRepository.findById(id)
+                .switchIfEmpty(Mono.error(new PaymentNotFoundException("Payment not found: " + id)))
+                .map(this::toDto);
     }
 
-    @Transactional(readOnly = true)
-    public PaymentDto getPaymentByOrderId(Long orderId) {
+    public Mono<PaymentDto> getPaymentByOrderId(Long orderId) {
         return paymentRepository.findByOrderId(orderId)
-                .map(paymentMapper::toDto)
-                .orElseThrow(() -> new PaymentNotFoundException("Payment not found for order: " + orderId));
+                .switchIfEmpty(Mono.error(new PaymentNotFoundException("Payment not found for order: " + orderId)))
+                .map(this::toDto);
     }
 
-    @Transactional(readOnly = true)
-    public List<PaymentDto> getPaymentsByOrderId(Long orderId) {
-        return paymentRepository.findByOrderIdAndStatus(orderId, Payment.PaymentStatus.AUTHORIZED).stream()
-                .map(paymentMapper::toDto)
-                .toList();
+    public reactor.core.publisher.Flux<PaymentDto> getPaymentsByOrderId(Long orderId) {
+        return paymentRepository.findByOrderIdAll(orderId)
+                .map(this::toDto);
+    }
+
+    private PaymentDto toDto(Payment payment) {
+        PaymentDto dto = new PaymentDto();
+        dto.setId(payment.id());
+        dto.setOrderId(payment.orderId());
+        dto.setAmount(payment.amount());
+        dto.setCurrency(payment.currency());
+        dto.setStatus(PaymentDto.PaymentStatus.valueOf(payment.status().name()));
+        dto.setGatewayTransactionId(payment.gatewayTransactionId());
+        dto.setIdempotencyKey(payment.idempotencyKey());
+        dto.setAuthorizedAt(payment.authorizedAt());
+        dto.setCapturedAt(payment.capturedAt());
+        dto.setRefundedAt(payment.refundedAt());
+        dto.setCreatedAt(payment.createdAt());
+        dto.setUpdatedAt(payment.updatedAt());
+        return dto;
     }
 
     public static class PaymentNotFoundException extends RuntimeException {
