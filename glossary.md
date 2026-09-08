@@ -12,7 +12,8 @@
 | **Order Line Item** | Single product + quantity + price snapshot within an order | order |
 | **Payment** | Financial transaction authorizing/capturing funds for an order | payment |
 | **Saga** | Long-running transaction across services via choreographed events | order (orchestrator) |
-| **Outbox Event** | Durable event stored in `outbox_event` table for reliable publishing | all domain services |
+| **RabbitMQ Event** | Message published to `ecommerce.events` exchange with routing key `{aggregate}.{action}` | all domain services |
+| **DLX** | Dead Letter Exchange (`ecommerce.events.dlx`) for failed message capture | infrastructure |
 
 ## Order Statuses
 | Status | Meaning | Next Valid States |
@@ -51,10 +52,13 @@
 | **Auth Server** | Spring Authorization Server; issues JWTs, manages clients/users |
 | **JWT** | JSON Web Token; access token with claims (sub, roles, client_id) |
 | **JWKS** | JSON Web Key Set; public keys for JWT verification at `/oauth2/jwks` |
-| **Outbox Poller** | Background task reading unpublished outbox events → message broker |
+| **RabbitMQ** | Message broker for saga choreography; topic exchange `ecommerce.events` |
+| **DLX** | Dead Letter Exchange; captures failed messages for inspection/replay |
+| **Publisher Confirms** | RabbitMQ ack that message persisted to queue |
+| **Consumer Ack** | Manual acknowledgment after successful processing |
 | **Idempotency Key** | Client-generated UUID ensuring duplicate requests are safe |
 | **Correlation ID** | Trace ID propagated via headers (`X-Correlation-Id`) for distributed tracing |
-| **Testcontainers** | Library spinning real PostgreSQL in Docker for integration tests |
+| **Testcontainers** | Library spinning real PostgreSQL + RabbitMQ in Docker for integration tests |
 | **Pact** | Consumer-driven contract testing framework |
 
 ## API Conventions
@@ -92,6 +96,8 @@ Examples:
 | inventory | 8084 | /api/v1 |
 | order | 8083 | /api/v1 |
 | payment | 8085 | /api/v1 |
+| **RabbitMQ** | 5672 | / |
+| **RabbitMQ Management** | 15672 | / |
 
 ---
 *This glossary is the single source of truth for domain language. Update when new concepts emerge.*

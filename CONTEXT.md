@@ -22,7 +22,6 @@ A production-ready, portfolio-quality e-commerce platform demonstrating Spring C
 - User profile/address management (delegated to auth-server)
 - Shopping cart (merged into order service)
 - Admin dashboard / UI
-- Message broker (Kafka) — using database outbox instead
 - Contract testing with Pact (deferred)
 - Multi-tenancy
 
@@ -30,10 +29,10 @@ A production-ready, portfolio-quality e-commerce platform demonstrating Spring C
 
 1. **Service decomposition**: 9 services (3 infra + 6 domain) matching the template
 2. **Database**: PostgreSQL per service (no shared databases)
-3. **Consistency**: Eventual consistency via sagas + transactional outbox pattern
+3. **Consistency**: Eventual consistency via sagas + RabbitMQ
 4. **API**: REST + OpenAPI 3 for all service-to-service and external communication
 5. **Auth**: Gateway validates JWT, downstream services trust gateway headers
-6. **Events**: Database outbox pattern (no Kafka)
+6. **Events**: RabbitMQ (topic exchange, Spring Cloud Stream)
 7. **Tests**: Full pyramid — unit, contract, integration (Testcontainers), e2e
 8. **Deploy**: Docker Compose locally; Kubernetes-ready artifacts
 9. **Timeline**: 2-3 weeks to running skeleton

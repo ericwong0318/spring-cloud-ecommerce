@@ -11,11 +11,11 @@ Production-ready services need comprehensive test coverage across all layers.
 
 ```
                     ┌─────────────┐
-                    │   E2E (1%)  │  ← Postman/Newman or Playwright against docker-compose
+                    │   E2E (1%)  │  ← Playwright against docker-compose
                     ├─────────────┤
                     │ Contract (5%)│  ← Pact (consumer-driven) between gateway↔services
                     ├─────────────┤
-              ┌─────┤Integration(20%)├─────┐  ← Testcontainers (PostgreSQL, services)
+              ┌─────┤Integration(20%)├─────┐  ← Testcontainers (PostgreSQL, RabbitMQ, services)
               │     └─────────────┘     │
               │                         │
       ┌───────▼───────┐         ┌───────▼───────┐
@@ -31,13 +31,14 @@ Production-ready services need comprehensive test coverage across all layers.
 | Layer | Tool | Scope | Target |
 |-------|------|-------|--------|
 | **Unit** | JUnit 5 + Mockito | Pure logic, no Spring context | >80% line coverage |
-| **Integration** | Spring Boot Test + Testcontainers | Repository, WebClient, saga orchestration | All happy/error paths |
+| **Integration** | Spring Boot Test + Testcontainers | Repository, WebClient, saga orchestration, RabbitMQ | All happy/error paths |
 | **Contract** | Pact JVM | Gateway ↔ Service APIs | Consumer-driven, published to broker |
-| **E2E** | Playwright / Newman | Full user journeys (browse→order→pay) | Critical paths only |
+| **E2E** | Playwright | Full user journeys (browse→order→pay) | Critical paths only |
 
 ### Testcontainers Configuration
 - Shared PostgreSQL container per test class (not per test)
-- `@DynamicPropertySource` for datasource URL
+- Shared RabbitMQ container per test class
+- `@DynamicPropertySource` for datasource URL + RabbitMQ connection
 - `spring.sql.init.mode=always` for Flyway migration
 - Parallel execution: `forkCount=2`, `reuseForks=true`
 
@@ -48,7 +49,7 @@ jobs:
   test:
     steps:
       - mvn test -pl <module>           # Unit
-      - mvn verify -pl <module>         # Integration (Testcontainers)
+      - mvn verify -pl <module>         # Integration (Testcontainers: PostgreSQL + RabbitMQ)
       - mvn pact:verify -pl gateway     # Contract
   e2e:
     - docker-compose -f docker-compose.test.yml up -d
@@ -59,7 +60,7 @@ jobs:
 - **Confidence**: Each layer catches different failure modes
 - **Speed**: Unit tests run in seconds; integration in minutes
 - **Contract tests**: Prevent breaking changes between gateway and services
-- **Testcontainers**: Real PostgreSQL = no H2 surprises
+- **Testcontainers**: Real PostgreSQL + RabbitMQ = no H2/embedded surprises
 - **E2E**: Validates deployment topology, not just code
 
 ## Consequences

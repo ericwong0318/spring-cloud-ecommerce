@@ -1,54 +1,92 @@
-# ADR-006: Event Backbone — Database Outbox Pattern
+# ADR-006: Event Backbone — RabbitMQ
 
 ## Status
 Accepted
 
 ## Context
-Sagas need reliable event publishing without a message broker. Events must survive process crashes.
+Sagas need reliable event publishing between services. Chosen: RabbitMQ over Kafka or outbox pattern.
 
 ## Decision
-**Transactional outbox pattern** using PostgreSQL as the event store.
+**RabbitMQ** as the message broker for all inter-service events.
 
-### Schema (per service)
-```sql
-CREATE TABLE outbox_event (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    aggregate_id UUID NOT NULL,
-    aggregate_type VARCHAR(100) NOT NULL,
-    event_type VARCHAR(100) NOT NULL,
-    payload JSONB NOT NULL,
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    published_at TIMESTAMPTZ
-);
-CREATE INDEX idx_outbox_unpublished ON outbox_event (created_at) WHERE published_at IS NULL;
+### Topology
+```
+Exchange: ecommerce.events (topic, durable)
+  │
+  ├─► Queue: inventory.events (durable)
+  │     Routing: inventory.*, stock.*
+  │
+  ├─► Queue: payment.events (durable)
+  │     Routing: payment.*
+  │
+  ├─► Queue: order.events (durable)
+  │     Routing: order.*
+  │
+  └─► DLX: ecommerce.events.dlx (topic)
+        └─► Queue: ecommerce.dlq (durable)
 ```
 
-### Publisher
-- **Local dev**: In-memory `ApplicationEventPublisher` → synchronous consumers (no poller needed)
-- **Production**: Background poller (Spring `@Scheduled` every 100ms) → publishes to message broker (Kafka, RabbitMQ, or HTTP webhook)
-- **Exactly-once**: Consumers deduplicate via `aggregate_id + event_type` (idempotency key)
+### Message Contract
+```json
+{
+  "eventId": "uuid",
+  "eventType": "order.created",
+  "aggregateId": "uuid",
+  "aggregateType": "Order",
+  "payload": { ... },
+  "metadata": {
+    "correlationId": "uuid",
+    "causationId": "uuid",
+    "timestamp": "ISO8601"
+  }
+}
+```
 
-### Event Types (examples)
-| Aggregate | Events |
-|-----------|--------|
-| Order | OrderCreated, OrderConfirmed, OrderCancelled |
-| Inventory | StockReserved, StockReleased, StockAdjusted |
-| Payment | PaymentAuthorized, PaymentFailed, PaymentRefunded |
+### Spring Cloud Stream Configuration
+```yaml
+spring:
+  cloud:
+    stream:
+      binders:
+        rabbit:
+          type: rabbit
+          environment:
+            spring:
+              rabbitmq:
+                host: ${RABBITMQ_HOST:localhost}
+                port: ${RABBITMQ_PORT:5672}
+      bindings:
+        orderCreated-out-0:
+          destination: ecommerce.events
+          producer:
+            routing-key-expression: "'order.created'"
+        stockReserved-in-0:
+          destination: ecommerce.events
+          group: inventory
+        stockReserved-out-0:
+          destination: ecommerce.events
+          producer:
+            routing-key-expression: "'inventory.stock_reserved'"
+```
+
+### Local Dev
+- `docker-compose.yml` includes RabbitMQ (management UI on :15672)
+- Testcontainers `rabbitmq` module for integration tests
 
 ## Rationale
-- **No message broker dependency**: PostgreSQL already running; outbox = transaction log
-- **Atomicity**: Domain change + event = single transaction (no dual-write problem)
-- **Replayability**: Full event history for debugging, new consumers, projections
-- **Swapability**: Poller target configurable (Kafka, HTTP, in-memory) without domain changes
-- **Local dev simplicity**: In-memory publisher = zero infrastructure
+- **Spring Cloud Stream native**: Zero-config binding, automatic serialization
+- **Lightweight**: Single Erlang VM, low resource usage
+- **Rich routing**: Topic exchange fits saga routing keys naturally
+- **DLX + retry**: Built-in dead letter handling
+- **Management UI**: Visibility into queues, rates, stuck messages
+- **Testcontainers support**: First-class `RabbitMQContainer`
 
 ## Consequences
-- **Positive**: Reliable, auditable, no broker ops, works offline
-- **Negative**: Poller latency (100ms), potential duplicate events, schema coupling
-- **Mitigation**: Idempotent consumers, event versioning in payload, outbox cleanup job
+- **Positive**: Declarative config, reliable delivery, good observability, local dev parity
+- **Negative**: Broker operational concern, single point of failure (mitigate with HA cluster in prod)
+- **Mitigation**: Health checks, publisher confirms, consumer acks, DLX monitoring
 
 ## Alternatives Considered
-- **Kafka + Transactional Outbox (Kafka Connect)**: Requires Kafka cluster
-- **CDC (Debezium)**: Operational complexity, schema coupling to DB internals
-- **Direct HTTP calls**: No durability, coupling, no replay
+- **Outbox pattern**: No broker ops, but poller latency, duplicate events, more custom code
+- **Kafka**: Higher throughput, but heavier, schema registry overhead, overkill for 9 services
+- **HTTP callbacks**: No durability, coupling, no retry semantics
