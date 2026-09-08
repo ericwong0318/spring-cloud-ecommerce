@@ -1,5 +1,7 @@
 # 02b — Event-Driven Reservation & Cancellation Flow (RabbitMQ)
 
+**Status:** resolved
+
 ## Problem Statement
 
 The existing tickets (02, 03a, 05a, 05b) propose a Debezium CDC + transactional outbox pattern for event publishing. However, the domain modeling grilling session resolved on a **simpler, lower-latency** approach: direct RabbitMQ publishing with publisher confirms + consumer-side idempotency. Additionally, the grilling session established that:
