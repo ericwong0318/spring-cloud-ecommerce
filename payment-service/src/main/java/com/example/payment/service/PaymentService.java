@@ -4,6 +4,7 @@ import com.example.common.dto.PaymentDto;
 import com.example.common.event.PaymentEvent;
 import com.example.payment.domain.Payment;
 import com.example.payment.event.PaymentEventPublisher;
+import com.example.payment.gateway.MockPaymentGateway;
 import com.example.payment.repository.PaymentRepository;
 import com.example.payment.repository.ProcessedEventRepository;
 import org.slf4j.Logger;
@@ -24,13 +25,16 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final ProcessedEventRepository processedEventRepository;
     private final PaymentEventPublisher eventPublisher;
+    private final MockPaymentGateway mockGateway;
     private final TransactionalOperator transactionalOperator;
 
     public PaymentService(PaymentRepository paymentRepository, ProcessedEventRepository processedEventRepository,
-                          PaymentEventPublisher eventPublisher, TransactionalOperator transactionalOperator) {
+                          PaymentEventPublisher eventPublisher, MockPaymentGateway mockGateway,
+                          TransactionalOperator transactionalOperator) {
         this.paymentRepository = paymentRepository;
         this.processedEventRepository = processedEventRepository;
         this.eventPublisher = eventPublisher;
+        this.mockGateway = mockGateway;
         this.transactionalOperator = transactionalOperator;
     }
 
@@ -44,16 +48,33 @@ public class PaymentService {
                     return Mono.<PaymentDto>error(new DuplicatePaymentException("Payment already authorized for this idempotency key"));
                 })
                 .switchIfEmpty(Mono.defer(() -> {
-                    Payment payment = Payment.authorize(orderId, amount, currency, idempotencyKey);
+                    return mockGateway.authorize(amount, currency, idempotencyKey, null)
+                            .flatMap(gatewayResponse -> {
+                                if (!gatewayResponse.success()) {
+                                    Payment failedPayment = Payment.authorize(orderId, amount, currency, idempotencyKey);
+                                    Payment failed = failedPayment.withStatus(Payment.PaymentStatus.FAILED);
+                                    return paymentRepository.save(failed)
+                                            .flatMap(saved -> {
+                                                PaymentEvent event = PaymentEvent.failed(saved.id(), orderId, customerId, customerEmail,
+                                                        amount, currency);
+                                                return eventPublisher.publish(event)
+                                                        .thenReturn(saved);
+                                            })
+                                            .map(this::toDto);
+                                }
 
-                    return paymentRepository.save(payment)
-                            .flatMap(saved -> {
-                                PaymentEvent event = PaymentEvent.authorized(saved.id(), orderId, customerId, customerEmail,
-                                        amount, currency, saved.gatewayTransactionId());
-                                return eventPublisher.publish(event)
-                                        .thenReturn(saved);
-                            })
-                            .map(this::toDto);
+                                Payment payment = Payment.authorize(orderId, amount, currency, idempotencyKey)
+                                        .withGatewayTransactionId(gatewayResponse.transactionId());
+
+                                return paymentRepository.save(payment)
+                                        .flatMap(saved -> {
+                                            PaymentEvent event = PaymentEvent.authorized(saved.id(), orderId, customerId, customerEmail,
+                                                    amount, currency, saved.gatewayTransactionId());
+                                            return eventPublisher.publish(event)
+                                                    .thenReturn(saved);
+                                        })
+                                        .map(this::toDto);
+                            });
                 }))
                 .as(transactionalOperator::transactional);
     }
@@ -61,31 +82,28 @@ public class PaymentService {
     public Mono<PaymentDto> capturePayment(Long paymentId, String gatewayTransactionId, String idempotencyKey) {
         log.info("Capturing payment: {} with idempotency key: {}", paymentId, idempotencyKey);
 
-        return paymentRepository.findByIdempotencyKey(idempotencyKey)
-                .flatMap(existing -> {
-                    log.warn("Duplicate capture request for payment: {} with idempotency key: {}", paymentId, idempotencyKey);
-                    return getPaymentById(paymentId);
+        return paymentRepository.findById(paymentId)
+                .switchIfEmpty(Mono.error(new PaymentNotFoundException("Payment not found: " + paymentId)))
+                .flatMap(payment -> {
+                    if (payment.status() == Payment.PaymentStatus.CAPTURED) {
+                        log.info("Payment {} already captured, returning existing", paymentId);
+                        return Mono.just(toDto(payment));
+                    }
+                    if (!payment.canCapture()) {
+                        return Mono.error(new IllegalStateException("Payment must be in AUTHORIZED status to capture. Current status: " + payment.status()));
+                    }
+
+                    Payment updated = payment.capture(gatewayTransactionId);
+
+                    return paymentRepository.save(updated)
+                            .flatMap(saved -> {
+                                PaymentEvent event = PaymentEvent.captured(saved.id(), saved.orderId(),
+                                        null, null, saved.amount(), saved.currency(), gatewayTransactionId);
+                                return eventPublisher.publish(event)
+                                        .thenReturn(saved);
+                            })
+                            .map(this::toDto);
                 })
-                .switchIfEmpty(Mono.defer(() -> {
-                    return paymentRepository.findById(paymentId)
-                            .switchIfEmpty(Mono.error(new PaymentNotFoundException("Payment not found: " + paymentId)))
-                            .flatMap(payment -> {
-                                if (!payment.canCapture()) {
-                                    return Mono.error(new IllegalStateException("Payment must be in AUTHORIZED status to capture. Current status: " + payment.status()));
-                                }
-
-                                Payment updated = payment.capture(gatewayTransactionId);
-
-                                return paymentRepository.save(updated)
-                                        .flatMap(saved -> {
-                                            PaymentEvent event = PaymentEvent.captured(saved.id(), saved.orderId(),
-                                                    null, null, saved.amount(), saved.currency(), gatewayTransactionId);
-                                            return eventPublisher.publish(event)
-                                                    .thenReturn(saved);
-                                        })
-                                        .map(this::toDto);
-                            });
-                }))
                 .as(transactionalOperator::transactional);
     }
 

@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 import java.net.URI;
 
 @RestController
-@RequestMapping("/api/payments")
+@RequestMapping("/api/v1/payments")
 public class PaymentController {
 
     private final PaymentService paymentService;

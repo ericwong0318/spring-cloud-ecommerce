@@ -30,7 +30,7 @@ spring:
         prefetch: 10
 
 server:
-  port: 8086
+  port: 8085
 
 eureka:
   client:
@@ -56,13 +56,16 @@ outbox:
 rabbitmq:
   exchange:
     payment: payment.exchange
+    inventory: inventory.exchange
   queue:
     payment-events: payment.events.queue
+    inventory-reserved: payment.inventory.reserved.queue
   routing-key:
     payment-authorized: payment.authorized
     payment-captured: payment.captured
     payment-refunded: payment.refunded
     payment-failed: payment.failed
+    inventory-reserved: inventory.reserved
 
 logging:
   level:

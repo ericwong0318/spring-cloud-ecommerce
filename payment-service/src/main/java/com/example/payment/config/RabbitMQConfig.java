@@ -18,8 +18,14 @@ public class RabbitMQConfig {
     @Value("${rabbitmq.exchange.payment}")
     private String paymentExchange;
 
+    @Value("${rabbitmq.exchange.inventory}")
+    private String inventoryExchange;
+
     @Value("${rabbitmq.queue.payment-events}")
     private String paymentEventsQueue;
+
+    @Value("${rabbitmq.queue.inventory-reserved}")
+    private String inventoryReservedQueue;
 
     @Bean
     public DirectExchange paymentExchange() {
@@ -27,8 +33,18 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public DirectExchange inventoryExchange() {
+        return new DirectExchange(inventoryExchange, true, false);
+    }
+
+    @Bean
     public Queue paymentEventsQueue() {
         return new Queue(paymentEventsQueue, true);
+    }
+
+    @Bean
+    public Queue inventoryReservedQueue() {
+        return new Queue(inventoryReservedQueue, true);
     }
 
     @Bean
@@ -49,6 +65,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding paymentFailedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
         return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with("payment.failed");
+    }
+
+    @Bean
+    public Binding inventoryReservedBinding(DirectExchange inventoryExchange, Queue inventoryReservedQueue) {
+        return BindingBuilder.bind(inventoryReservedQueue).to(inventoryExchange).with("inventory.reserved");
     }
 
     @Bean

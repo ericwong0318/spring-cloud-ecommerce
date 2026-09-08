@@ -51,6 +51,16 @@ public record Payment(
                 idempotencyKey, authorizedAt, capturedAt, refundedAt, createdAt, updatedAt);
     }
 
+    public Payment withStatus(PaymentStatus newStatus) {
+        return new Payment(id, orderId, amount, currency, newStatus, gatewayTransactionId,
+                idempotencyKey, authorizedAt, capturedAt, refundedAt, createdAt, updatedAt);
+    }
+
+    public Payment withGatewayTransactionId(String gatewayTransactionId) {
+        return new Payment(id, orderId, amount, currency, status, gatewayTransactionId,
+                idempotencyKey, authorizedAt, capturedAt, refundedAt, createdAt, updatedAt);
+    }
+
     public boolean canCapture() {
         return status == PaymentStatus.AUTHORIZED;
     }
