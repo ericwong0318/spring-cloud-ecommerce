@@ -28,17 +28,17 @@ public class PaymentEvent implements BaseEvent {
     private LocalDateTime timestamp;
 
     public enum EventType {
-        SUCCESS, FAILED, REFUNDED
+        AUTHORIZED, CAPTURED, REFUNDED, FAILED
     }
 
     public enum PaymentStatus {
-        SUCCESS, FAILED, REFUNDED, PENDING
+        AUTHORIZED, CAPTURED, REFUNDED, FAILED, PENDING, PARTIALLY_REFUNDED
     }
 
-public static PaymentEvent success(Long paymentId, Long orderId, String customerId, String customerEmail,
-                                        BigDecimal amount, String currency, String transactionId) {
+    public static PaymentEvent authorized(Long paymentId, Long orderId, String customerId, String customerEmail,
+                                           BigDecimal amount, String currency, String transactionId) {
         return PaymentEvent.builder()
-                .eventType(EventType.SUCCESS.name())
+                .eventType(EventType.AUTHORIZED.name())
                 .eventId(UUID.randomUUID())
                 .paymentId(paymentId)
                 .orderId(orderId)
@@ -46,7 +46,24 @@ public static PaymentEvent success(Long paymentId, Long orderId, String customer
                 .customerEmail(customerEmail)
                 .amount(amount)
                 .currency(currency)
-                .status(PaymentStatus.SUCCESS)
+                .status(PaymentStatus.AUTHORIZED)
+                .transactionId(transactionId)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static PaymentEvent captured(Long paymentId, Long orderId, String customerId, String customerEmail,
+                                         BigDecimal amount, String currency, String transactionId) {
+        return PaymentEvent.builder()
+                .eventType(EventType.CAPTURED.name())
+                .eventId(UUID.randomUUID())
+                .paymentId(paymentId)
+                .orderId(orderId)
+                .customerId(customerId)
+                .customerEmail(customerEmail)
+                .amount(amount)
+                .currency(currency)
+                .status(PaymentStatus.CAPTURED)
                 .transactionId(transactionId)
                 .timestamp(LocalDateTime.now())
                 .build();
@@ -67,7 +84,7 @@ public static PaymentEvent success(Long paymentId, Long orderId, String customer
                 .timestamp(LocalDateTime.now())
                 .build();
     }
-    
+
     public static PaymentEvent refunded(Long paymentId, Long orderId, String customerId, String customerEmail,
                                          BigDecimal amount, String currency, String transactionId) {
         return PaymentEvent.builder()
@@ -80,6 +97,23 @@ public static PaymentEvent success(Long paymentId, Long orderId, String customer
                 .amount(amount)
                 .currency(currency)
                 .status(PaymentStatus.REFUNDED)
+                .transactionId(transactionId)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static PaymentEvent partiallyRefunded(Long paymentId, Long orderId, String customerId, String customerEmail,
+                                                  BigDecimal amount, String currency, String transactionId) {
+        return PaymentEvent.builder()
+                .eventType(EventType.REFUNDED.name())
+                .eventId(UUID.randomUUID())
+                .paymentId(paymentId)
+                .orderId(orderId)
+                .customerId(customerId)
+                .customerEmail(customerEmail)
+                .amount(amount)
+                .currency(currency)
+                .status(PaymentStatus.PARTIALLY_REFUNDED)
                 .transactionId(transactionId)
                 .timestamp(LocalDateTime.now())
                 .build();

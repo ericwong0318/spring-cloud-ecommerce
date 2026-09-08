@@ -50,10 +50,42 @@ public class NotificationEventListener {
         log.info("Received payment event: {}", event);
         
         switch (PaymentEvent.EventType.valueOf(event.getEventType())) {
-            case SUCCESS -> handlePaymentSuccess(event);
+            case AUTHORIZED -> handlePaymentAuthorized(event);
+            case CAPTURED -> handlePaymentSuccess(event);
             case FAILED -> handlePaymentFailed(event);
+            case REFUNDED -> {
+                if (event.getStatus() == PaymentEvent.PaymentStatus.PARTIALLY_REFUNDED) {
+                    handlePaymentPartiallyRefunded(event);
+                } else {
+                    handlePaymentRefunded(event);
+                }
+            }
             default -> log.debug("Unhandled payment event type: {}", event.getEventType());
         }
+    }
+
+    private void handlePaymentAuthorized(PaymentEvent event) {
+        notificationService.createNotificationFromTemplate(
+                "PAYMENT_AUTHORIZED", "EMAIL", 
+                event.getCustomerEmail(), 
+                event.getOrderId().toString(), "PAYMENT");
+        log.info("Created payment authorized notification for order: {}", event.getOrderId());
+    }
+
+    private void handlePaymentRefunded(PaymentEvent event) {
+        notificationService.createNotificationFromTemplate(
+                "PAYMENT_REFUNDED", "EMAIL", 
+                event.getCustomerEmail(), 
+                event.getOrderId().toString(), "PAYMENT");
+        log.info("Created payment refunded notification for order: {}", event.getOrderId());
+    }
+
+    private void handlePaymentPartiallyRefunded(PaymentEvent event) {
+        notificationService.createNotificationFromTemplate(
+                "PAYMENT_PARTIALLY_REFUNDED", "EMAIL", 
+                event.getCustomerEmail(), 
+                event.getOrderId().toString(), "PAYMENT");
+        log.info("Created payment partially refunded notification for order: {}", event.getOrderId());
     }
 
     private void handleOrderCreated(OrderEvent event) {

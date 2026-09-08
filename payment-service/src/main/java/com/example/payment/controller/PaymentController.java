@@ -1,6 +1,9 @@
 package com.example.payment.controller;
 
+import com.example.common.dto.AuthorizeRequest;
+import com.example.common.dto.CaptureRequest;
 import com.example.common.dto.PaymentDto;
+import com.example.common.dto.RefundRequest;
 import com.example.payment.service.PaymentService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -22,12 +25,10 @@ public class PaymentController {
 
     @PostMapping("/authorize")
     public Mono<ResponseEntity<PaymentDto>> authorizePayment(
-            @RequestParam Long orderId,
-            @RequestParam BigDecimal amount,
-            @RequestParam String currency,
-            @RequestParam String customerId,
-            @RequestParam String customerEmail) {
-        return paymentService.authorizePayment(orderId, amount, currency, customerId, customerEmail)
+            @Valid @RequestBody AuthorizeRequest request) {
+        return paymentService.authorizePayment(request.getOrderId(), request.getAmount(),
+                request.getCurrency(), request.getCustomerId(), request.getCustomerEmail(),
+                request.getIdempotencyKey())
                 .map(authorized -> ResponseEntity
                         .created(URI.create("/api/payments/" + authorized.getId()))
                         .body(authorized));
@@ -36,18 +37,29 @@ public class PaymentController {
     @PostMapping("/{id}/capture")
     public Mono<ResponseEntity<PaymentDto>> capturePayment(
             @PathVariable Long id,
-            @RequestParam String gatewayTransactionId) {
-        return paymentService.capturePayment(id, gatewayTransactionId)
+            @Valid @RequestBody CaptureRequest request) {
+        return paymentService.capturePayment(id, request.getGatewayTransactionId(),
+                "capture-" + id + "-" + request.getGatewayTransactionId())
                 .map(ResponseEntity::ok);
     }
 
     @PostMapping("/{id}/refund")
     public Mono<ResponseEntity<PaymentDto>> refundPayment(
             @PathVariable Long id,
-            @RequestParam BigDecimal amount,
-            @RequestParam(required = false) String reason) {
-        return paymentService.refundPayment(id, amount, reason)
+            @Valid @RequestBody RefundRequest request) {
+        return paymentService.refundPayment(id, request.getAmount(), request.getReason(),
+                "refund-" + id + "-" + request.getAmount())
                 .map(ResponseEntity::ok);
+    }
+
+    @PostMapping("/webhook/{gateway}")
+    public Mono<ResponseEntity<Void>> handleWebhook(
+            @PathVariable String gateway,
+            @RequestBody String payload,
+            @RequestHeader("X-Signature") String signature) {
+        log.info("Received webhook from {}: {}", gateway, payload);
+        // TODO: Verify signature, parse event, update payment status
+        return Mono.just(ResponseEntity.ok().build());
     }
 
     @GetMapping("/{id}")
@@ -66,4 +78,6 @@ public class PaymentController {
     public reactor.core.publisher.Flux<PaymentDto> getPaymentsByOrderId(@PathVariable Long orderId) {
         return paymentService.getPaymentsByOrderId(orderId);
     }
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PaymentController.class);
 }

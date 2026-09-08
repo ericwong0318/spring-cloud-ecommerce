@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -93,10 +94,16 @@ public class ProductVariantController {
             @Parameter(description = "ID of the product to create variant for", required = true)
             @PathVariable Long productId,
             @Valid @RequestBody ProductVariantDto variantDto) {
-        ProductVariantDto created = productVariantService.createVariant(productId, variantDto);
-        return ResponseEntity
-                .status(201)
-                .body(created);
+        try {
+            ProductVariantDto created = productVariantService.createVariant(productId, variantDto);
+            return ResponseEntity
+                    .status(201)
+                    .body(created);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(null);
+        }
     }
 
     @PutMapping("/{id}")
@@ -116,8 +123,14 @@ public class ProductVariantController {
             @Parameter(description = "ID of the variant to update", required = true)
             @PathVariable Long id,
             @Valid @RequestBody ProductVariantDto variantDto) {
-        ProductVariantDto updated = productVariantService.updateVariant(id, variantDto);
-        return ResponseEntity.ok(updated);
+        try {
+            ProductVariantDto updated = productVariantService.updateVariant(id, variantDto);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(null);
+        }
     }
 
     @DeleteMapping("/{id}")

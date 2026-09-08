@@ -1,6 +1,8 @@
 package com.example.product;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -22,6 +24,7 @@ public class ProductVariant {
     @Column(name = "sku_code", nullable = false, unique = true, length = 100)
     private String skuCode;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "attributes", columnDefinition = "JSONB")
     private Map<String, String> attributes = new HashMap<>();
 

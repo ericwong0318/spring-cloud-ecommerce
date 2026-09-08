@@ -48,13 +48,7 @@ class ProductIntegrationTest {
 
     @Test
     void whenAllProductsRetrieved_thenReturn200() throws Exception {
-        ProductDto product = ProductDto.builder()
-                .id(1L)
-                .name("Test Product")
-                .description("Description")
-                .price(BigDecimal.valueOf(99.99))
-                .categoryId(1L)
-                .build();
+        ProductDto product = new ProductDto(1L, "Test Product", "Description", BigDecimal.valueOf(99.99), 1L, null);
         when(productService.getAllProducts()).thenReturn(List.of(product));
 
         mockMvc.perform(get("/api/products"))
@@ -66,13 +60,7 @@ class ProductIntegrationTest {
 
     @Test
     void whenProductCreated_thenReturn201() throws Exception {
-        ProductDto created = ProductDto.builder()
-                .id(1L)
-                .name("New Product")
-                .description("Description")
-                .price(BigDecimal.valueOf(49.99))
-                .categoryId(1L)
-                .build();
+        ProductDto created = new ProductDto(1L, "New Product", "Description", BigDecimal.valueOf(49.99), 1L, null);
         when(productService.createProduct(any(ProductDto.class))).thenReturn(created);
 
         mockMvc.perform(post("/api/products")

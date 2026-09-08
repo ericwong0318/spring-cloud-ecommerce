@@ -14,8 +14,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   flyway:
-    enabled: true
-    locations: classpath:db/migration/product
+    enabled: false
   cloud:
     discovery:
       enabled: false
@@ -36,8 +35,24 @@ eureka:
   client:
     enabled: false
 
+rabbitmq:
+  exchange:
+    product: product.exchange
+  queue:
+    product-events: product.events.queue
+  routing-key:
+    product-created: product.created
+    product-updated: product.updated
+    product-deleted: product.deleted
+
+server:
+  port: 8082
+
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always

@@ -1,0 +1,431 @@
+package com.example.product;
+
+import com.example.common.dto.ProductDto;
+import com.example.common.dto.ProductVariantDto;
+import com.example.common.event.ProductEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.reactive.server.WebTestClient;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
+@ActiveProfiles("test")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = {ProductApplication.class, TestSecurityConfig.class})
+class ProductVariantIntegrationTest extends BaseIntegrationTest {
+
+    @Autowired
+    private WebTestClient webTestClient;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private Queue productEventsQueue;
+
+    @Test
+    void whenCreateVariant_thenReturn201AndPublishEvent() throws Exception {
+        // First create a product
+        ProductDto productDto = new ProductDto();
+        productDto.setName("Test Product");
+        productDto.setDescription("Test Description");
+        productDto.setPrice(new BigDecimal("999.99"));
+        productDto.setCategoryId(1L);
+
+        ProductDto createdProduct = webTestClient.post()
+                .uri("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(productDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(createdProduct).isNotNull();
+        Long productId = createdProduct.getId();
+
+        // Create variant
+        ProductVariantDto variantDto = new ProductVariantDto();
+        variantDto.setSkuCode("TEST-SKU-001");
+        variantDto.setAttributes(Map.of("color", "red", "size", "large"));
+        variantDto.setPrice(new BigDecimal("1099.99"));
+
+        ProductVariantDto createdVariant = webTestClient.post()
+                .uri("/api/products/{productId}/variants", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(variantDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductVariantDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(createdVariant).isNotNull();
+        assertThat(createdVariant.getSkuCode()).isEqualTo("TEST-SKU-001");
+        assertThat(createdVariant.getPrice()).isEqualByComparingTo(new BigDecimal("1099.99"));
+        assertThat(createdVariant.getAttributes()).containsEntry("color", "red");
+        assertThat(createdVariant.getProductId()).isEqualTo(productId);
+
+        // Verify event published to RabbitMQ
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            Object message = rabbitTemplate.receiveAndConvert(productEventsQueue.getName());
+            assertThat(message).isNotNull();
+            
+            String json = (String) message;
+            ProductEvent event = objectMapper.readValue(json, ProductEvent.class);
+            assertThat(event.getEventType()).isEqualTo("VARIANT_CREATED");
+            assertThat(event.getProductId()).isEqualTo(productId);
+            assertThat(event.getVariantId()).isEqualTo(createdVariant.getId());
+            assertThat(event.getSkuCode()).isEqualTo("TEST-SKU-001");
+        });
+    }
+
+    @Test
+    void whenGetVariantsByProductId_thenReturnList() throws Exception {
+        // Create product
+        ProductDto productDto = new ProductDto();
+        productDto.setName("Test Product 2");
+        productDto.setDescription("Test Description");
+        productDto.setPrice(new BigDecimal("499.99"));
+        productDto.setCategoryId(1L);
+
+        ProductDto createdProduct = webTestClient.post()
+                .uri("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(productDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(createdProduct).isNotNull();
+        Long productId = createdProduct.getId();
+
+        // Create multiple variants
+        ProductVariantDto variant1 = new ProductVariantDto();
+        variant1.setSkuCode("TEST-SKU-002");
+        variant1.setPrice(new BigDecimal("549.99"));
+        variant1.setAttributes(Map.of("color", "blue"));
+
+        ProductVariantDto variant2 = new ProductVariantDto();
+        variant2.setSkuCode("TEST-SKU-003");
+        variant2.setPrice(new BigDecimal("599.99"));
+        variant2.setAttributes(Map.of("color", "green"));
+
+        webTestClient.post()
+                .uri("/api/products/{productId}/variants", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(variant1)
+                .exchange()
+                .expectStatus().isCreated();
+
+        webTestClient.post()
+                .uri("/api/products/{productId}/variants", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(variant2)
+                .exchange()
+                .expectStatus().isCreated();
+
+        // Get all variants
+        List<ProductVariantDto> variants = webTestClient.get()
+                .uri("/api/products/{productId}/variants", productId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(ProductVariantDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(variants).hasSize(2);
+        assertThat(variants).extracting(ProductVariantDto::getSkuCode)
+                .containsExactlyInAnyOrder("TEST-SKU-002", "TEST-SKU-003");
+    }
+
+    @Test
+    void whenGetVariantById_thenReturnVariant() throws Exception {
+        // Create product
+        ProductDto productDto = new ProductDto();
+        productDto.setName("Test Product 3");
+        productDto.setPrice(new BigDecimal("199.99"));
+        productDto.setCategoryId(1L);
+
+        ProductDto createdProduct = webTestClient.post()
+                .uri("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(productDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        Long productId = createdProduct.getId();
+
+        // Create variant
+        ProductVariantDto variantDto = new ProductVariantDto();
+        variantDto.setSkuCode("TEST-SKU-004");
+        variantDto.setPrice(new BigDecimal("249.99"));
+
+        ProductVariantDto created = webTestClient.post()
+                .uri("/api/products/{productId}/variants", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(variantDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductVariantDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        // Get variant by ID
+        ProductVariantDto retrieved = webTestClient.get()
+                .uri("/api/products/{productId}/variants/{id}", productId, created.getId())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(ProductVariantDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(retrieved).isNotNull();
+        assertThat(retrieved.getId()).isEqualTo(created.getId());
+        assertThat(retrieved.getSkuCode()).isEqualTo("TEST-SKU-004");
+    }
+
+    @Test
+    void whenUpdateVariant_thenReturnUpdatedAndPublishEvent() throws Exception {
+        // Create product
+        ProductDto productDto = new ProductDto();
+        productDto.setName("Test Product 4");
+        productDto.setPrice(new BigDecimal("99.99"));
+        productDto.setCategoryId(1L);
+
+        ProductDto createdProduct = webTestClient.post()
+                .uri("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(productDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        Long productId = createdProduct.getId();
+
+        // Create variant
+        ProductVariantDto variantDto = new ProductVariantDto();
+        variantDto.setSkuCode("TEST-SKU-005");
+        variantDto.setPrice(new BigDecimal("149.99"));
+
+        ProductVariantDto created = webTestClient.post()
+                .uri("/api/products/{productId}/variants", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(variantDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductVariantDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        // Update variant
+        ProductVariantDto updateDto = new ProductVariantDto();
+        updateDto.setSkuCode("TEST-SKU-005-UPDATED");
+        updateDto.setPrice(new BigDecimal("199.99"));
+        updateDto.setAttributes(Map.of("material", "cotton"));
+
+        ProductVariantDto updated = webTestClient.put()
+                .uri("/api/products/{productId}/variants/{id}", productId, created.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(updateDto)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(ProductVariantDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(updated).isNotNull();
+        assertThat(updated.getSkuCode()).isEqualTo("TEST-SKU-005-UPDATED");
+        assertThat(updated.getPrice()).isEqualByComparingTo(new BigDecimal("199.99"));
+        assertThat(updated.getAttributes()).containsEntry("material", "cotton");
+
+        // Verify event published
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            Object message = rabbitTemplate.receiveAndConvert(productEventsQueue.getName());
+            assertThat(message).isNotNull();
+            
+            String json = (String) message;
+            ProductEvent event = objectMapper.readValue(json, ProductEvent.class);
+            assertThat(event.getEventType()).isEqualTo("VARIANT_UPDATED");
+            assertThat(event.getVariantId()).isEqualTo(created.getId());
+            assertThat(event.getSkuCode()).isEqualTo("TEST-SKU-005-UPDATED");
+        });
+    }
+
+    @Test
+    void whenDeleteVariant_thenReturn204AndPublishEvent() throws Exception {
+        // Create product
+        ProductDto productDto = new ProductDto();
+        productDto.setName("Test Product 5");
+        productDto.setPrice(new BigDecimal("299.99"));
+        productDto.setCategoryId(1L);
+
+        ProductDto createdProduct = webTestClient.post()
+                .uri("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(productDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        Long productId = createdProduct.getId();
+
+        // Create variant
+        ProductVariantDto variantDto = new ProductVariantDto();
+        variantDto.setSkuCode("TEST-SKU-006");
+        variantDto.setPrice(new BigDecimal("349.99"));
+
+        ProductVariantDto created = webTestClient.post()
+                .uri("/api/products/{productId}/variants", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(variantDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductVariantDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        // Delete variant
+        webTestClient.delete()
+                .uri("/api/products/{productId}/variants/{id}", productId, created.getId())
+                .exchange()
+                .expectStatus().isNoContent();
+
+        // Verify variant is deleted
+        webTestClient.get()
+                .uri("/api/products/{productId}/variants/{id}", productId, created.getId())
+                .exchange()
+                .expectStatus().isNotFound();
+
+        // Verify event published
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            Object message = rabbitTemplate.receiveAndConvert(productEventsQueue.getName());
+            assertThat(message).isNotNull();
+            
+            String json = (String) message;
+            ProductEvent event = objectMapper.readValue(json, ProductEvent.class);
+            assertThat(event.getEventType()).isEqualTo("VARIANT_DELETED");
+            assertThat(event.getProductId()).isEqualTo(productId);
+            assertThat(event.getVariantId()).isEqualTo(created.getId());
+            assertThat(event.getSkuCode()).isEqualTo("TEST-SKU-006");
+        });
+    }
+
+    @Test
+    void whenCreateVariantWithDuplicateSku_thenReturn400() {
+        // Create product
+        ProductDto productDto = new ProductDto();
+        productDto.setName("Test Product 6");
+        productDto.setPrice(new BigDecimal("199.99"));
+        productDto.setCategoryId(1L);
+
+        ProductDto createdProduct = webTestClient.post()
+                .uri("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(productDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        Long productId = createdProduct.getId();
+
+        // Create first variant
+        ProductVariantDto variant1 = new ProductVariantDto();
+        variant1.setSkuCode("DUPLICATE-SKU");
+        variant1.setPrice(new BigDecimal("100.00"));
+
+        webTestClient.post()
+                .uri("/api/products/{productId}/variants", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(variant1)
+                .exchange()
+                .expectStatus().isCreated();
+
+        // Try to create second variant with same SKU
+        ProductVariantDto variant2 = new ProductVariantDto();
+        variant2.setSkuCode("DUPLICATE-SKU");
+        variant2.setPrice(new BigDecimal("200.00"));
+
+        webTestClient.post()
+                .uri("/api/products/{productId}/variants", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(variant2)
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void whenGetVariantBySkuCode_thenReturnVariant() throws Exception {
+        // Create product
+        ProductDto productDto = new ProductDto();
+        productDto.setName("Test Product 7");
+        productDto.setPrice(new BigDecimal("399.99"));
+        productDto.setCategoryId(1L);
+
+        ProductDto createdProduct = webTestClient.post()
+                .uri("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(productDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        Long productId = createdProduct.getId();
+
+        // Create variant
+        ProductVariantDto variantDto = new ProductVariantDto();
+        variantDto.setSkuCode("SKU-BY-CODE");
+        variantDto.setPrice(new BigDecimal("449.99"));
+
+        ProductVariantDto created = webTestClient.post()
+                .uri("/api/products/{productId}/variants", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(variantDto)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductVariantDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        // Get variant by SKU
+        ProductVariantDto retrieved = webTestClient.get()
+                .uri("/api/products/{productId}/variants/sku/{skuCode}", productId, "SKU-BY-CODE")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(ProductVariantDto.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(retrieved).isNotNull();
+        assertThat(retrieved.getSkuCode()).isEqualTo("SKU-BY-CODE");
+        assertThat(retrieved.getId()).isEqualTo(created.getId());
+    }
+}

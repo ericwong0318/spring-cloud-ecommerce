@@ -31,9 +31,10 @@ public class PaymentEventPublisher {
 
     public Mono<Void> publish(PaymentEvent event) {
         String routingKey = switch (event.getEventType()) {
-            case "SUCCESS" -> "payment.authorized";
-            case "FAILED" -> "payment.failed";
+            case "AUTHORIZED" -> "payment.authorized";
+            case "CAPTURED" -> "payment.captured";
             case "REFUNDED" -> "payment.refunded";
+            case "FAILED" -> "payment.failed";
             default -> "payment.unknown";
         };
 

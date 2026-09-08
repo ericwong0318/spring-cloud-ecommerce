@@ -59,6 +59,27 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Binding variantCreatedBinding() {
+        return BindingBuilder.bind(productEventsQueue())
+                .to(productExchange())
+                .with("product.variant.created");
+    }
+
+    @Bean
+    public Binding variantUpdatedBinding() {
+        return BindingBuilder.bind(productEventsQueue())
+                .to(productExchange())
+                .with("product.variant.updated");
+    }
+
+    @Bean
+    public Binding variantDeletedBinding() {
+        return BindingBuilder.bind(productEventsQueue())
+                .to(productExchange())
+                .with("product.variant.deleted");
+    }
+
+    @Bean
     public MessageConverter messageConverter() {
         return new Jackson2JsonMessageConverter();
     }
