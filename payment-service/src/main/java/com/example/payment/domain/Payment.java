@@ -1,10 +1,13 @@
 package com.example.payment.domain;
 
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@Table("payments")
 public record Payment(
-        Long id,
+        @Id Long id,
         Long orderId,
         BigDecimal amount,
         String currency,

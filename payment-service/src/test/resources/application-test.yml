@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: payment-service
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  r2dbc:
+    # Will be overridden by DynamicPropertySource to point to Testcontainers
+    url: r2dbc:postgresql://localhost:5432/payment_service
+    username: postgres
+    password: postgres
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 5s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 3
+        max-concurrency: 10
+        prefetch: 10
+
+server:
+  port: 0
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+outbox:
+  publisher:
+    batch-size: 100
+    max-retries: 5
+    poll-interval-ms: 5000
+    exchange: outbox.exchange
+
+rabbitmq:
+  exchange:
+    payment: payment.exchange
+  queue:
+    payment-events: payment.events.queue
+  routing-key:
+    payment-authorized: payment.authorized
+    payment-captured: payment.captured
+    payment-refunded: payment.refunded
+    payment-failed: payment.failed
+
+logging:
+  level:
+    com.example.payment: DEBUG
+    org.springframework.cloud: INFO
+    org.springframework.r2dbc: DEBUG
+    org.flywaydb: DEBUG
