@@ -34,7 +34,7 @@ public class InventoryEventListener {
     @RabbitListener(queues = "${rabbitmq.queue.inventory-events}")
     @Transactional
     public void handleProductEvent(ProductEvent event) {
-        idempotentEventProcessor.process(event, this::handleProductEventInternal);
+        idempotentEventProcessor.process(event, e -> handleProductEventInternal(e));
     }
 
     private void handleProductEventInternal(ProductEvent event) {

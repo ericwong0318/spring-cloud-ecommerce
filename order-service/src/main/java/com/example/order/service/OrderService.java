@@ -314,4 +314,24 @@ public class OrderService {
             }
         }
     }
+
+    public void publishOrderEvent(OrderEvent event) {
+        log.info("Publishing OrderEvent: eventType={}, orderId={}", event.getEventType(), event.getOrderId());
+        try {
+            String jsonPayload = objectMapper.writeValueAsString(event);
+            String routingKey = switch (event.getEventType()) {
+                case "CREATED" -> "order.created";
+                case "UPDATED" -> "order.updated";
+                case "CANCELLED" -> "order.cancelled";
+                case "SHIPPED" -> "order.shipped";
+                case "DELIVERED" -> "order.delivered";
+                default -> "order.updated";
+            };
+            rabbitTemplate.convertAndSend(orderExchange, routingKey, jsonPayload);
+            log.info("Published OrderEvent {} to RabbitMQ for order: {}", event.getEventType(), event.getOrderId());
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize OrderEvent for order: {}", event.getOrderId(), e);
+            throw new RuntimeException("Failed to serialize OrderEvent", e);
+        }
+    }
 }

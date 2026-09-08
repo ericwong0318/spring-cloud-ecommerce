@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-public class ProductEvent {
+public class ProductEvent implements BaseEvent {
 
     @JsonProperty("eventType")
     private String eventType;

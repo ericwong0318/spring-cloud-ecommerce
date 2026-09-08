@@ -27,6 +27,24 @@ public class RabbitMQConfig {
     @Value("${rabbitmq.routing-key.order-cancelled}")
     private String orderCancelledRoutingKey;
 
+    @Value("${rabbitmq.exchange.payment}")
+    private String paymentExchange;
+
+    @Value("${rabbitmq.queue.payment-events}")
+    private String paymentEventsQueue;
+
+    @Value("${rabbitmq.routing-key.payment-authorized}")
+    private String paymentAuthorizedRoutingKey;
+
+    @Value("${rabbitmq.routing-key.payment-captured}")
+    private String paymentCapturedRoutingKey;
+
+    @Value("${rabbitmq.routing-key.payment-refunded}")
+    private String paymentRefundedRoutingKey;
+
+    @Value("${rabbitmq.routing-key.payment-failed}")
+    private String paymentFailedRoutingKey;
+
     @Bean
     public TopicExchange orderExchange() {
         return new TopicExchange(orderExchange, true, false);
@@ -56,6 +74,36 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(orderEventsQueue())
                 .to(orderExchange())
                 .with(orderCancelledRoutingKey);
+    }
+
+    @Bean
+    public DirectExchange paymentExchange() {
+        return new DirectExchange(paymentExchange, true, false);
+    }
+
+    @Bean
+    public Queue paymentEventsQueue() {
+        return new Queue(paymentEventsQueue, true);
+    }
+
+    @Bean
+    public Binding paymentAuthorizedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
+        return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with(paymentAuthorizedRoutingKey);
+    }
+
+    @Bean
+    public Binding paymentCapturedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
+        return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with(paymentCapturedRoutingKey);
+    }
+
+    @Bean
+    public Binding paymentRefundedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
+        return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with(paymentRefundedRoutingKey);
+    }
+
+    @Bean
+    public Binding paymentFailedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
+        return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with(paymentFailedRoutingKey);
     }
 
     @Bean

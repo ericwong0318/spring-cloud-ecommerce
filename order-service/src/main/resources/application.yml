@@ -65,9 +65,15 @@ outbox:
 rabbitmq:
   exchange:
     order: order.exchange
+    payment: payment.exchange
   queue:
     order-events: order.events.queue
+    payment-events: payment.events.queue
   routing-key:
     order-created: order.created
     order-updated: order.updated
     order-cancelled: order.cancelled
+    payment-authorized: payment.authorized
+    payment-captured: payment.captured
+    payment-refunded: payment.refunded
+    payment-failed: payment.failed
