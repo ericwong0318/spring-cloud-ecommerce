@@ -2,18 +2,13 @@ package com.example.order.service;
 
 import com.example.common.dto.OrderDto;
 import com.example.common.dto.OrderItemDto;
-import com.example.common.dto.ShipmentDto;
-import com.example.common.dto.ShipmentItemDto;
 import com.example.common.event.OrderEvent;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
-import com.example.order.model.Shipment;
-import com.example.order.model.ShipmentItem;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
-import com.example.order.repository.ShipmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -29,6 +24,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 @Service
 public class OrderService {
 
@@ -36,47 +34,43 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final ShipmentRepository shipmentRepository;
     private final OrderMapper orderMapper;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
     private final String orderExchange;
+    private final String ecommerceExchange;
 
     public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository,
-                        ShipmentRepository shipmentRepository, OrderMapper orderMapper,
+                        OrderMapper orderMapper,
                         RabbitTemplate rabbitTemplate, ObjectMapper objectMapper,
-                        @Value("${rabbitmq.exchange.order}") String orderExchange) {
+                        @Value("${rabbitmq.exchange.order}") String orderExchange,
+                        @Value("${rabbitmq.exchange.ecommerce}") String ecommerceExchange) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
-        this.shipmentRepository = shipmentRepository;
         this.orderMapper = orderMapper;
         this.rabbitTemplate = rabbitTemplate;
         this.objectMapper = objectMapper;
         this.orderExchange = orderExchange;
+        this.ecommerceExchange = ecommerceExchange;
     }
 
-    @Transactional(readOnly = true)
-    public List<com.example.common.dto.OrderDto> getAllOrders() {
+    public Flux<OrderDto> getAllOrders() {
         log.debug("Fetching all orders");
-        return orderRepository.findAll().stream()
-                .map(orderMapper::toDto)
-                .collect(Collectors.toList());
+        return orderRepository.findAll()
+                .map(orderMapper::toDto);
     }
 
-    @Transactional(readOnly = true)
-    public com.example.common.dto.OrderDto getOrderById(Long id) {
+    public Mono<OrderDto> getOrderById(Long id) {
         log.debug("Fetching order by id: {}", id);
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", id));
-        return orderMapper.toDto(order);
+        return orderRepository.findById(id)
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", id)))
+                .map(orderMapper::toDto);
     }
 
-    @Transactional(readOnly = true)
-    public List<com.example.common.dto.OrderDto> getOrdersByCustomerId(String customerId) {
+    public Flux<OrderDto> getOrdersByCustomerId(String customerId) {
         log.debug("Fetching orders by customer id: {}", customerId);
-        return orderRepository.findByCustomerId(customerId).stream()
-                .map(orderMapper::toDto)
-                .collect(Collectors.toList());
+        return orderRepository.findByCustomerId(customerId)
+                .map(orderMapper::toDto);
     }
 
     private OrderEvent.OrderItemStatus mapToEventItemStatus(OrderItem.OrderItemStatus status) {
@@ -88,7 +82,7 @@ public class OrderService {
     }
 
     @Transactional
-    public com.example.common.dto.OrderDto createOrder(com.example.common.dto.OrderDto orderDto) {
+    public Mono<OrderDto> createOrder(OrderDto orderDto) {
         log.info("Creating order for customer: {}", orderDto.getCustomerId());
         Order order = orderMapper.toEntity(orderDto);
         order.setStatus("PENDING");
@@ -96,7 +90,7 @@ public class OrderService {
             order.setTotalAmount(java.math.BigDecimal.ZERO);
         }
 
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
 
         // Create OrderItems from DTO items
         if (orderDto.getItems() != null) {
@@ -115,204 +109,73 @@ public class OrderService {
             }
         }
 
-        Order saved = orderRepository.save(order);
+        return orderRepository.save(order)
+                .flatMap(saved -> {
+                    // Publish OrderEvent.CREATED to RabbitMQ direct
+                    List<OrderEvent.OrderItem> eventItems = saved.getItems().stream()
+                            .map(item -> new OrderEvent.OrderItem(
+                                    item.getId(),
+                                    item.getProductId(),
+                                    item.getVariantId(),
+                                    item.getProductName(),
+                                    item.getSkuCode(),
+                                    item.getQuantityOrdered(),
+                                    item.getQuantityShipped(),
+                                    item.getUnitPrice(),
+                                    mapToEventItemStatus(item.getStatus()),
+                                    item.getReservedAt()))
+                            .collect(Collectors.toList());
 
-        // Publish OrderEvent.CREATED to RabbitMQ direct
-        List<OrderEvent.OrderItem> eventItems = saved.getItems().stream()
-                .map(item -> new OrderEvent.OrderItem(
-                        item.getId(),
-                        item.getProductId(),
-                        item.getVariantId(),
-                        item.getProductName(),
-                        item.getSkuCode(),
-                        item.getQuantityOrdered(),
-                        item.getQuantityShipped(),
-                        item.getUnitPrice(),
-                        mapToEventItemStatus(item.getStatus()),
-                        item.getReservedAt()))
-                .collect(Collectors.toList());
-
-        OrderEvent event = OrderEvent.created(saved.getId(), saved.getCustomerId(),
-            orderDto.getCustomerEmail(), saved.getTotalAmount(), eventItems);
-        try {
-            String jsonPayload = objectMapper.writeValueAsString(event);
-            rabbitTemplate.convertAndSend(orderExchange, "order.created", jsonPayload);
-            log.info("Published OrderEvent.CREATED to RabbitMQ for order: {}", saved.getId());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize OrderEvent for order: {}", saved.getId(), e);
-            throw new RuntimeException("Failed to serialize OrderEvent", e);
-        }
-
-        return orderMapper.toDto(saved);
+                    OrderEvent event = OrderEvent.created(saved.getId(), saved.getCustomerId(),
+                            orderDto.getCustomerEmail(), saved.getTotalAmount(), eventItems);
+                    try {
+                        String jsonPayload = objectMapper.writeValueAsString(event);
+                        rabbitTemplate.convertAndSend(orderExchange, "order.created", jsonPayload);
+                        log.info("Published OrderEvent.CREATED to RabbitMQ for order: {}", saved.getId());
+                    } catch (JsonProcessingException e) {
+                        log.error("Failed to serialize OrderEvent for order: {}", saved.getId(), e);
+                        throw new RuntimeException("Failed to serialize OrderEvent", e);
+                    }
+                    return Mono.just(saved);
+                })
+                .map(orderMapper::toDto);
     }
 
     @Transactional
-    public com.example.common.dto.OrderDto updateOrder(Long id, com.example.common.dto.OrderDto orderDto) {
+    public Mono<OrderDto> updateOrder(Long id, OrderDto orderDto) {
         log.info("Updating order id: {}", id);
-        Order existing = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", id));
-
-        existing.setStatus(orderDto.getStatus().name());
-        existing.setTotalAmount(orderDto.getTotalAmount());
-        existing.setCustomerId(orderDto.getCustomerId());
-
-        Order saved = orderRepository.save(existing);
-
-        // Publish OrderEvent.UPDATED to RabbitMQ direct
-        try {
-            String jsonPayload = objectMapper.writeValueAsString(OrderEvent.statusChanged(saved.getId(), mapToEventOrderStatus(saved.getStatus())));
-            rabbitTemplate.convertAndSend(orderExchange, "order.updated", jsonPayload);
-            log.info("Published OrderEvent.UPDATED to RabbitMQ for order: {}", saved.getId());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize OrderEvent for order: {}", saved.getId(), e);
-            throw new RuntimeException("Failed to serialize OrderEvent", e);
-        }
-
-        return orderMapper.toDto(saved);
+        return orderRepository.findById(id)
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", id)))
+                .flatMap(existing -> {
+                    existing.setStatus(orderDto.getStatus().name());
+                    existing.setTotalAmount(orderDto.getTotalAmount());
+                    existing.setCustomerId(orderDto.getCustomerId());
+                    return orderRepository.save(existing);
+                })
+                .flatMap(saved -> {
+                    try {
+                        String jsonPayload = objectMapper.writeValueAsString(OrderEvent.statusChanged(saved.getId(), mapToEventOrderStatus(saved.getStatus())));
+                        rabbitTemplate.convertAndSend(orderExchange, "order.updated", jsonPayload);
+                        log.info("Published OrderEvent.UPDATED to RabbitMQ for order: {}", saved.getId());
+                    } catch (JsonProcessingException e) {
+                        log.error("Failed to serialize OrderEvent for order: {}", saved.getId(), e);
+                        throw new RuntimeException("Failed to serialize OrderEvent", e);
+                    }
+                    return Mono.just(saved);
+                })
+                .map(orderMapper::toDto);
     }
 
     @Transactional
-    public void deleteOrder(Long id) {
+    public Mono<Void> deleteOrder(Long id) {
         log.info("Deleting order id: {}", id);
-        if (!orderRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Order", id);
-        }
-        orderRepository.deleteById(id);
-    }
-
-    @Transactional
-    public com.example.common.dto.ShipmentDto createShipment(Long orderId, com.example.common.dto.ShipmentDto shipmentDto) {
-        log.info("Creating shipment for order: {}", orderId);
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
-
-        Shipment shipment = new Shipment();
-        shipment.setTrackingNumber(shipmentDto.getTrackingNumber());
-        shipment.setCarrier(shipmentDto.getCarrier());
-        shipment.setStatus(Shipment.ShipmentStatus.CREATED);
-        order.addShipment(shipment);
-
-        // Create ShipmentItems and update OrderItem quantities
-        if (shipmentDto.getItems() != null) {
-            for (ShipmentItemDto itemDto : shipmentDto.getItems()) {
-                OrderItem orderItem = orderItemRepository.findById(itemDto.getOrderItemId())
-                        .orElseThrow(() -> new ResourceNotFoundException("OrderItem", itemDto.getOrderItemId()));
-
-                if (!orderItem.getOrder().getId().equals(orderId)) {
-                    throw new IllegalArgumentException("OrderItem does not belong to this order");
-                }
-
-                int availableQuantity = orderItem.getQuantityOrdered() - orderItem.getQuantityShipped();
-                if (itemDto.getQuantity() > availableQuantity) {
-                    throw new IllegalArgumentException(
-                        String.format("Shipment quantity %d exceeds available quantity %d for order item %d",
-                            itemDto.getQuantity(), availableQuantity, orderItem.getId()));
-                }
-
-                ShipmentItem shipmentItem = new ShipmentItem();
-                shipmentItem.setOrderItem(orderItem);
-                shipmentItem.setQuantity(itemDto.getQuantity());
-                shipment.addItem(shipmentItem);
-
-                // Update OrderItem shipped quantity and status
-                orderItem.setQuantityShipped(orderItem.getQuantityShipped() + itemDto.getQuantity());
-                if (orderItem.getQuantityShipped() >= orderItem.getQuantityOrdered()) {
-                    orderItem.setStatus(OrderItem.OrderItemStatus.SHIPPED);
-                } else {
-                    orderItem.setStatus(OrderItem.OrderItemStatus.SHIPPED); // Partially shipped
-                }
-                orderItemRepository.save(orderItem);
-            }
-        }
-
-        Shipment saved = shipmentRepository.save(shipment);
-
-        // Update order status based on shipped quantities
-        updateOrderStatusFromShipments(order);
-
-        // Publish OrderEvent.SHIPPED to RabbitMQ direct
-        List<OrderEvent.OrderItem> eventItems = order.getItems().stream()
-                .map(item -> new OrderEvent.OrderItem(
-                        item.getId(),
-                        item.getProductId(),
-                        item.getVariantId(),
-                        item.getProductName(),
-                        item.getSkuCode(),
-                        item.getQuantityOrdered(),
-                        item.getQuantityShipped(),
-                        item.getUnitPrice(),
-                        mapToEventItemStatus(item.getStatus()),
-                        item.getReservedAt()))
-                .collect(Collectors.toList());
-
-        OrderEvent event = OrderEvent.shipped(order.getId(), order.getCustomerId(),
-                null, order.getTotalAmount(), eventItems, saved.getId(), saved.getTrackingNumber(),
-                saved.getCarrier(), saved.getShippedAt());
-        try {
-            String jsonPayload = objectMapper.writeValueAsString(event);
-            rabbitTemplate.convertAndSend(orderExchange, "order.shipped", jsonPayload);
-            log.info("Published OrderEvent.SHIPPED to RabbitMQ for order: {}", order.getId());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize OrderEvent for order: {}", order.getId(), e);
-            throw new RuntimeException("Failed to serialize OrderEvent", e);
-        }
-
-        return orderMapper.toDto(order).getShipments().get(order.getShipments().size() - 1);
-    }
-
-    @Transactional
-    public void updateShipmentStatus(Long orderId, Long shipmentId, Shipment.ShipmentStatus status) {
-        log.info("Updating shipment {} status to {}", shipmentId, status);
-        Shipment shipment = shipmentRepository.findById(shipmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Shipment", shipmentId));
-
-        if (!shipment.getOrder().getId().equals(orderId)) {
-            throw new IllegalArgumentException("Shipment does not belong to this order");
-        }
-
-        shipment.setStatus(status);
-        if (status == Shipment.ShipmentStatus.SHIPPED) {
-            shipment.setShippedAt(LocalDateTime.now());
-        } else if (status == Shipment.ShipmentStatus.DELIVERED) {
-            shipment.setDeliveredAt(LocalDateTime.now());
-        }
-        shipmentRepository.save(shipment);
-
-        // Update order status based on shipments
-        updateOrderStatusFromShipments(shipment.getOrder());
-    }
-
-    private void updateOrderStatusFromShipments(Order order) {
-        boolean allItemsShipped = order.getItems().stream()
-                .allMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.SHIPPED ||
-                        item.getStatus() == OrderItem.OrderItemStatus.CANCELLED);
-
-        boolean anyItemShipped = order.getItems().stream()
-                .anyMatch(item -> item.getQuantityShipped() > 0);
-
-        String newStatus;
-        if (allItemsShipped) {
-            newStatus = "DELIVERED";
-        } else if (anyItemShipped) {
-            newStatus = "SHIPPED";
-        } else {
-            newStatus = order.getStatus(); // Keep current status
-        }
-
-        if (!newStatus.equals(order.getStatus())) {
-            order.setStatus(newStatus);
-            orderRepository.save(order);
-
-            // Publish OrderEvent.UPDATED to RabbitMQ direct
-            try {
-                String jsonPayload = objectMapper.writeValueAsString(OrderEvent.statusChanged(order.getId(), mapToEventOrderStatus(newStatus)));
-                rabbitTemplate.convertAndSend(orderExchange, "order.updated", jsonPayload);
-                log.info("Published OrderEvent.UPDATED to RabbitMQ for order: {}", order.getId());
-            } catch (JsonProcessingException e) {
-                log.error("Failed to serialize OrderEvent for order: {}", order.getId(), e);
-                throw new RuntimeException("Failed to serialize OrderEvent", e);
-            }
-        }
+        return orderRepository.existsById(id)
+                .flatMap(exists -> {
+                    if (!exists) {
+                        return Mono.error(new ResourceNotFoundException("Order", id));
+                    }
+                    return orderRepository.deleteById(id);
+                });
     }
 
     public void publishOrderEvent(OrderEvent event) {
@@ -323,15 +186,270 @@ public class OrderService {
                 case "CREATED" -> "order.created";
                 case "UPDATED" -> "order.updated";
                 case "CANCELLED" -> "order.cancelled";
-                case "SHIPPED" -> "order.shipped";
-                case "DELIVERED" -> "order.delivered";
+                case "CONFIRMED" -> "order.confirmed";
                 default -> "order.updated";
             };
             rabbitTemplate.convertAndSend(orderExchange, routingKey, jsonPayload);
+
+            // Also publish to ecommerce.events exchange for cross-service communication
+            rabbitTemplate.convertAndSend(ecommerceExchange, routingKey, jsonPayload);
+
             log.info("Published OrderEvent {} to RabbitMQ for order: {}", event.getEventType(), event.getOrderId());
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize OrderEvent for order: {}", event.getOrderId(), e);
             throw new RuntimeException("Failed to serialize OrderEvent", e);
         }
+    }
+
+    @Transactional
+    public Mono<OrderDto> cancelOrder(Long id) {
+        log.info("Cancelling order id: {}", id);
+        return orderRepository.findById(id)
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", id)))
+                .flatMap(order -> {
+                    if (!"PENDING".equals(order.getStatus()) && !"RESERVED".equals(order.getStatus())) {
+                        log.warn("Order {} cannot be cancelled from status: {}", id, order.getStatus());
+                        return Mono.error(new IllegalStateException("Order cannot be cancelled from status: " + order.getStatus()));
+                    }
+
+                    order.setStatus("CANCELLED");
+
+                    // Cancel all items that are not already shipped or cancelled
+                    Flux<OrderItem> itemsToUpdate = Flux.fromIterable(order.getItems())
+                            .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING ||
+                                    item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
+                                    item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
+                            .flatMap(item -> {
+                                item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                                return orderItemRepository.save(item);
+                            });
+
+                    return itemsToUpdate
+                            .then(orderRepository.save(order))
+                            .flatMap(saved -> {
+                                List<OrderEvent.OrderItem> eventItems = saved.getItems().stream()
+                                        .map(item -> new OrderEvent.OrderItem(
+                                                item.getId(),
+                                                item.getProductId(),
+                                                item.getVariantId(),
+                                                item.getProductName(),
+                                                item.getSkuCode(),
+                                                item.getQuantityOrdered(),
+                                                item.getQuantityShipped(),
+                                                item.getUnitPrice(),
+                                                mapToEventItemStatus(item.getStatus()),
+                                                item.getReservedAt()))
+                                        .collect(Collectors.toList());
+
+                                OrderEvent cancelledEvent = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
+                                        null, eventItems);
+                                publishOrderEvent(cancelledEvent);
+
+                                return Mono.just(orderMapper.toDto(saved));
+                            });
+                });
+    }
+
+    // Saga orchestrator methods
+
+    @Transactional
+    public Mono<Void> handleInventoryReserved(Long variantId, Integer reservedQuantity, Integer backorderedQuantity) {
+        log.info("Handling inventory reserved for variant: {}, reserved={}, backordered={}", variantId, reservedQuantity, backorderedQuantity);
+
+        if (reservedQuantity > 0) {
+            return orderItemRepository.findByVariantIdAndStatus(variantId, OrderItem.OrderItemStatus.PENDING)
+                    .flatMap(item -> {
+                        if (backorderedQuantity > 0) {
+                            item.setStatus(OrderItem.OrderItemStatus.BACKORDERED);
+                        } else {
+                            item.setStatus(OrderItem.OrderItemStatus.RESERVED);
+                            item.setReservedAt(LocalDateTime.now());
+                        }
+                        return orderItemRepository.save(item)
+                                .flatMap(savedItem -> checkAndTransitionOrderToReserved(savedItem.getOrderId()));
+                    });
+        } else if (backorderedQuantity > 0) {
+            // Fully backordered - cancel the item
+            return orderItemRepository.findByVariantIdAndStatus(variantId, OrderItem.OrderItemStatus.PENDING)
+                    .flatMap(item -> {
+                        item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                        return orderItemRepository.save(item)
+                                .flatMap(savedItem -> checkAndCancelOrderIfAllItemsCancelledOrBackordered(savedItem.getOrderId()));
+                    });
+        }
+        return Mono.empty();
+    }
+
+    @Transactional
+    public Mono<Void> handlePaymentAuthorized(Long orderId) {
+        log.info("Handling payment authorized for order: {}", orderId);
+        return orderRepository.findById(orderId)
+                .flatMap(order -> {
+                    if ("PENDING".equals(order.getStatus()) || "RESERVED".equals(order.getStatus())) {
+                        log.info("Payment authorized for order {}, waiting for capture", orderId);
+                    }
+                    return Mono.empty();
+                });
+    }
+
+    @Transactional
+    public Mono<Void> handlePaymentCaptured(Long orderId, BigDecimal capturedAmount) {
+        log.info("Handling payment captured for order: {}, amount={}", orderId, capturedAmount);
+        return orderRepository.findById(orderId)
+                .filter(order -> "PENDING".equals(order.getStatus()) || "RESERVED".equals(order.getStatus()))
+                .flatMap(order -> {
+                    order.setStatus("CONFIRMED");
+                    Flux<OrderItem> itemsToUpdate = Flux.fromIterable(order.getItems())
+                            .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING ||
+                                    item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
+                                    item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
+                            .flatMap(item -> {
+                                item.setStatus(OrderItem.OrderItemStatus.RESERVED);
+                                return orderItemRepository.save(item);
+                            });
+
+                    return itemsToUpdate
+                            .then(orderRepository.save(order))
+                            .flatMap(saved -> {
+                                List<OrderEvent.OrderItem> eventItems = saved.getItems().stream()
+                                        .map(item -> new OrderEvent.OrderItem(
+                                                item.getId(),
+                                                item.getProductId(),
+                                                item.getVariantId(),
+                                                item.getProductName(),
+                                                item.getSkuCode(),
+                                                item.getQuantityOrdered(),
+                                                item.getQuantityShipped(),
+                                                item.getUnitPrice(),
+                                                mapToEventItemStatus(item.getStatus()),
+                                                item.getReservedAt()))
+                                        .collect(Collectors.toList());
+
+                                OrderEvent confirmedEvent = OrderEvent.confirmed(order.getId(), order.getCustomerId(),
+                                        null, order.getTotalAmount(), eventItems);
+                                publishOrderEvent(confirmedEvent);
+
+                                return Mono.empty();
+                            });
+                })
+                .switchIfEmpty(Mono.empty());
+    }
+
+    @Transactional
+    public Mono<Void> handlePaymentFailed(Long orderId) {
+        log.info("Handling payment failed for order: {}", orderId);
+        return orderRepository.findById(orderId)
+                .filter(order -> "PENDING".equals(order.getStatus()) || "RESERVED".equals(order.getStatus()))
+                .flatMap(order -> {
+                    order.setStatus("CANCELLED");
+                    Flux<OrderItem> itemsToUpdate = Flux.fromIterable(order.getItems())
+                            .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING ||
+                                    item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
+                                    item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
+                            .flatMap(item -> {
+                                item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                                return orderItemRepository.save(item);
+                            });
+
+                    return itemsToUpdate
+                            .then(orderRepository.save(order))
+                            .flatMap(saved -> {
+                                List<OrderEvent.OrderItem> eventItems = saved.getItems().stream()
+                                        .map(item -> new OrderEvent.OrderItem(
+                                                item.getId(),
+                                                item.getProductId(),
+                                                item.getVariantId(),
+                                                item.getProductName(),
+                                                item.getSkuCode(),
+                                                item.getQuantityOrdered(),
+                                                item.getQuantityShipped(),
+                                                item.getUnitPrice(),
+                                                mapToEventItemStatus(item.getStatus()),
+                                                item.getReservedAt()))
+                                        .collect(Collectors.toList());
+
+                                OrderEvent cancelledEvent = OrderEvent.cancelled(order.getId(), order.getCustomerId(),
+                                        null, eventItems);
+                                publishOrderEvent(cancelledEvent);
+
+                                return Mono.empty();
+                            });
+                })
+                .switchIfEmpty(Mono.empty());
+    }
+
+    @Transactional
+    public Mono<Void> handleReservationExpired(Long orderItemId) {
+        log.info("Handling reservation expired for orderItem: {}", orderItemId);
+        return orderItemRepository.findById(orderItemId)
+                .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.RESERVED)
+                .flatMap(item -> {
+                    item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                    return orderItemRepository.save(item)
+                            .flatMap(savedItem -> checkAndCancelOrderIfAllItemsCancelledOrBackordered(savedItem.getOrderId()));
+                })
+                .switchIfEmpty(Mono.empty());
+    }
+
+    private Mono<Void> checkAndTransitionOrderToReserved(Long orderId) {
+        return orderRepository.findById(orderId)
+                .filter(order -> "PENDING".equals(order.getStatus()))
+                .flatMap(order -> {
+                    return Flux.fromIterable(order.getItems())
+                            .all(item -> item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
+                                    item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED ||
+                                    item.getStatus() == OrderItem.OrderItemStatus.SHIPPED)
+                            .flatMap(allReservedOrBackordered -> {
+                                if (allReservedOrBackordered) {
+                                    order.setStatus("RESERVED");
+                                    return orderRepository.save(order)
+                                            .flatMap(saved -> {
+                                                OrderEvent updatedEvent = OrderEvent.statusChanged(saved.getId(), OrderEvent.OrderStatus.RESERVED);
+                                                publishOrderEvent(updatedEvent);
+                                                return Mono.empty();
+                                            });
+                                }
+                                return Mono.empty();
+                            });
+                })
+                .switchIfEmpty(Mono.empty());
+    }
+
+    private Mono<Void> checkAndCancelOrderIfAllItemsCancelledOrBackordered(Long orderId) {
+        return orderRepository.findById(orderId)
+                .flatMap(order -> {
+                    return Flux.fromIterable(order.getItems())
+                            .all(item -> item.getStatus() == OrderItem.OrderItemStatus.CANCELLED ||
+                                    item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
+                            .flatMap(allCancelledOrBackordered -> {
+                                if (allCancelledOrBackordered) {
+                                    order.setStatus("CANCELLED");
+                                    return orderRepository.save(order)
+                                            .flatMap(saved -> {
+                                                List<OrderEvent.OrderItem> eventItems = saved.getItems().stream()
+                                                        .map(item -> new OrderEvent.OrderItem(
+                                                                item.getId(),
+                                                                item.getProductId(),
+                                                                item.getVariantId(),
+                                                                item.getProductName(),
+                                                                item.getSkuCode(),
+                                                                item.getQuantityOrdered(),
+                                                                item.getQuantityShipped(),
+                                                                item.getUnitPrice(),
+                                                                mapToEventItemStatus(item.getStatus()),
+                                                                item.getReservedAt()))
+                                                        .collect(Collectors.toList());
+
+                                                OrderEvent cancelledEvent = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
+                                                        null, eventItems);
+                                                publishOrderEvent(cancelledEvent);
+
+                                                return Mono.empty();
+                                            });
+                                }
+                                return Mono.empty();
+                            });
+                })
+                .switchIfEmpty(Mono.empty());
     }
 }

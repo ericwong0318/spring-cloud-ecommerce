@@ -1,50 +1,46 @@
 package com.example.order.model;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-@Entity
-@Table(name = "order_items")
+@Table("order_items")
 public class OrderItem {
 
-    private static final long serialVersionUID = 1L;
-
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+    @Column("order_id")
+    private Long orderId;
 
-    @Column(name = "product_id", nullable = false)
+    @Column("product_id")
     private Long productId;
 
-    @Column(name = "variant_id")
+    @Column("variant_id")
     private Long variantId;
 
-    @Column(name = "sku_code", length = 100)
+    @Column("sku_code")
     private String skuCode;
 
-    @Column(nullable = false)
     private String productName;
 
-    @Column(name = "quantity_ordered", nullable = false)
+    @Column("quantity_ordered")
     private Integer quantityOrdered;
 
-    @Column(name = "quantity_shipped", nullable = false)
+    @Column("quantity_shipped")
     private Integer quantityShipped;
 
-    @Column(name = "reserved_at")
+    @Column("reserved_at")
     private LocalDateTime reservedAt;
 
-    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
+    @Column("unit_price")
     private BigDecimal unitPrice;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column("status")
     private OrderItemStatus status;
 
     public enum OrderItemStatus {
@@ -54,11 +50,11 @@ public class OrderItem {
     public OrderItem() {
     }
 
-    public OrderItem(Long id, Order order, Long productId, Long variantId, String skuCode,
+    public OrderItem(Long id, Long orderId, Long productId, Long variantId, String skuCode,
                      String productName, Integer quantityOrdered, Integer quantityShipped,
                      LocalDateTime reservedAt, BigDecimal unitPrice, OrderItemStatus status) {
         this.id = id;
-        this.order = order;
+        this.orderId = orderId;
         this.productId = productId;
         this.variantId = variantId;
         this.skuCode = skuCode;
@@ -78,12 +74,12 @@ public class OrderItem {
         this.id = id;
     }
 
-    public Order getOrder() {
-        return order;
+    public Long getOrderId() {
+        return orderId;
     }
 
-    public void setOrder(Order order) {
-        this.order = order;
+    public void setOrderId(Long orderId) {
+        this.orderId = orderId;
     }
 
     public Long getProductId() {
@@ -169,7 +165,7 @@ public class OrderItem {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != getClass()) return false;
+        if (o == null || getClass() != o.getClass()) return false;
         OrderItem orderItem = (OrderItem) o;
         return Objects.equals(id, orderItem.id);
     }

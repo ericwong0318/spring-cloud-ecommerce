@@ -6,6 +6,7 @@ import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
+import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -38,6 +39,9 @@ class OrderServiceTest {
     private OrderRepository orderRepository;
 
     @Mock
+    private OrderItemRepository orderItemRepository;
+
+    @Mock
     private OrderMapper orderMapper;
 
     @Mock
@@ -52,8 +56,8 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        orderService = new OrderService(orderRepository, null, null, orderMapper,
-                rabbitTemplate, objectMapper, "order.exchange");
+        orderService = new OrderService(orderRepository, orderItemRepository, orderMapper,
+                rabbitTemplate, objectMapper, "order.exchange", "ecommerce.events");
 
         orderDto = OrderDto.builder()
                 .id(1L)

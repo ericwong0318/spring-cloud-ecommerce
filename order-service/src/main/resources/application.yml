@@ -4,19 +4,13 @@ server:
 spring:
   application:
     name: order-service
-  datasource:
-    url: jdbc:postgresql://localhost:5432/order_db
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/order_db
     username: postgres
     password: postgres
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-    show-sql: false
+    pool:
+      initial-size: 5
+      max-size: 20
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -54,6 +48,9 @@ management:
   endpoint:
     health:
       show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 outbox:
   publisher:
@@ -66,9 +63,13 @@ rabbitmq:
   exchange:
     order: order.exchange
     payment: payment.exchange
+    inventory: inventory.exchange
+    ecommerce: ecommerce.events
   queue:
     order-events: order.events.queue
     payment-events: payment.events.queue
+    inventory-events: inventory.events.queue
+    reservation-expired: order.reservation.expired.queue
   routing-key:
     order-created: order.created
     order-updated: order.updated
@@ -77,3 +78,5 @@ rabbitmq:
     payment-captured: payment.captured
     payment-refunded: payment.refunded
     payment-failed: payment.failed
+    inventory-reserved: reserved
+    reservation-expired: reservation.expired

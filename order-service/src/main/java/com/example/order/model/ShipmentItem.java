@@ -1,35 +1,33 @@
 package com.example.order.model;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.util.Objects;
 
-@Entity
-@Table(name = "shipment_items")
+@Table("shipment_items")
 public class ShipmentItem {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shipment_id", nullable = false)
-    private Shipment shipment;
+    @Column("shipment_id")
+    private Long shipmentId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_item_id", nullable = false)
-    private OrderItem orderItem;
+    @Column("order_item_id")
+    private Long orderItemId;
 
-    @Column(name = "quantity", nullable = false)
+    @Column("quantity")
     private Integer quantity;
 
     public ShipmentItem() {
     }
 
-    public ShipmentItem(Long id, Shipment shipment, OrderItem orderItem, Integer quantity) {
+    public ShipmentItem(Long id, Long shipmentId, Long orderItemId, Integer quantity) {
         this.id = id;
-        this.shipment = shipment;
-        this.orderItem = orderItem;
+        this.shipmentId = shipmentId;
+        this.orderItemId = orderItemId;
         this.quantity = quantity;
     }
 
@@ -41,20 +39,20 @@ public class ShipmentItem {
         this.id = id;
     }
 
-    public Shipment getShipment() {
-        return shipment;
+    public Long getShipmentId() {
+        return shipmentId;
     }
 
-    public void setShipment(Shipment shipment) {
-        this.shipment = shipment;
+    public void setShipmentId(Long shipmentId) {
+        this.shipmentId = shipmentId;
     }
 
-    public OrderItem getOrderItem() {
-        return orderItem;
+    public Long getOrderItemId() {
+        return orderItemId;
     }
 
-    public void setOrderItem(OrderItem orderItem) {
-        this.orderItem = orderItem;
+    public void setOrderItemId(Long orderItemId) {
+        this.orderItemId = orderItemId;
     }
 
     public Integer getQuantity() {

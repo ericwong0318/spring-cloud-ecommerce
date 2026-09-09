@@ -16,8 +16,7 @@ public interface ShipmentItemMapper {
 
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "id", source = "id")
-    @Mapping(target = "orderItemId", source = "orderItem.id")
-    @Mapping(target = "productName", source = "orderItem.productName")
+    @Mapping(target = "orderItemId", source = "orderItemId")
     @Mapping(target = "quantity", source = "quantity")
     ShipmentItemDto toDto(ShipmentItem shipmentItem);
 

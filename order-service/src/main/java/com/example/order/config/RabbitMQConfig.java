@@ -15,8 +15,26 @@ public class RabbitMQConfig {
     @Value("${rabbitmq.exchange.order}")
     private String orderExchange;
 
+    @Value("${rabbitmq.exchange.payment}")
+    private String paymentExchange;
+
+    @Value("${rabbitmq.exchange.inventory}")
+    private String inventoryExchange;
+
+    @Value("${rabbitmq.exchange.ecommerce}")
+    private String ecommerceExchange;
+
     @Value("${rabbitmq.queue.order-events}")
     private String orderEventsQueue;
+
+    @Value("${rabbitmq.queue.payment-events}")
+    private String paymentEventsQueue;
+
+    @Value("${rabbitmq.queue.inventory-events}")
+    private String inventoryEventsQueue;
+
+    @Value("${rabbitmq.queue.reservation-expired}")
+    private String reservationExpiredQueue;
 
     @Value("${rabbitmq.routing-key.order-created}")
     private String orderCreatedRoutingKey;
@@ -26,12 +44,6 @@ public class RabbitMQConfig {
 
     @Value("${rabbitmq.routing-key.order-cancelled}")
     private String orderCancelledRoutingKey;
-
-    @Value("${rabbitmq.exchange.payment}")
-    private String paymentExchange;
-
-    @Value("${rabbitmq.queue.payment-events}")
-    private String paymentEventsQueue;
 
     @Value("${rabbitmq.routing-key.payment-authorized}")
     private String paymentAuthorizedRoutingKey;
@@ -45,14 +57,50 @@ public class RabbitMQConfig {
     @Value("${rabbitmq.routing-key.payment-failed}")
     private String paymentFailedRoutingKey;
 
+    @Value("${rabbitmq.routing-key.inventory-reserved}")
+    private String inventoryReservedRoutingKey;
+
+    @Value("${rabbitmq.routing-key.reservation-expired}")
+    private String reservationExpiredRoutingKey;
+
     @Bean
     public TopicExchange orderExchange() {
         return new TopicExchange(orderExchange, true, false);
     }
 
     @Bean
+    public TopicExchange paymentExchange() {
+        return new TopicExchange(paymentExchange, true, false);
+    }
+
+    @Bean
+    public TopicExchange inventoryExchange() {
+        return new TopicExchange(inventoryExchange, true, false);
+    }
+
+    @Bean
+    public TopicExchange ecommerceExchange() {
+        return new TopicExchange(ecommerceExchange, true, false);
+    }
+
+    @Bean
     public Queue orderEventsQueue() {
         return new Queue(orderEventsQueue, true);
+    }
+
+    @Bean
+    public Queue paymentEventsQueue() {
+        return new Queue(paymentEventsQueue, true);
+    }
+
+    @Bean
+    public Queue inventoryEventsQueue() {
+        return new Queue(inventoryEventsQueue, true);
+    }
+
+    @Bean
+    public Queue reservationExpiredQueue() {
+        return new Queue(reservationExpiredQueue, true);
     }
 
     @Bean
@@ -77,33 +125,59 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public DirectExchange paymentExchange() {
-        return new DirectExchange(paymentExchange, true, false);
+    public Binding paymentAuthorizedBinding() {
+        return BindingBuilder.bind(paymentEventsQueue())
+                .to(paymentExchange())
+                .with(paymentAuthorizedRoutingKey);
     }
 
     @Bean
-    public Queue paymentEventsQueue() {
-        return new Queue(paymentEventsQueue, true);
+    public Binding paymentCapturedBinding() {
+        return BindingBuilder.bind(paymentEventsQueue())
+                .to(paymentExchange())
+                .with(paymentCapturedRoutingKey);
     }
 
     @Bean
-    public Binding paymentAuthorizedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
-        return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with(paymentAuthorizedRoutingKey);
+    public Binding paymentRefundedBinding() {
+        return BindingBuilder.bind(paymentEventsQueue())
+                .to(paymentExchange())
+                .with(paymentRefundedRoutingKey);
     }
 
     @Bean
-    public Binding paymentCapturedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
-        return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with(paymentCapturedRoutingKey);
+    public Binding paymentFailedBinding() {
+        return BindingBuilder.bind(paymentEventsQueue())
+                .to(paymentExchange())
+                .with(paymentFailedRoutingKey);
     }
 
     @Bean
-    public Binding paymentRefundedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
-        return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with(paymentRefundedRoutingKey);
+    public Binding inventoryReservedBinding() {
+        return BindingBuilder.bind(inventoryEventsQueue())
+                .to(inventoryExchange())
+                .with(inventoryReservedRoutingKey);
     }
 
     @Bean
-    public Binding paymentFailedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
-        return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with(paymentFailedRoutingKey);
+    public Binding inventoryReleasedBinding() {
+        return BindingBuilder.bind(inventoryEventsQueue())
+                .to(inventoryExchange())
+                .with("released");
+    }
+
+    @Bean
+    public Binding inventoryConfirmedBinding() {
+        return BindingBuilder.bind(inventoryEventsQueue())
+                .to(inventoryExchange())
+                .with("confirmed");
+    }
+
+    @Bean
+    public Binding reservationExpiredBinding() {
+        return BindingBuilder.bind(reservationExpiredQueue())
+                .to(inventoryExchange())
+                .with(reservationExpiredRoutingKey);
     }
 
     @Bean

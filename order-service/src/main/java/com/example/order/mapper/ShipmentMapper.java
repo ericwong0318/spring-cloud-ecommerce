@@ -18,7 +18,7 @@ public interface ShipmentMapper {
 
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "id", source = "id")
-    @Mapping(target = "orderId", source = "order.id")
+    @Mapping(target = "orderId", source = "orderId")
     @Mapping(target = "trackingNumber", source = "trackingNumber")
     @Mapping(target = "carrier", source = "carrier")
     @Mapping(target = "status", source = "status")
@@ -30,6 +30,7 @@ public interface ShipmentMapper {
     ShipmentDto toDto(Shipment shipment);
 
     @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "orderId", source = "orderId")
     @Mapping(target = "trackingNumber", source = "trackingNumber")
     @Mapping(target = "carrier", source = "carrier")
     @Mapping(target = "status", source = "status")

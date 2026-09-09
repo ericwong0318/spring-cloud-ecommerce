@@ -1,87 +1,74 @@
 package com.example.order.model;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-@Entity
-@Table(name = "shipments")
+@Table("shipments")
 public class Shipment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+    @Column("order_id")
+    private Long orderId;
 
-    @Column(name = "tracking_number", nullable = false, length = 100)
+    @Column("tracking_number")
     private String trackingNumber;
 
-    @Column(name = "carrier", length = 50)
+    @Column("carrier")
     private String carrier;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column("status")
     private ShipmentStatus status;
 
-    @Column(name = "shipped_at")
+    @Column("shipped_at")
     private LocalDateTime shippedAt;
 
-    @Column(name = "delivered_at")
+    @Column("delivered_at")
     private LocalDateTime deliveredAt;
 
-    @OneToMany(mappedBy = "shipment", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ShipmentItem> items = new ArrayList<>();
-
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column("created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column("updated_at")
     private LocalDateTime updatedAt;
+
+    // Transient field for related entities
+    private transient List<ShipmentItem> items = new ArrayList<>();
 
     public Shipment() {
         this.status = ShipmentStatus.CREATED;
     }
 
-    public Shipment(Long id, Order order, String trackingNumber, String carrier, ShipmentStatus status,
+    public Shipment(Long id, Long orderId, String trackingNumber, String carrier, ShipmentStatus status,
                     LocalDateTime shippedAt, LocalDateTime deliveredAt, List<ShipmentItem> items,
                     LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
-        this.order = order;
+        this.orderId = orderId;
         this.trackingNumber = trackingNumber;
         this.carrier = carrier;
         this.status = status;
         this.shippedAt = shippedAt;
         this.deliveredAt = deliveredAt;
-        this.items = items;
+        this.items = items != null ? items : new ArrayList<>();
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
     public void addItem(ShipmentItem item) {
         items.add(item);
-        item.setShipment(this);
+        item.setShipmentId(this.id);
     }
 
     public void removeItem(ShipmentItem item) {
         items.remove(item);
-        item.setShipment(null);
+        item.setShipmentId(null);
     }
 
     public Long getId() {
@@ -92,12 +79,12 @@ public class Shipment {
         this.id = id;
     }
 
-    public Order getOrder() {
-        return order;
+    public Long getOrderId() {
+        return orderId;
     }
 
-    public void setOrder(Order order) {
-        this.order = order;
+    public void setOrderId(Long orderId) {
+        this.orderId = orderId;
     }
 
     public String getTrackingNumber() {
@@ -145,7 +132,7 @@ public class Shipment {
     }
 
     public void setItems(List<ShipmentItem> items) {
-        this.items = items;
+        this.items = items != null ? items : new ArrayList<>();
     }
 
     public LocalDateTime getCreatedAt() {
