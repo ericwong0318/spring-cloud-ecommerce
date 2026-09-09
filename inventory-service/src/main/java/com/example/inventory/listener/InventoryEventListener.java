@@ -24,8 +24,8 @@ public class InventoryEventListener {
     private final IdempotentEventProcessor idempotentEventProcessor;
 
     public InventoryEventListener(InventoryRepository inventoryRepository,
-                                  InventoryService inventoryService,
-                                  IdempotentEventProcessor idempotentEventProcessor) {
+                                   InventoryService inventoryService,
+                                   IdempotentEventProcessor idempotentEventProcessor) {
         this.inventoryRepository = inventoryRepository;
         this.inventoryService = inventoryService;
         this.idempotentEventProcessor = idempotentEventProcessor;
@@ -33,8 +33,14 @@ public class InventoryEventListener {
 
     @RabbitListener(queues = "${rabbitmq.queue.inventory-events}")
     @Transactional
-    public void handleProductEvent(ProductEvent event) {
-        idempotentEventProcessor.process(event, e -> handleProductEventInternal(e));
+    public void handleEvent(BaseEvent event) {
+        if (event instanceof ProductEvent) {
+            idempotentEventProcessor.process((ProductEvent) event, this::handleProductEventInternal);
+        } else if (event instanceof OrderEvent) {
+            idempotentEventProcessor.process((OrderEvent) event, this::handleOrderEventInternal);
+        } else {
+            log.debug("Unhandled event type: {}", event.getClass().getName());
+        }
     }
 
     private void handleProductEventInternal(ProductEvent event) {
@@ -45,12 +51,6 @@ public class InventoryEventListener {
             case UPDATED, VARIANT_UPDATED -> handleProductOrVariantUpdated(event);
             case DELETED, VARIANT_DELETED -> handleProductOrVariantDeleted(event);
         }
-    }
-
-    @RabbitListener(queues = "${rabbitmq.queue.inventory-events}")
-    @Transactional
-    public void handleOrderEvent(OrderEvent event) {
-        idempotentEventProcessor.process(event, this::handleOrderEventInternal);
     }
 
     private void handleOrderEventInternal(OrderEvent event) {
@@ -110,7 +110,6 @@ public class InventoryEventListener {
                 if (result.getBackordered() > 0) {
                     log.warn("Partial reservation for variant {}: reserved={}, backordered={}",
                             variantId, result.getReserved(), result.getBackordered());
-                    // Publish backorder info as part of RESERVED event (already included in event)
                 }
             }
         }

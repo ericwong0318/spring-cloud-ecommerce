@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableR2dbcRepositories(basePackages = "com.example.payment.repository")
+@EnableR2dbcRepositories(basePackages = {"com.example.payment.repository", "com.example.payment.event"})
 @EnableTransactionManagement
 public class PaymentServiceApplication {
 

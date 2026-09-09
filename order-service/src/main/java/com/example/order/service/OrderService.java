@@ -349,7 +349,8 @@ public class OrderService {
                                 return Mono.empty();
                             });
                 })
-                .switchIfEmpty(Mono.empty()));
+                .switchIfEmpty(Mono.empty());
+        }
     }
 
     public Mono<Void> handlePaymentFailed(Long orderId) {
