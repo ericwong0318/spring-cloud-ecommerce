@@ -39,41 +39,51 @@ This platform is a distributed E-Commerce system demonstrating modern microservi
 ### High-Level System Diagram
 
 ```
-                          ┌──────────────────────────┐
-                          │      Client (Browser)    │
-                          └────────────┬─────────────┘
-                                       │ HTTPS
-                                       ▼
-                          ┌──────────────────────────┐
-                          │   API Gateway :8080      │
-                          │  (Spring Cloud Gateway)  │
-                          │  + OAuth2 Resource Srv   │
-                          └────┬─────────┬───────┬───┘
-                               │         │       │
-                  ┌────────────┘         │       └────────────┐
-                  │   Auth Check         │                    │
-                  ▼                      ▼                    ▼
-      ┌──────────────────┐   ┌──────────────────┐  ┌──────────────────┐
-      │ Auth Server :9000│   │ Product Svc :8081│  │ Category Svc:8082│
-      │ (OAuth2/JWT)     │   │  (WebFlux + JPA) │  │  (WebMVC + JPA)  │
-      └──────────────────┘   └────────┬─────────┘  └────────┬─────────┘
-                                     │                     │
-                                     │   ┌─────────────────┘
-                                     │   │
-                                     ▼   ▼
-                          ┌────────────────────┐
-                          │  Order Svc :8083   │
-                          │ (WebFlux + R2DBC)  │
-                          └────────┬───────────┘
-                                   │ Reactive
-                                   ▼
-                          ┌────────────────────┐
-                          │  PostgreSQL DBs    │
-                          │  product_db,       │
-                          │  category_db,      │
-                          │  order_db,         │
-                          │  oauth2_db         │
-                          └────────────────────┘
+┌──────────────────────────┐
+      │      Client (Browser)    │
+      └────────────┬─────────────┘
+                   │ HTTPS
+                   ▼
+      ┌──────────────────────────┐
+      │   API Gateway :8080      │
+      │  (Spring Cloud Gateway)  │
+      │  + OAuth2 Resource Srv   │
+      └────┬─────────┬───────┬───┘
+           │         │       │
+   ┌───────┘         │       └───────────┐
+   │   Auth Check    │                   │
+   ▼                 ▼                   ▼
+┌────────────┐ ┌─────────────┐   ┌────────────────┐
+│ Auth Srv :9000│ │Product Svc :8081│   │Category Svc:8082│
+│ (OAuth2/JWT)  │ │ (WebFlux+JPA) │   │ (WebMVC+JPA)   │
+└────────────┘ └──────┬────────┘   └───────┬────────┘
+                     │                    │
+                     │   ┌────────────────┘
+                     │   │
+                     ▼   ▼
+          ┌────────────────────┐
+          │  Order Svc :8083   │
+          │ (WebFlux + R2DBC)  │
+          └────────┬───────────┘
+                   │ Reactive
+                   ▼
+          ┌─────────────────────────────────────┐
+          │  Payment Svc :8085  │ Inventory :8084│
+          │ (WebFlux + R2DBC)   │ (WebFlux+R2DBC) │
+          └────────┬────────────┴────────┬───────┘
+                   │                     │
+          ┌────────┴────────────┐        │
+          ▼                     ▼        ▼
+   ┌───────────────┐    ┌─────────────────┐
+   │ RabbitMQ      │    │ PostgreSQL DBs  │
+   │ (Event Bus)   │    │ product_db,     │
+   └───────────────┘    │ category_db,    │
+                        │ order_db,       │
+                        │ payment_db,     │
+                        │ inventory_db,   │
+                        │ notification_db,│
+                        │ oauth2_db       │
+                        └─────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
     │                    INFRASTRUCTURE LAYER                          │
@@ -110,7 +120,7 @@ This platform is a distributed E-Commerce system demonstrating modern microservi
 | Pattern | Implementation |
 |---------|----------------|
 | **Synchronous** | `WebClient` / `RestClient` between services |
-| **Asynchronous** | RabbitMQ for event-driven flows (order events, product events) |
+| **Asynchronous** | RabbitMQ for event-driven flows (order events, product events, payment events, inventory events) |
 | **Service Discovery** | Eureka + `@LoadBalanced` `RestClient` |
 | **Configuration** | `bootstrap.yml` → Config Server → Git repo |
 | **Security** | OAuth2 JWT validated at Gateway; propagated downstream |
@@ -174,7 +184,7 @@ A decoupled, event-driven architecture where:
 ### API Contracts
 
 - **OrderService** — `POST /orders` (creates Order + OrderItems), `PUT /orders/{id}/cancel`, `GET /orders/{id}`, `POST /orders/{id}/reserve` (internal), `POST /orders/{id}/capture` (internal)
-- **PaymentService** — `POST /payments/authorize`, `POST /payments/{id}/capture`, `POST /payments/{id}/refund`
+- **PaymentService** — `POST /api/v1/payments/authorize`, `POST /api/v1/payments/{id}/capture`, `POST /api/v1/payments/{id}/refund`
 - **Event consumption** — `ReservationExpiredEvent` consumed by `order-service` to transition Order to CANCELLED
 
 ---
@@ -190,14 +200,15 @@ A decoupled, event-driven architecture where:
 | **product** | 8081 | WebFlux + JPA | PostgreSQL (product_db) | Product catalog CRUD |
 | **category** | 8082 | WebMVC + JPA | PostgreSQL (category_db) | Category management CRUD |
 | **order-service** | 8083 | WebFlux + R2DBC | PostgreSQL (order_db) | Reactive order processing |
-  | **inventory-service** | 8084 | WebFlux + R2DBC | PostgreSQL (inventory_db) | Inventory management, stock reservation |
-  | **notification-service** | 8085 | WebFlux + JPA | PostgreSQL (notification_db) | Email notifications via RabbitMQ |
+| **inventory-service** | 8084 | WebFlux + R2DBC | PostgreSQL (inventory_db) | Inventory management, stock reservation |
+| **payment-service** | 8085 | WebFlux + R2DBC | PostgreSQL (payment_db) | Payment authorization, capture, refunds |
+| **notification-service** | 8086 | WebFlux + JPA | PostgreSQL (notification_db) | Email notifications via RabbitMQ |
 
 ### Service Dependencies & Start Order
 
 ```
 config-server  →  eureka-server  →  auth-server  →  gateway  →  business services
-     (8888)          (8761)           (9000)         (8080)    (8081/8082/8083/8084/8085)
+     (8888)          (8761)           (9000)         (8080)    (8081/8082/8083/8084/8085/8086)
 ```
 
 ---
@@ -252,7 +263,8 @@ curl http://localhost:8081/actuator/health   # product
 curl http://localhost:8082/actuator/health   # category
 curl http://localhost:8083/actuator/health   # order
 curl http://localhost:8084/actuator/health   # inventory
-curl http://localhost:8085/actuator/health   # notification
+curl http://localhost:8085/actuator/health   # payment
+curl http://localhost:8086/actuator/health   # notification
 ```
 
 ### Local Development (without Docker)
@@ -270,6 +282,7 @@ mvn spring-boot:run -pl product
 mvn spring-boot:run -pl category
 mvn spring-boot:run -pl order-service
 mvn spring-boot:run -pl inventory-service
+mvn spring-boot:run -pl payment-service
 mvn spring-boot:run -pl notification-service
 ```
 
@@ -317,7 +330,8 @@ Each service exposes OpenAPI/Swagger documentation:
 | Category | http://localhost:8082/swagger-ui.html | http://localhost:8082/v3/api-docs |
 | Order | http://localhost:8083/swagger-ui.html | http://localhost:8083/v3/api-docs |
 | Inventory | http://localhost:8084/swagger-ui.html | http://localhost:8084/v3/api-docs |
-| Notification | http://localhost:8085/swagger-ui.html | http://localhost:8085/v3/api-docs |
+| Payment | http://localhost:8085/swagger-ui.html | http://localhost:8085/v3/api-docs |
+| Notification | http://localhost:8086/swagger-ui.html | http://localhost:8086/v3/api-docs |
 | Auth | http://localhost:9000/swagger-ui.html | http://localhost:9000/v3/api-docs |
 
 ### Sample Product API
@@ -542,9 +556,10 @@ GitHub Actions (`.github/workflows/ci.yml`):
 | auth-server | 0 | 0 |
 | order-service | 12 | 0 |
 | inventory-service | 14 | 0 |
+| payment-service | 0 | 8 |
 | notification-service | 7 | 0 |
 | system-test | 0 | 4 (Testcontainers) |
-| **Total** | **34** | **7** |
+| **Total** | **35** | **15** |
 
 Test patterns:
 - **Unit** — `@SpringBootTest` with mocked dependencies (Mockito)
@@ -656,7 +671,8 @@ config-server (8888)
     → category (8082) 
     → order-service (8083) 
     → inventory-service (8084) 
-    → notification-service (8085)
+    → payment-service (8085) 
+    → notification-service (8086)
 ```
 
 ### Why This Order?
@@ -688,11 +704,12 @@ mvn spring-boot:run -pl auth-server
 # Terminal 4: Gateway (wait for auth-server health)
 mvn spring-boot:run -pl gateway
 
-# Terminals 5-9: Business services (any order after gateway)
+# Terminals 5-10: Business services (any order after gateway)
 mvn spring-boot:run -pl product
 mvn spring-boot:run -pl category
 mvn spring-boot:run -pl order-service
 mvn spring-boot:run -pl inventory-service
+mvn spring-boot:run -pl payment-service
 mvn spring-boot:run -pl notification-service
 ```
 
@@ -707,7 +724,8 @@ curl http://localhost:8081/actuator/health   # product
 curl http://localhost:8082/actuator/health   # category
 curl http://localhost:8083/actuator/health   # order-service
 curl http://localhost:8084/actuator/health   # inventory-service
-curl http://localhost:8085/actuator/health   # notification-service
+curl http://localhost:8085/actuator/health   # payment-service
+curl http://localhost:8086/actuator/health   # notification-service
 ```
 
 ### Common Startup Issues
