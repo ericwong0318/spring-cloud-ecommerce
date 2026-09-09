@@ -14,7 +14,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+
+import reactor.core.publisher.Mono;
+
+import java.util.stream.Collectors;
 
 @Component
 public class ReservationExpiredEventListener {
@@ -37,7 +40,6 @@ public class ReservationExpiredEventListener {
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.reservation-expired}")
-    @Transactional
     public void handleReservationExpiredEvent(ReservationExpiredEvent event) {
         idempotentEventProcessor.process(event, this::handleReservationExpiredEventInternal);
     }
@@ -51,53 +53,56 @@ public class ReservationExpiredEventListener {
             return;
         }
 
-        OrderItem orderItem = orderItemRepository.findById(event.getOrderItemId())
-                .orElse(null);
+        orderItemRepository.findById(event.getOrderItemId())
+                .switchIfEmpty(Mono.empty())
+                .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.RESERVED)
+                .flatMap(item -> {
+                    item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                    return orderItemRepository.save(item);
+                })
+                .flatMap(savedItem -> checkAndCancelOrderIfAllItemsCancelledOrBackordered(savedItem.getOrderId())
+                        .thenReturn(savedItem))
+                .doOnNext(item -> log.info("OrderItem {} cancelled due to reservation expiry", item.getId()))
+                .subscribe();
+    }
 
-        if (orderItem == null) {
-            log.warn("OrderItem not found for id: {}", event.getOrderItemId());
-            return;
-        }
+    private Mono<Void> checkAndCancelOrderIfAllItemsCancelledOrBackordered(Long orderId) {
+        return orderRepository.findById(orderId)
+                .flatMap(order -> orderItemRepository.findByOrderId(orderId).collectList()
+                        .flatMap(items -> {
+                            boolean allItemsCancelledOrBackordered = items.stream()
+                                    .allMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.CANCELLED ||
+                                            item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED);
 
-        // Only process if the item is in RESERVED status (already reserved but expired)
-        if (orderItem.getStatus() != OrderItem.OrderItemStatus.RESERVED) {
-            log.info("OrderItem {} is not in RESERVED status (current: {}), skipping cancellation",
-                    event.getOrderItemId(), orderItem.getStatus());
-            return;
-        }
+                            if (allItemsCancelledOrBackordered) {
+                                order.setStatus("CANCELLED");
+                                return orderRepository.save(order)
+                                        .doOnNext(saved -> {
+                                            log.info("Order {} cancelled due to all items being CANCELLED or BACKORDERED", saved.getId());
 
-        // Cancel the order item
-        orderItem.setStatus(OrderItem.OrderItemStatus.CANCELLED);
-        orderItemRepository.save(orderItem);
-        log.info("OrderItem {} cancelled due to reservation expiry", orderItem.getId());
-
-        // Check parent order
-        Order order = orderItem.getOrder();
-        boolean allItemsCancelledOrBackordered = order.getItems().stream()
-                .allMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.CANCELLED ||
-                        item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED);
-
-        if (allItemsCancelledOrBackordered) {
-            order.setStatus("CANCELLED");
-            orderRepository.save(order);
-            log.info("Order {} cancelled due to all items being CANCELLED or BACKORDERED", order.getId());
-
-            // Publish OrderEvent.CANCELLED
-            OrderEvent cancelledEvent = OrderEvent.cancelled(order.getId(), order.getCustomerId(),
-                    null, order.getItems().stream()
-                            .map(item -> new OrderEvent.OrderItem(
-                                    item.getId(),
-                                    item.getProductId(),
-                                    item.getVariantId(),
-                                    item.getProductName(),
-                                    item.getSkuCode(),
-                                    item.getQuantityOrdered(),
-                                    item.getQuantityShipped(),
-                                    item.getUnitPrice(),
-                                    OrderEvent.OrderItemStatus.valueOf(item.getStatus().name()),
-                                    item.getReservedAt()))
-                            .toList());
-            orderService.publishOrderEvent(cancelledEvent);
-        }
+                                            // Publish OrderEvent.CANCELLED
+                                            orderItemRepository.findByOrderId(orderId).collectList()
+                                                    .subscribe(cancelledItems -> {
+                                                        OrderEvent cancelledEvent = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
+                                                                null, cancelledItems.stream()
+                                                                        .map(item -> new OrderEvent.OrderItem(
+                                                                                item.getId(),
+                                                                                item.getProductId(),
+                                                                                item.getVariantId(),
+                                                                                item.getProductName(),
+                                                                                item.getSkuCode(),
+                                                                                item.getQuantityOrdered(),
+                                                                                item.getQuantityShipped(),
+                                                                                item.getUnitPrice(),
+                                                                                OrderEvent.OrderItemStatus.valueOf(item.getStatus().name()),
+                                                                                item.getReservedAt()))
+                                                                        .collect(Collectors.toList()));
+                                                        orderService.publishOrderEvent(cancelledEvent);
+                                                    });
+                                        })
+                                        .then();
+                            }
+                            return Mono.empty();
+                        }));
     }
 }

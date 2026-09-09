@@ -25,6 +25,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -63,7 +66,7 @@ class ReservationExpiredEventListenerTest {
 
         item1 = new OrderItem();
         ReflectionTestUtils.setField(item1, "id", 1L);
-        ReflectionTestUtils.setField(item1, "order", order);
+        ReflectionTestUtils.setField(item1, "orderId", 1L);
         ReflectionTestUtils.setField(item1, "productId", 1L);
         ReflectionTestUtils.setField(item1, "variantId", 1L);
         ReflectionTestUtils.setField(item1, "skuCode", "LAPTOP-13-SILVER");
@@ -76,7 +79,7 @@ class ReservationExpiredEventListenerTest {
 
         item2 = new OrderItem();
         ReflectionTestUtils.setField(item2, "id", 2L);
-        ReflectionTestUtils.setField(item2, "order", order);
+        ReflectionTestUtils.setField(item2, "orderId", 1L);
         ReflectionTestUtils.setField(item2, "productId", 2L);
         ReflectionTestUtils.setField(item2, "variantId", 2L);
         ReflectionTestUtils.setField(item2, "skuCode", "MOUSE-WIRELESS");
@@ -120,13 +123,18 @@ class ReservationExpiredEventListenerTest {
         // So we need to set item2 to CANCELLED or BACKORDERED as well
         ReflectionTestUtils.setField(item2, "status", OrderItem.OrderItemStatus.BACKORDERED);
 
-        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(item1));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1);
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(orderItemRepository.findById(1L)).thenReturn(Mono.just(item1));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1));
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
+        when(orderItemRepository.findByOrderId(1L)).thenReturn(Flux.just(item1, item2));
 
         mockIdempotentProcessor(event);
 
         listener.handleReservationExpiredEvent(event);
+
+        // Allow async operations to complete
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
 
         verify(orderItemRepository).findById(1L);
         verify(orderItemRepository).save(argThat(i -> i.getStatus() == OrderItem.OrderItemStatus.CANCELLED));
@@ -141,9 +149,9 @@ class ReservationExpiredEventListenerTest {
 
         ReservationExpiredEvent event = createReservationExpiredEvent(1L, 1L);
 
-        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(item1));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1);
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(orderItemRepository.findById(1L)).thenReturn(Mono.just(item1));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1));
+        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
 
         mockIdempotentProcessor(event);
 
@@ -157,7 +165,7 @@ class ReservationExpiredEventListenerTest {
     void handleReservationExpiredEvent_shouldSkip_whenItemNotFound() {
         ReservationExpiredEvent event = createReservationExpiredEvent(999L, 1L);
 
-        when(orderItemRepository.findById(999L)).thenReturn(Optional.empty());
+        when(orderItemRepository.findById(999L)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
@@ -174,7 +182,7 @@ class ReservationExpiredEventListenerTest {
 
         ReservationExpiredEvent event = createReservationExpiredEvent(1L, 1L);
 
-        when(orderItemRepository.findById(1L)).thenReturn(Optional.of(item1));
+        when(orderItemRepository.findById(1L)).thenReturn(Mono.just(item1));
 
         mockIdempotentProcessor(event);
 

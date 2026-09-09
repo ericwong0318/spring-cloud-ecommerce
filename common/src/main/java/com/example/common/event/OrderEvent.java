@@ -431,7 +431,7 @@ public class OrderEvent implements BaseEvent {
     }
 
     public enum OrderStatus {
-        PENDING, RESERVED, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
+        PENDING, RESERVED, PAID, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
     }
 
     public enum OrderItemStatus {
@@ -521,6 +521,21 @@ public static OrderEvent delivered(Long orderId, String customerId, String custo
                 .customerEmail(customerEmail)
                 .totalAmount(totalAmount)
                 .status(OrderStatus.CONFIRMED)
+                .items(items)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    public static OrderEvent paid(Long orderId, String customerId, String customerEmail,
+                                  BigDecimal totalAmount, List<OrderItem> items) {
+        return OrderEvent.builder()
+                .eventType(EventType.CONFIRMED.name())
+                .eventId(UUID.randomUUID())
+                .orderId(orderId)
+                .customerId(customerId)
+                .customerEmail(customerEmail)
+                .totalAmount(totalAmount)
+                .status(OrderStatus.PAID)
                 .items(items)
                 .timestamp(LocalDateTime.now())
                 .build();

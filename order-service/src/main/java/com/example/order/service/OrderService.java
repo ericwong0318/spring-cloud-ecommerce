@@ -13,8 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.r2dbc.connection.R2dbcTransactionManager;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.reactive.TransactionalOperator;
+import org.springframework.transaction.reactive.TransactionCallback;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,10 +41,12 @@ public class OrderService {
     private final ObjectMapper objectMapper;
     private final String orderExchange;
     private final String ecommerceExchange;
+    private final TransactionalOperator transactionalOperator;
 
     public OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository,
                         OrderMapper orderMapper,
                         RabbitTemplate rabbitTemplate, ObjectMapper objectMapper,
+                        R2dbcTransactionManager transactionManager,
                         @Value("${rabbitmq.exchange.order}") String orderExchange,
                         @Value("${rabbitmq.exchange.ecommerce}") String ecommerceExchange) {
         this.orderRepository = orderRepository;
@@ -52,6 +56,23 @@ public class OrderService {
         this.objectMapper = objectMapper;
         this.orderExchange = orderExchange;
         this.ecommerceExchange = ecommerceExchange;
+        this.transactionalOperator = TransactionalOperator.create(transactionManager);
+    }
+
+    // Test-only constructor
+    OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository,
+                 OrderMapper orderMapper,
+                 RabbitTemplate rabbitTemplate, ObjectMapper objectMapper,
+                 TransactionalOperator transactionalOperator,
+                 String orderExchange, String ecommerceExchange) {
+        this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.orderMapper = orderMapper;
+        this.rabbitTemplate = rabbitTemplate;
+        this.objectMapper = objectMapper;
+        this.orderExchange = orderExchange;
+        this.ecommerceExchange = ecommerceExchange;
+        this.transactionalOperator = transactionalOperator;
     }
 
     public Flux<OrderDto> getAllOrders() {
@@ -77,15 +98,14 @@ public class OrderService {
         return OrderEvent.OrderItemStatus.valueOf(status.name());
     }
 
-    private OrderEvent.OrderStatus mapToEventOrderStatus(String status) {
-        return OrderEvent.OrderStatus.valueOf(status);
+    private OrderEvent.OrderStatus mapToEventOrderStatus(OrderEvent.OrderStatus status) {
+        return status;
     }
 
-    @Transactional
     public Mono<OrderDto> createOrder(OrderDto orderDto) {
         log.info("Creating order for customer: {}", orderDto.getCustomerId());
         Order order = orderMapper.toEntity(orderDto);
-        order.setStatus("PENDING");
+        order.setStatus(OrderEvent.OrderStatus.PENDING.name());
         if (order.getTotalAmount() == null) {
             order.setTotalAmount(java.math.BigDecimal.ZERO);
         }
@@ -109,7 +129,7 @@ public class OrderService {
             }
         }
 
-        return orderRepository.save(order)
+        return transactionalOperator.transactional(orderRepository.save(order))
                 .flatMap(saved -> {
                     // Publish OrderEvent.CREATED to RabbitMQ direct
                     List<OrderEvent.OrderItem> eventItems = saved.getItems().stream()
@@ -141,10 +161,9 @@ public class OrderService {
                 .map(orderMapper::toDto);
     }
 
-    @Transactional
     public Mono<OrderDto> updateOrder(Long id, OrderDto orderDto) {
         log.info("Updating order id: {}", id);
-        return orderRepository.findById(id)
+        return transactionalOperator.transactional(orderRepository.findById(id)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", id)))
                 .flatMap(existing -> {
                     existing.setStatus(orderDto.getStatus().name());
@@ -154,7 +173,7 @@ public class OrderService {
                 })
                 .flatMap(saved -> {
                     try {
-                        String jsonPayload = objectMapper.writeValueAsString(OrderEvent.statusChanged(saved.getId(), mapToEventOrderStatus(saved.getStatus())));
+                        String jsonPayload = objectMapper.writeValueAsString(OrderEvent.statusChanged(saved.getId(), mapToEventOrderStatus(OrderEvent.OrderStatus.valueOf(saved.getStatus()))));
                         rabbitTemplate.convertAndSend(orderExchange, "order.updated", jsonPayload);
                         log.info("Published OrderEvent.UPDATED to RabbitMQ for order: {}", saved.getId());
                     } catch (JsonProcessingException e) {
@@ -163,19 +182,18 @@ public class OrderService {
                     }
                     return Mono.just(saved);
                 })
-                .map(orderMapper::toDto);
+                .map(orderMapper::toDto));
     }
 
-    @Transactional
     public Mono<Void> deleteOrder(Long id) {
         log.info("Deleting order id: {}", id);
-        return orderRepository.existsById(id)
+        return transactionalOperator.transactional(orderRepository.existsById(id)
                 .flatMap(exists -> {
                     if (!exists) {
                         return Mono.error(new ResourceNotFoundException("Order", id));
                     }
                     return orderRepository.deleteById(id);
-                });
+                }));
     }
 
     public void publishOrderEvent(OrderEvent event) {
@@ -201,18 +219,18 @@ public class OrderService {
         }
     }
 
-    @Transactional
     public Mono<OrderDto> cancelOrder(Long id) {
         log.info("Cancelling order id: {}", id);
-        return orderRepository.findById(id)
+        return transactionalOperator.transactional(orderRepository.findById(id)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", id)))
                 .flatMap(order -> {
-                    if (!"PENDING".equals(order.getStatus()) && !"RESERVED".equals(order.getStatus())) {
+                    if (!OrderEvent.OrderStatus.PENDING.name().equals(order.getStatus()) &&
+                            !OrderEvent.OrderStatus.RESERVED.name().equals(order.getStatus())) {
                         log.warn("Order {} cannot be cancelled from status: {}", id, order.getStatus());
                         return Mono.error(new IllegalStateException("Order cannot be cancelled from status: " + order.getStatus()));
                     }
 
-                    order.setStatus("CANCELLED");
+                    order.setStatus(OrderEvent.OrderStatus.CANCELLED.name());
 
                     // Cancel all items that are not already shipped or cancelled
                     Flux<OrderItem> itemsToUpdate = Flux.fromIterable(order.getItems())
@@ -247,12 +265,11 @@ public class OrderService {
 
                                 return Mono.just(orderMapper.toDto(saved));
                             });
-                });
+                }));
     }
 
     // Saga orchestrator methods
 
-    @Transactional
     public Mono<Void> handleInventoryReserved(Long variantId, Integer reservedQuantity, Integer backorderedQuantity) {
         log.info("Handling inventory reserved for variant: {}, reserved={}, backordered={}", variantId, reservedQuantity, backorderedQuantity);
 
@@ -280,25 +297,25 @@ public class OrderService {
         return Mono.empty();
     }
 
-    @Transactional
     public Mono<Void> handlePaymentAuthorized(Long orderId) {
         log.info("Handling payment authorized for order: {}", orderId);
-        return orderRepository.findById(orderId)
+        return transactionalOperator.transactional(orderRepository.findById(orderId)
+                .filter(order -> OrderEvent.OrderStatus.PENDING.name().equals(order.getStatus()) ||
+                        OrderEvent.OrderStatus.RESERVED.name().equals(order.getStatus()))
                 .flatMap(order -> {
-                    if ("PENDING".equals(order.getStatus()) || "RESERVED".equals(order.getStatus())) {
-                        log.info("Payment authorized for order {}, waiting for capture", orderId);
-                    }
+                    // Payment authorized - order can proceed to confirmation after capture
+                    log.info("Payment authorized for order {}, waiting for capture", orderId);
                     return Mono.empty();
-                });
+                }));
     }
 
-    @Transactional
     public Mono<Void> handlePaymentCaptured(Long orderId, BigDecimal capturedAmount) {
         log.info("Handling payment captured for order: {}, amount={}", orderId, capturedAmount);
-        return orderRepository.findById(orderId)
-                .filter(order -> "PENDING".equals(order.getStatus()) || "RESERVED".equals(order.getStatus()))
+        return transactionalOperator.transactional(orderRepository.findById(orderId)
+                .filter(order -> OrderEvent.OrderStatus.PENDING.name().equals(order.getStatus()) ||
+                        OrderEvent.OrderStatus.RESERVED.name().equals(order.getStatus()))
                 .flatMap(order -> {
-                    order.setStatus("CONFIRMED");
+                    order.setStatus(OrderEvent.OrderStatus.PAID.name());
                     Flux<OrderItem> itemsToUpdate = Flux.fromIterable(order.getItems())
                             .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING ||
                                     item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
@@ -332,16 +349,16 @@ public class OrderService {
                                 return Mono.empty();
                             });
                 })
-                .switchIfEmpty(Mono.empty());
+                .switchIfEmpty(Mono.empty()));
     }
 
-    @Transactional
     public Mono<Void> handlePaymentFailed(Long orderId) {
         log.info("Handling payment failed for order: {}", orderId);
-        return orderRepository.findById(orderId)
-                .filter(order -> "PENDING".equals(order.getStatus()) || "RESERVED".equals(order.getStatus()))
+        return transactionalOperator.transactional(orderRepository.findById(orderId)
+                .filter(order -> OrderEvent.OrderStatus.PENDING.name().equals(order.getStatus()) ||
+                        OrderEvent.OrderStatus.RESERVED.name().equals(order.getStatus()))
                 .flatMap(order -> {
-                    order.setStatus("CANCELLED");
+                    order.setStatus(OrderEvent.OrderStatus.CANCELLED.name());
                     Flux<OrderItem> itemsToUpdate = Flux.fromIterable(order.getItems())
                             .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING ||
                                     item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
@@ -378,7 +395,6 @@ public class OrderService {
                 .switchIfEmpty(Mono.empty());
     }
 
-    @Transactional
     public Mono<Void> handleReservationExpired(Long orderItemId) {
         log.info("Handling reservation expired for orderItem: {}", orderItemId);
         return orderItemRepository.findById(orderItemId)
@@ -391,9 +407,21 @@ public class OrderService {
                 .switchIfEmpty(Mono.empty());
     }
 
+    public Mono<Void> handleReservationExpired(Long orderItemId) {
+        log.info("Handling reservation expired for orderItem: {}", orderItemId);
+        return transactionalOperator.transactional(orderItemRepository.findById(orderItemId)
+                .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.RESERVED)
+                .flatMap(item -> {
+                    item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                    return orderItemRepository.save(item)
+                            .flatMap(savedItem -> checkAndCancelOrderIfAllItemsCancelledOrBackordered(savedItem.getOrderId()));
+                })
+                .switchIfEmpty(Mono.empty()));
+    }
+
     private Mono<Void> checkAndTransitionOrderToReserved(Long orderId) {
-        return orderRepository.findById(orderId)
-                .filter(order -> "PENDING".equals(order.getStatus()))
+        return transactionalOperator.transactional(orderRepository.findById(orderId)
+                .filter(order -> OrderEvent.OrderStatus.PENDING.name().equals(order.getStatus()))
                 .flatMap(order -> {
                     return Flux.fromIterable(order.getItems())
                             .all(item -> item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
@@ -401,7 +429,7 @@ public class OrderService {
                                     item.getStatus() == OrderItem.OrderItemStatus.SHIPPED)
                             .flatMap(allReservedOrBackordered -> {
                                 if (allReservedOrBackordered) {
-                                    order.setStatus("RESERVED");
+                                    order.setStatus(OrderEvent.OrderStatus.RESERVED.name());
                                     return orderRepository.save(order)
                                             .flatMap(saved -> {
                                                 OrderEvent updatedEvent = OrderEvent.statusChanged(saved.getId(), OrderEvent.OrderStatus.RESERVED);
@@ -412,18 +440,18 @@ public class OrderService {
                                 return Mono.empty();
                             });
                 })
-                .switchIfEmpty(Mono.empty());
+                .switchIfEmpty(Mono.empty()));
     }
 
     private Mono<Void> checkAndCancelOrderIfAllItemsCancelledOrBackordered(Long orderId) {
-        return orderRepository.findById(orderId)
+        return transactionalOperator.transactional(orderRepository.findById(orderId)
                 .flatMap(order -> {
                     return Flux.fromIterable(order.getItems())
                             .all(item -> item.getStatus() == OrderItem.OrderItemStatus.CANCELLED ||
                                     item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
                             .flatMap(allCancelledOrBackordered -> {
                                 if (allCancelledOrBackordered) {
-                                    order.setStatus("CANCELLED");
+                                    order.setStatus(OrderEvent.OrderStatus.CANCELLED.name());
                                     return orderRepository.save(order)
                                             .flatMap(saved -> {
                                                 List<OrderEvent.OrderItem> eventItems = saved.getItems().stream()
@@ -450,6 +478,6 @@ public class OrderService {
                                 return Mono.empty();
                             });
                 })
-                .switchIfEmpty(Mono.empty());
+                .switchIfEmpty(Mono.empty()));
     }
 }

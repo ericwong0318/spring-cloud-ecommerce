@@ -25,6 +25,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import reactor.core.publisher.Mono;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -64,7 +66,7 @@ class PaymentEventListenerTest {
 
         item1 = new OrderItem();
         ReflectionTestUtils.setField(item1, "id", 1L);
-        ReflectionTestUtils.setField(item1, "order", order);
+        ReflectionTestUtils.setField(item1, "orderId", 1L);
         ReflectionTestUtils.setField(item1, "productId", 1L);
         ReflectionTestUtils.setField(item1, "variantId", 1L);
         ReflectionTestUtils.setField(item1, "skuCode", "LAPTOP-13-SILVER");
@@ -77,7 +79,7 @@ class PaymentEventListenerTest {
 
         item2 = new OrderItem();
         ReflectionTestUtils.setField(item2, "id", 2L);
-        ReflectionTestUtils.setField(item2, "order", order);
+        ReflectionTestUtils.setField(item2, "orderId", 1L);
         ReflectionTestUtils.setField(item2, "productId", 2L);
         ReflectionTestUtils.setField(item2, "variantId", 2L);
         ReflectionTestUtils.setField(item2, "skuCode", "MOUSE-WIRELESS");
@@ -121,9 +123,9 @@ class PaymentEventListenerTest {
     void handlePaymentCaptured_shouldTransitionOrderToConfirmedAndItemsToReserved() {
         PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1).thenReturn(item2);
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1)).thenReturn(Mono.just(item2));
 
         mockIdempotentProcessor(event);
 
@@ -140,7 +142,7 @@ class PaymentEventListenerTest {
         PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
         ReflectionTestUtils.setField(order, "status", "CONFIRMED");
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
 
         mockIdempotentProcessor(event);
 
@@ -156,9 +158,9 @@ class PaymentEventListenerTest {
     void handlePaymentFailed_shouldTransitionOrderToCancelledAndItemsToCancelled() {
         PaymentEvent event = createPaymentEvent("FAILED", PaymentEvent.PaymentStatus.FAILED);
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1).thenReturn(item2);
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1)).thenReturn(Mono.just(item2));
 
         mockIdempotentProcessor(event);
 
@@ -175,7 +177,7 @@ class PaymentEventListenerTest {
         PaymentEvent event = createPaymentEvent("FAILED", PaymentEvent.PaymentStatus.FAILED);
         ReflectionTestUtils.setField(order, "status", "CONFIRMED");
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
 
         mockIdempotentProcessor(event);
 
@@ -195,9 +197,9 @@ class PaymentEventListenerTest {
 
         PaymentEvent event = createPaymentEvent("REFUNDED", PaymentEvent.PaymentStatus.REFUNDED);
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1).thenReturn(item2);
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1)).thenReturn(Mono.just(item2));
 
         mockIdempotentProcessor(event);
 
@@ -216,8 +218,8 @@ class PaymentEventListenerTest {
 
         PaymentEvent event = createPaymentEvent("REFUNDED", PaymentEvent.PaymentStatus.PARTIALLY_REFUNDED);
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1);
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1));
 
         mockIdempotentProcessor(event);
 
@@ -248,9 +250,9 @@ class PaymentEventListenerTest {
         PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
         ReflectionTestUtils.setField(event, "eventId", null);
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1).thenReturn(item2);
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1)).thenReturn(Mono.just(item2));
 
         mockIdempotentProcessor(event);
 

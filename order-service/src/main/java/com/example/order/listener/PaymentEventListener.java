@@ -16,6 +16,8 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import reactor.core.publisher.Mono;
+
 @Component
 public class PaymentEventListener {
 
@@ -69,124 +71,142 @@ public class PaymentEventListener {
     private void handlePaymentCaptured(PaymentEvent event) {
         log.info("Handling payment captured for order: {}", event.getOrderId());
 
-        Order order = orderRepository.findById(event.getOrderId())
-                .orElseThrow(() -> new ResourceNotFoundException("Order", event.getOrderId()));
+        orderRepository.findById(event.getOrderId())
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", event.getOrderId())))
+                .flatMap(order -> {
+                    if (!"PENDING".equals(order.getStatus())) {
+                        log.info("Order {} is not in PENDING state (current: {}), skipping confirmation", event.getOrderId(), order.getStatus());
+                        return Mono.empty();
+                    }
 
-        if (!"PENDING".equals(order.getStatus())) {
-            log.info("Order {} is not in PENDING state (current: {}), skipping confirmation", event.getOrderId(), order.getStatus());
-            return;
-        }
+                    order.setStatus("CONFIRMED");
+                    return orderRepository.save(order)
+                            .flatMap(saved -> {
+                                for (OrderItem item : saved.getItems()) {
+                                    if (item.getStatus() == OrderItem.OrderItemStatus.PENDING) {
+                                        item.setStatus(OrderItem.OrderItemStatus.RESERVED);
+                                        orderItemRepository.save(item).subscribe();
+                                    }
+                                }
+                                log.info("Order {} transitioned to CONFIRMED, items updated to RESERVED", event.getOrderId());
 
-        order.setStatus("CONFIRMED");
-        orderRepository.save(order);
-
-        for (OrderItem item : order.getItems()) {
-            if (item.getStatus() == OrderItem.OrderItemStatus.PENDING) {
-                item.setStatus(OrderItem.OrderItemStatus.RESERVED);
-                orderItemRepository.save(item);
-            }
-        }
-
-        log.info("Order {} transitioned to CONFIRMED, items updated to RESERVED", event.getOrderId());
-
-        OrderEvent updatedEvent = OrderEvent.statusChanged(event.getOrderId(), OrderEvent.OrderStatus.CONFIRMED);
-        orderService.publishOrderEvent(updatedEvent);
+                                OrderEvent updatedEvent = OrderEvent.statusChanged(event.getOrderId(), OrderEvent.OrderStatus.CONFIRMED);
+                                orderService.publishOrderEvent(updatedEvent);
+                                return Mono.empty();
+                            });
+                })
+                .subscribe();
     }
 
     private void handlePaymentFailed(PaymentEvent event) {
         log.info("Handling payment failed for order: {}", event.getOrderId());
 
-        Order order = orderRepository.findById(event.getOrderId())
-                .orElseThrow(() -> new ResourceNotFoundException("Order", event.getOrderId()));
+        orderRepository.findById(event.getOrderId())
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", event.getOrderId())))
+                .flatMap(order -> {
+                    if (!"PENDING".equals(order.getStatus())) {
+                        log.info("Order {} is not in PENDING state (current: {}), skipping cancellation", event.getOrderId(), order.getStatus());
+                        return Mono.empty();
+                    }
 
-        if (!"PENDING".equals(order.getStatus())) {
-            log.info("Order {} is not in PENDING state (current: {}), skipping cancellation", event.getOrderId(), order.getStatus());
-            return;
-        }
+                    order.setStatus("CANCELLED");
+                    return orderRepository.save(order)
+                            .flatMap(saved -> {
+                                for (OrderItem item : saved.getItems()) {
+                                    if (item.getStatus() == OrderItem.OrderItemStatus.PENDING) {
+                                        item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                                        orderItemRepository.save(item).subscribe();
+                                    }
+                                }
+                                log.info("Order {} transitioned to CANCELLED, items updated to CANCELLED", event.getOrderId());
 
-        order.setStatus("CANCELLED");
-        orderRepository.save(order);
-
-        for (OrderItem item : order.getItems()) {
-            if (item.getStatus() == OrderItem.OrderItemStatus.PENDING) {
-                item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
-                orderItemRepository.save(item);
-            }
-        }
-
-        log.info("Order {} transitioned to CANCELLED, items updated to CANCELLED", event.getOrderId());
-
-        OrderEvent cancelledEvent = OrderEvent.cancelled(event.getOrderId(),
-                order.getCustomerId(), null, order.getItems().stream()
-                        .map(item -> new OrderEvent.OrderItem(
-                                item.getId(),
-                                item.getProductId(),
-                                item.getVariantId(),
-                                item.getProductName(),
-                                item.getSkuCode(),
-                                item.getQuantityOrdered(),
-                                item.getQuantityShipped(),
-                                item.getUnitPrice(),
-                                OrderEvent.OrderItemStatus.valueOf(item.getStatus().name()),
-                                item.getReservedAt()))
-                        .toList());
-        orderService.publishOrderEvent(cancelledEvent);
+                                OrderEvent cancelledEvent = OrderEvent.cancelled(event.getOrderId(),
+                                        saved.getCustomerId(), null, saved.getItems().stream()
+                                                .map(item -> new OrderEvent.OrderItem(
+                                                        item.getId(),
+                                                        item.getProductId(),
+                                                        item.getVariantId(),
+                                                        item.getProductName(),
+                                                        item.getSkuCode(),
+                                                        item.getQuantityOrdered(),
+                                                        item.getQuantityShipped(),
+                                                        item.getUnitPrice(),
+                                                        OrderEvent.OrderItemStatus.valueOf(item.getStatus().name()),
+                                                        item.getReservedAt()))
+                                                .toList());
+                                orderService.publishOrderEvent(cancelledEvent);
+                                return Mono.empty();
+                            });
+                })
+                .subscribe();
     }
 
     private void handlePaymentRefunded(PaymentEvent event) {
         log.info("Handling payment refunded for order: {}", event.getOrderId());
 
-        Order order = orderRepository.findById(event.getOrderId())
-                .orElseThrow(() -> new ResourceNotFoundException("Order", event.getOrderId()));
+        orderRepository.findById(event.getOrderId())
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", event.getOrderId())))
+                .flatMap(order -> {
+                    if (!"CONFIRMED".equals(order.getStatus()) && !"SHIPPED".equals(order.getStatus()) && !"DELIVERED".equals(order.getStatus())) {
+                        log.info("Order {} is not in a refundable state (current: {}), skipping refund handling", event.getOrderId(), order.getStatus());
+                        return Mono.empty();
+                    }
 
-        if (!"CONFIRMED".equals(order.getStatus()) && !"SHIPPED".equals(order.getStatus()) && !"DELIVERED".equals(order.getStatus())) {
-            log.info("Order {} is not in a refundable state (current: {}), skipping refund handling", event.getOrderId(), order.getStatus());
-            return;
-        }
+                    for (OrderItem item : order.getItems()) {
+                        if (item.getStatus() == OrderItem.OrderItemStatus.RESERVED || item.getStatus() == OrderItem.OrderItemStatus.SHIPPED) {
+                            item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                            orderItemRepository.save(item).subscribe();
+                        }
+                    }
 
-        for (OrderItem item : order.getItems()) {
-            if (item.getStatus() == OrderItem.OrderItemStatus.RESERVED || item.getStatus() == OrderItem.OrderItemStatus.SHIPPED) {
-                item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
-                orderItemRepository.save(item);
-            }
-        }
+                    boolean allItemsCancelled = order.getItems().stream()
+                            .allMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.CANCELLED);
 
-        boolean allItemsCancelled = order.getItems().stream()
-                .allMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.CANCELLED);
+                    if (allItemsCancelled) {
+                        order.setStatus("CANCELLED");
+                        return orderRepository.save(order)
+                                .doOnNext(saved -> {
+                                    log.info("Order {} transitioned to CANCELLED after full refund", event.getOrderId());
 
-        if (allItemsCancelled) {
-            order.setStatus("CANCELLED");
-            orderRepository.save(order);
-            log.info("Order {} transitioned to CANCELLED after full refund", event.getOrderId());
-        } else {
-            log.info("Order {} partially refunded, some items remain active", event.getOrderId());
-        }
+                                    OrderEvent updatedEvent = OrderEvent.statusChanged(event.getOrderId(), OrderEvent.OrderStatus.valueOf(saved.getStatus()));
+                                    orderService.publishOrderEvent(updatedEvent);
+                                })
+                                .then();
+                    } else {
+                        log.info("Order {} partially refunded, some items remain active", event.getOrderId());
 
-        OrderEvent updatedEvent = OrderEvent.statusChanged(event.getOrderId(), OrderEvent.OrderStatus.valueOf(order.getStatus()));
-        orderService.publishOrderEvent(updatedEvent);
+                        OrderEvent updatedEvent = OrderEvent.statusChanged(event.getOrderId(), OrderEvent.OrderStatus.valueOf(order.getStatus()));
+                        orderService.publishOrderEvent(updatedEvent);
+                        return Mono.empty();
+                    }
+                })
+                .subscribe();
     }
 
     private void handlePaymentPartiallyRefunded(PaymentEvent event) {
         log.info("Handling payment partially refunded for order: {}", event.getOrderId());
 
-        Order order = orderRepository.findById(event.getOrderId())
-                .orElseThrow(() -> new ResourceNotFoundException("Order", event.getOrderId()));
+        orderRepository.findById(event.getOrderId())
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", event.getOrderId())))
+                .flatMap(order -> {
+                    if (!"CONFIRMED".equals(order.getStatus()) && !"SHIPPED".equals(order.getStatus()) && !"DELIVERED".equals(order.getStatus())) {
+                        log.info("Order {} is not in a refundable state (current: {}), skipping partial refund handling", event.getOrderId(), order.getStatus());
+                        return Mono.empty();
+                    }
 
-        if (!"CONFIRMED".equals(order.getStatus()) && !"SHIPPED".equals(order.getStatus()) && !"DELIVERED".equals(order.getStatus())) {
-            log.info("Order {} is not in a refundable state (current: {}), skipping partial refund handling", event.getOrderId(), order.getStatus());
-            return;
-        }
+                    for (OrderItem item : order.getItems()) {
+                        if (item.getStatus() == OrderItem.OrderItemStatus.RESERVED) {
+                            item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                            orderItemRepository.save(item).subscribe();
+                        }
+                    }
 
-        for (OrderItem item : order.getItems()) {
-            if (item.getStatus() == OrderItem.OrderItemStatus.RESERVED) {
-                item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
-                orderItemRepository.save(item);
-            }
-        }
+                    log.info("Order {} partially refunded, reserved items cancelled", event.getOrderId());
 
-        log.info("Order {} partially refunded, reserved items cancelled", event.getOrderId());
-
-        OrderEvent updatedEvent = OrderEvent.statusChanged(event.getOrderId(), OrderEvent.OrderStatus.valueOf(order.getStatus()));
-        orderService.publishOrderEvent(updatedEvent);
+                    OrderEvent updatedEvent = OrderEvent.statusChanged(event.getOrderId(), OrderEvent.OrderStatus.valueOf(order.getStatus()));
+                    orderService.publishOrderEvent(updatedEvent);
+                    return Mono.empty();
+                })
+                .subscribe();
     }
 }

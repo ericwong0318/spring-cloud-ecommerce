@@ -25,6 +25,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -63,7 +66,7 @@ class InventoryEventListenerTest {
 
         item1 = new OrderItem();
         ReflectionTestUtils.setField(item1, "id", 1L);
-        ReflectionTestUtils.setField(item1, "order", order);
+        ReflectionTestUtils.setField(item1, "orderId", 1L);
         ReflectionTestUtils.setField(item1, "productId", 1L);
         ReflectionTestUtils.setField(item1, "variantId", 1L);
         ReflectionTestUtils.setField(item1, "skuCode", "LAPTOP-13-SILVER");
@@ -76,7 +79,7 @@ class InventoryEventListenerTest {
 
         item2 = new OrderItem();
         ReflectionTestUtils.setField(item2, "id", 2L);
-        ReflectionTestUtils.setField(item2, "order", order);
+        ReflectionTestUtils.setField(item2, "orderId", 1L);
         ReflectionTestUtils.setField(item2, "productId", 2L);
         ReflectionTestUtils.setField(item2, "variantId", 2L);
         ReflectionTestUtils.setField(item2, "skuCode", "MOUSE-WIRELESS");
@@ -121,13 +124,18 @@ class InventoryEventListenerTest {
         ReflectionTestUtils.setField(item2, "status", OrderItem.OrderItemStatus.RESERVED);
 
         when(orderItemRepository.findByVariantIdAndStatus(1L, OrderItem.OrderItemStatus.PENDING))
-                .thenReturn(Optional.of(item1));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1);
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
+                .thenReturn(Mono.just(item1));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1));
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
+        when(orderItemRepository.findByOrderId(1L)).thenReturn(Flux.just(item1, item2));
 
         mockIdempotentProcessor(event);
 
         listener.handleInventoryEvent(event);
+
+        // Allow async operations to complete
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
 
         verify(orderItemRepository).findByVariantIdAndStatus(1L, OrderItem.OrderItemStatus.PENDING);
         verify(orderItemRepository).save(argThat(i -> i.getStatus() == OrderItem.OrderItemStatus.RESERVED));
@@ -135,18 +143,22 @@ class InventoryEventListenerTest {
         verify(orderService).publishOrderEvent(any(OrderEvent.class));
     }
 
-    @Test
+@Test
     void handleStockReserved_shouldSetItemToBackordered_whenPartiallyReserved() {
         InventoryEvent event = createInventoryEvent("RESERVED", 1L, 1, 1);
 
         when(orderItemRepository.findByVariantIdAndStatus(1L, OrderItem.OrderItemStatus.PENDING))
-                .thenReturn(Optional.of(item1));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1);
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
+                .thenReturn(Mono.just(item1));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1));
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
 
         mockIdempotentProcessor(event);
 
         listener.handleInventoryEvent(event);
+
+        // Allow async operations to complete
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
 
         verify(orderItemRepository).save(argThat(i -> i.getStatus() == OrderItem.OrderItemStatus.BACKORDERED));
     }
@@ -159,16 +171,27 @@ class InventoryEventListenerTest {
         ReflectionTestUtils.setField(item2, "status", OrderItem.OrderItemStatus.BACKORDERED);
 
         when(orderItemRepository.findByVariantIdAndStatus(1L, OrderItem.OrderItemStatus.PENDING))
-                .thenReturn(Optional.of(item1));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1);
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
+                .thenReturn(Mono.just(item1));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1));
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
+        when(orderItemRepository.findByOrderId(1L)).thenReturn(Flux.just(item1, item2));
 
         mockIdempotentProcessor(event);
 
         listener.handleInventoryEvent(event);
 
-        verify(orderItemRepository).save(argThat(i -> i.getStatus() == OrderItem.OrderItemStatus.CANCELLED));
-        verify(orderRepository).save(argThat(o -> "CANCELLED".equals(o.getStatus())));
+        // Allow async operations to complete
+        try { Thread.sleep(100); } catch (InterruptedException e) {}
+
+        ArgumentCaptor<OrderItem> itemCaptor = ArgumentCaptor.forClass(OrderItem.class);
+        verify(orderItemRepository).save(itemCaptor.capture());
+        assertThat(itemCaptor.getValue().getStatus()).isEqualTo(OrderItem.OrderItemStatus.CANCELLED);
+
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(orderCaptor.capture());
+        assertThat(orderCaptor.getValue().getStatus()).isEqualTo("CANCELLED");
+
         verify(orderService).publishOrderEvent(any(OrderEvent.class));
     }
 
@@ -177,7 +200,7 @@ class InventoryEventListenerTest {
         InventoryEvent event = createInventoryEvent("RESERVED", 999L, 2, 0);
 
         when(orderItemRepository.findByVariantIdAndStatus(999L, OrderItem.OrderItemStatus.PENDING))
-                .thenReturn(Optional.empty());
+                .thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
@@ -194,9 +217,10 @@ class InventoryEventListenerTest {
         InventoryEvent event = createInventoryEvent("RESERVED", 1L, 2, 0);
 
         when(orderItemRepository.findByVariantIdAndStatus(1L, OrderItem.OrderItemStatus.PENDING))
-                .thenReturn(Optional.of(item1));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(item1);
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
+                .thenReturn(Mono.just(item1));
+        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1));
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
 
         mockIdempotentProcessor(event);
 
