@@ -4,13 +4,13 @@
 
 **Blocked by:** 03a — Product Catalog: ProductVariant Entity + API
 
-**Status:** ready-for-agent
+**Status:** **done**
 
-- [ ] Create `OrderItem` JPA entity: `id`, `orderId` (FK to Order), `variantId` (FK to ProductVariant), `quantityOrdered`, `quantityShipped` (default 0), `unitPrice` (snapshot), `status` (enum: PENDING, RESERVED, SHIPPED, BACKORDERED, CANCELLED), `reservedAt` (timestamp, nullable)
-- [ ] Add `@OneToMany` items to `Order` entity (cascade ALL, orphanRemoval=true)
-- [ ] Update `OrderDto` and `OrderItemDto` in `common` with `variantId`, `status`, `quantityShipped`, `reservedAt`
-- [ ] Implement `OrderItemRepository`, update `OrderService`/`OrderMapper` to handle items
-- [ ] API: `POST /orders` — creates Order + OrderItems in single transaction; publishes `OrderEvent.CREATED` (with full lines, per-line status = PENDING) via **RabbitMQ direct publishing** (publisher confirms)
-- [ ] API: `GET /orders/{id}` — returns Order with items (status, quantityOrdered, quantityShipped, reservedAt)
-- [ ] Update `OrderEvent` in `common`: add `items[i].variantId`, `items[i].status`, `items[i].reservedAt` fields
-- [ ] Integration tests: create order with multiple items, verify event published with variantId + status; verify `reservedAt` set correctly
+- [x] Create `OrderItem` JPA entity: `id`, `orderId` (FK to Order), `variantId` (FK to ProductVariant), `quantityOrdered`, `quantityShipped` (default 0), `unitPrice` (snapshot), `status` (enum: PENDING, RESERVED, SHIPPED, BACKORDERED, CANCELLED), `reservedAt` (timestamp, nullable)
+- [x] Add `@OneToMany` items to `Order` entity (cascade ALL, orphanRemoval=true)
+- [x] Update `OrderDto` and `OrderItemDto` in `common` with `variantId`, `status`, `quantityShipped`, `reservedAt`
+- [x] Implement `OrderItemRepository`, update `OrderService`/`OrderMapper` to handle items
+- [x] API: `POST /orders` — creates Order + OrderItems in single transaction; publishes `OrderEvent.CREATED` (with full lines, per-line status = PENDING) via **RabbitMQ direct publishing** (publisher confirms)
+- [x] API: `GET /orders/{id}` — returns Order with items (status, quantityOrdered, quantityShipped, reservedAt)
+- [x] Update `OrderEvent` in `common`: add `items[i].variantId`, `items[i].status`, `items[i].reservedAt` fields
+- [x] Integration tests: create order with multiple items, verify event published with variantId + status; verify `reservedAt` set correctly

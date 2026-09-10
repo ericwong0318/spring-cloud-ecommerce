@@ -12,7 +12,7 @@
 | 02b-event-driven-reservation-cancellation-rabbitmq | Inventory expiry → order cancellation flow | **done** |
 | 03a-product-variant | Product/variant schema, API | **done** |
 | 03b-category-hierarchy | Category tree, hierarchy API | **done** |
-| 04a-order-item-aggregate | OrderItem entity, status transitions | ready-for-agent |
+| 04a-order-item-aggregate | OrderItem entity, status transitions | **done** |
 | 04b-shipment-aggregate | ShipmentItem denormalization | deferred (out of scope) |
 | 04c-order-cancellation-on-reservation-expiry | `ReservationExpiredEvent` flow | **done** |
 | 05a-inventory-reservation-core | Reserve/release stock, reservation entity | **done** |
