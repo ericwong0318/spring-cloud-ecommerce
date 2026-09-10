@@ -2,7 +2,7 @@
 
 **What to build:** `NotificationTemplate` entity. `send()` renders template, delivers; on failure: 3 retries × 5-min intervals (RETRYING); max retries → FAILED + dead-letter. Fallback: EMAIL fail → auto-queue SMS. Templates: order confirmation, payment success/failed, shipment.
 
-**Blocked by:** 01 — Event Infrastructure: `eventId` + Idempotency Foundation and 02 — Debezium CDC Setup for Event Publishing
+**Blocked by:** 01 — Event Infrastructure: `eventId` + Idempotency Foundation
 
 **Status:** ready-for-agent
 

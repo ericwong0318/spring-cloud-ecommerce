@@ -39,7 +39,6 @@
         <testcontainers.version>1.21.4</testcontainers.version>
         <springdoc.version>2.6.0</springdoc.version>
         <lombok.version>1.18.34</lombok.version>
-        <debezium.version>2.5.2.Final</debezium.version>
         <docker.image.prefix>spring-cloud-project</docker.image.prefix>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
@@ -108,15 +107,6 @@
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-bom</artifactId>
                 <version>${opentelemetry.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <!-- Debezium BOM -->
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-bom</artifactId>
-                <version>${debezium.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

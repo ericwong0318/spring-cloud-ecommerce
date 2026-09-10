@@ -1,14 +1,14 @@
 # 06a — Payment Service: Module Scaffold + Build/CI
 
-**What to build:** New `payment-service` module: Maven module, Spring Boot 3.3, dependencies (WebFlux, R2DBC, Security, Debezium), Dockerfile, CI pipeline, health/actuator endpoints. Empty domain package structure.
+**What to build:** New `payment-service` module: Maven module, Spring Boot 3.3, dependencies (WebFlux, R2DBC, Security), Dockerfile, CI pipeline, health/actuator endpoints. Empty domain package structure.
 
-**Blocked by:** 02 — Debezium CDC Setup for Event Publishing
+**Blocked by:** None
 
 **Status:** resolved
 
 - [x] Create `payment-service` directory with `pom.xml` inheriting from root parent
-- [x] Add dependencies: `spring-boot-starter-webflux`, `spring-boot-starter-data-r2dbc`, `spring-boot-starter-security`, `r2dbc-postgresql`, Debezium connector, `spring-boot-starter-actuator`, `spring-boot-starter-validation`
-- [x] Configure `application.yml`: server.port=8086, R2DBC PostgreSQL, Spring Security (OAuth2 resource server), Debezium outbox table
+- [x] Add dependencies: `spring-boot-starter-webflux`, `spring-boot-starter-data-r2dbc`, `spring-boot-starter-security`, `r2dbc-postgresql`, `spring-boot-starter-actuator`, `spring-boot-starter-validation`
+- [x] Configure `application.yml`: server.port=8086, R2DBC PostgreSQL, Spring Security (OAuth2 resource server)
 - [x] Create `PaymentServiceApplication` main class
 - [x] Add `Dockerfile` (multi-stage: build + runtime)
 - [x] Add GitHub Actions workflow: build → test → docker build → security scan

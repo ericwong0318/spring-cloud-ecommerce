@@ -15,5 +15,4 @@
   - `getTree(rootId)` — recursive fetch for UI
 - [ ] API endpoints: `POST /categories/{id}/move`, `DELETE /categories/{id}/cascade`, `GET /categories/tree`
 - [ ] Update `ProductEvent` for category CREATED/UPDATED/DELETED (include hierarchy path)
-- [ ] Write category changes to outbox table (Debezium)
 - [ ] Integration tests: cycle detection, move subtree, cascade delete, tree fetch

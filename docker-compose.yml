@@ -71,40 +71,6 @@ services:
       - spring-cloud-network
     restart: unless-stopped
 
-  debezium-connect:
-    image: debezium/connect:2.5
-    container_name: debezium-connect
-    depends_on:
-      - kafka
-      - postgres-product
-      - postgres-category
-      - postgres-order
-      - postgres-inventory
-      - postgres-notification
-      - postgres-payment
-    ports:
-      - "8084:8083"
-    environment:
-      - BOOTSTRAP_SERVERS=kafka:29092
-      - GROUP_ID=ecommerce-debezium-cluster
-      - CONFIG_STORAGE_TOPIC=ecommerce-debezium-configs
-      - OFFSET_STORAGE_TOPIC=ecommerce-debezium-offsets
-      - STATUS_STORAGE_TOPIC=ecommerce-debezium-status
-      - CONFIG_STORAGE_REPLICATION_FACTOR=1
-      - OFFSET_STORAGE_REPLICATION_FACTOR=1
-      - STATUS_STORAGE_REPLICATION_FACTOR=1
-      - KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
-      - VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
-      - KEY_CONVERTER_SCHEMAS_ENABLE=false
-      - VALUE_CONVERTER_SCHEMAS_ENABLE=false
-      - INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
-      - INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
-      - REST_ADVERTISED_HOST_NAME=debezium-connect
-      - REST_PORT=8083
-    networks:
-      - spring-cloud-network
-    restart: unless-stopped
-
   otel-collector:
     image: ghcr.io/open-telemetry/opentelemetry-collector-releases/otel-collector-contrib:0.110.0
     container_name: otel-collector
@@ -365,20 +331,6 @@ services:
       timeout: 5s
       retries: 5
 
-networks:
-  spring-cloud-network:
-    driver: bridge
-
-volumes:
-  rabbitmq-data:
-  inventory-db-data:
-  notification-db-data:
-  product-db-data:
-  category-db-data:
-  order-db-data:
-  payment-db-data:
-
-  # Debezium requires wal_level=logical on PostgreSQL
   postgres-product:
     image: postgres:16
     container_name: postgres-product
@@ -578,6 +530,7 @@ volumes:
     networks:
       - spring-cloud-network
     restart: unless-stopped
+
   payment-service:
     build:
       context: ./payment-service
@@ -618,3 +571,16 @@ volumes:
     networks:
       - spring-cloud-network
     restart: unless-stopped
+
+networks:
+  spring-cloud-network:
+    driver: bridge
+
+volumes:
+  rabbitmq-data:
+  inventory-db-data:
+  notification-db-data:
+  product-db-data:
+  category-db-data:
+  order-db-data:
+  payment-db-data:
