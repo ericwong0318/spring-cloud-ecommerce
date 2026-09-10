@@ -12,6 +12,7 @@ import com.example.order.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.r2dbc.connection.R2dbcTransactionManager;
 import org.springframework.stereotype.Service;
@@ -60,11 +61,13 @@ public class OrderService {
     }
 
     // Test-only constructor
+    @Autowired
     OrderService(OrderRepository orderRepository, OrderItemRepository orderItemRepository,
                  OrderMapper orderMapper,
                  RabbitTemplate rabbitTemplate, ObjectMapper objectMapper,
                  TransactionalOperator transactionalOperator,
-                 String orderExchange, String ecommerceExchange) {
+                 @Value("${rabbitmq.exchange.order}") String orderExchange,
+                 @Value("${rabbitmq.exchange.ecommerce}") String ecommerceExchange) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.orderMapper = orderMapper;
