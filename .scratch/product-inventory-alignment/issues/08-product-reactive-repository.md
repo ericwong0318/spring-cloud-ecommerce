@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] Create `ProductRepository extends ReactiveMongoRepository<Product, String>`
-- [ ] Add `Flux<Product> findByCategoryId(Long categoryId)`
-- [ ] Add `Flux<Product> findByNameContainingIgnoreCase(String name)` (text search)
-- [ ] Add `Flux<Product> findByVariantsAttributesKeyAndVariantsAttributesValue(String key, String value)`
-- [ ] Add pagination support: `findByCategoryId(Long categoryId, Pageable pageable)`
-- [ ] Verify `mvn compile -pl product` succeeds
+- [x] Create `ProductRepository extends ReactiveMongoRepository<Product, String>`
+- [x] Add `Flux<Product> findByCategoryId(String categoryId)`
+- [x] Add `Flux<Product> findByNameContainingIgnoreCase(String name)` (text search)
+- [x] Add `Flux<Product> findByVariantsAttributesKeyAndVariantsAttributesValue(String key, String value)`
+- [x] Add pagination support: `findByCategoryId(String categoryId, Pageable pageable)`
+- [ ] Verify `mvn compile -pl product` succeeds (blocked by Java 21 not available)
 - [ ] Unit test: mock repository, verify query methods called with correct params

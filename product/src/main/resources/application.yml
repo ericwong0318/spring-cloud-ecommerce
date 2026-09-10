@@ -1,6 +1,11 @@
 spring:
     application:
         name: product
+    data:
+        mongodb:
+            uri: mongodb://localhost:27017
+            database: product_db
+            auto-index-creation: true
     rabbitmq:
         host: localhost
         port: 5672

@@ -2,12 +2,17 @@ package com.example.product;
 
 import com.example.common.dto.ProductDto;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Map;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/products")
@@ -22,47 +27,75 @@ public class ProductController {
 
     @GetMapping("/health")
     @Operation(summary = "Health check", description = "Returns a simple message to confirm the service is running")
-    public String health() {
-        return "Product service is running.";
+    public Mono<String> health() {
+        return Mono.just("Product service is running.");
     }
 
     @GetMapping
     @Operation(summary = "List all products", description = "Returns a list of all products")
-    public List<ProductDto> getAllProducts() {
+    public Flux<ProductDto> getAllProducts(
+            @Parameter(description = "Filter by category ID") @RequestParam(required = false) String categoryId,
+            @Parameter(hidden = true) Pageable pageable) {
+        if (categoryId != null) {
+            return productService.getProductsByCategory(categoryId, pageable);
+        }
         return productService.getAllProducts();
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get product by ID", description = "Returns a single product by its ID")
-    public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.getProductById(id));
+    public Mono<ResponseEntity<ProductDto>> getProductById(@PathVariable String id) {
+        return productService.getProductById(id)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/category/{categoryId}")
     @Operation(summary = "Get products by category", description = "Returns products for a specific category")
-    public List<ProductDto> getProductsByCategory(@PathVariable Long categoryId) {
-        return productService.getProductsByCategory(categoryId);
+    public Flux<ProductDto> getProductsByCategory(
+            @PathVariable String categoryId,
+            @Parameter(hidden = true) Pageable pageable) {
+        return productService.getProductsByCategory(categoryId, pageable);
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search products by name", description = "Returns products matching the search query")
+    public Flux<ProductDto> searchProducts(
+            @Parameter(description = "Search query") @RequestParam String q,
+            @Parameter(hidden = true) Pageable pageable) {
+        return productService.searchProducts(q, pageable);
+    }
+
+    @GetMapping("/filter")
+    @Operation(summary = "Filter products by attributes", description = "Returns products matching the attribute filters")
+    public Flux<ProductDto> filterProducts(
+            @Parameter(description = "Attribute filters as key=value pairs") @RequestParam Map<String, String> attrs,
+            @Parameter(hidden = true) Pageable pageable) {
+        return productService.filterByAttributes(attrs, pageable);
     }
 
     @PostMapping
     @Operation(summary = "Create a new product", description = "Creates a new product")
-    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody ProductDto productDto) {
-        ProductDto created = productService.createProduct(productDto);
-        return ResponseEntity.status(201).body(created);
+    public Mono<ResponseEntity<ProductDto>> createProduct(@Valid @RequestBody ProductDto productDto) {
+        return productService.createProduct(productDto)
+                .map(created -> ResponseEntity.status(201).body(created));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a product", description = "Updates an existing product")
-    public ResponseEntity<ProductDto> updateProduct(
-            @PathVariable Long id,
+    public Mono<ResponseEntity<ProductDto>> updateProduct(
+            @PathVariable String id,
             @Valid @RequestBody ProductDto productDto) {
-        return ResponseEntity.ok(productService.updateProduct(id, productDto));
+        return productService.updateProduct(id, productDto)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a product", description = "Deletes a product by its ID")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        productService.deleteProduct(id);
-        return ResponseEntity.noContent().build();
+    public Mono<ResponseEntity<Void>> deleteProduct(@PathVariable String id) {
+        return productService.deleteProduct(id)
+                .thenReturn(ResponseEntity.noContent().<Void>build())
+                .onErrorResume(e -> Mono.just(ResponseEntity.notFound().<Void>build()));
     }
 }

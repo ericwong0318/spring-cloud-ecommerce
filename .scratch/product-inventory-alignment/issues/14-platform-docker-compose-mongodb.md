@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] Add `mongodb` service to `docker-compose.yml`: image `mongo:7`, port 27017, volume for persistence
+- [x] Add `mongodb` service to `docker-compose.yml`: image `mongo:7`, port 27017, volume for persistence
 - [ ] Add `mongodb` to `docker-compose.test.yml` for Testcontainers integration tests
-- [ ] Configure product service `spring.data.mongodb.uri` to use `mongodb://mongodb:27017/productdb` in docker profile
+- [x] Configure product service `spring.data.mongodb.uri` to use `mongodb://mongodb:27017/productdb` in docker profile
 - [ ] Verify `docker-compose up -d` starts MongoDB + all services
 - [ ] Verify product service connects to MongoDB in docker profile
 - [ ] Verify existing PostgreSQL services still start and connect

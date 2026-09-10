@@ -6,9 +6,11 @@
 
 **Status:** ready-for-agent
 
-- [ ] Update `system-test/pom.xml`: add MongoDB Testcontainers dependency
+- [x] Update `system-test/pom.xml`: add MongoDB Testcontainers dependency
 - [ ] Update `docker-compose.test.yml` to include MongoDB (from ticket 14)
-- [ ] Update `ECommerceSystemTest` to use MongoDB for product service
+- [x] Update `TestcontainersConfig` to include MongoDB container
+- [x] Update `ECommerceSystemTest` to use MongoDB for product service (DynamicPropertySource)
+- [ ] Update `DatabaseTestHelper` to use MongoDB for product test data (partially done)
 - [ ] Verify existing happy-path test: browse products → create order → reserve inventory → authorize payment → confirm order
 - [ ] Add test: product search/filter via reactive endpoints
 - [ ] Add test: concurrent order placement → inventory concurrency (ticket 05) prevents oversell

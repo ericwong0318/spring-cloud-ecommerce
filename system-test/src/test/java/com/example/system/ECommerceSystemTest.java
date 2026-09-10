@@ -36,6 +36,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -74,6 +75,10 @@ public class ECommerceSystemTest {
             .withPassword("test");
 
     @Container
+    static final MongoDBContainer MONGODB = new MongoDBContainer("mongo:7.0")
+            .withReuse(true);
+
+    @Container
     static final RabbitMQContainer RABBITMQ = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
             .withExposedPorts(5672, 15672);
 
@@ -100,9 +105,6 @@ public class ECommerceSystemTest {
 
     @Autowired
     private PaymentRepository paymentRepository;
-
-    @Autowired
-    private JdbcTemplate productJdbcTemplate;
 
     @Autowired
     private JdbcTemplate categoryJdbcTemplate;
@@ -147,6 +149,7 @@ public class ECommerceSystemTest {
     @BeforeAll
     static void startContainers() {
         POSTGRES.start();
+        MONGODB.start();
         RABBITMQ.start();
     }
 
@@ -165,6 +168,11 @@ public class ECommerceSystemTest {
                 POSTGRES.getHost(), POSTGRES.getFirstMappedPort(), POSTGRES.getDatabaseName()));
         registry.add("spring.r2dbc.username", POSTGRES::getUsername);
         registry.add("spring.r2dbc.password", POSTGRES::getPassword);
+
+        // MongoDB (for product service)
+        registry.add("spring.data.mongodb.uri", MONGODB::getReplicaSetUrl);
+        registry.add("spring.data.mongodb.database", () -> "product_test_db");
+        registry.add("spring.data.mongodb.auto-index-creation", () -> "true");
 
         // RabbitMQ
         registry.add("spring.rabbitmq.host", RABBITMQ::getHost);

@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Add `config-server/src/main/resources/config/product.yml` with:
+- [x] Add `config-server/src/main/resources/config/product.yml` with:
   - `spring.data.mongodb.uri`, `spring.data.mongodb.database`
   - Profile-specific values: `dev` (localhost), `docker` (mongodb:27017), `prod` (managed URI)
 - [ ] Ensure product service `bootstrap.yml` imports config from Config Server

@@ -7,6 +7,7 @@ import com.example.common.dto.OrderDto;
 import com.example.common.dto.OrderItemDto;
 import com.example.common.dto.PaymentDto;
 import com.example.common.dto.ShipmentDto;
+import com.example.common.dto.ShipmentItemDto;
 import com.example.common.event.BaseEvent;
 import com.example.common.event.IdempotentEventProcessor;
 import com.example.common.event.InventoryEvent;
@@ -25,8 +26,11 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -93,22 +97,22 @@ public class DatabaseTestHelper {
 
     public Optional<ProductDto> findProductById(Long id) {
         String sql = "SELECT * FROM product WHERE id = ?";
-        return productJdbcTemplate.query(sql, rs -> {
+        return Optional.ofNullable(productJdbcTemplate.query(sql, rs -> {
             if (rs.next()) {
                 return mapToProductDto(rs);
             }
             return null;
-        }, id);
+        }, id));
     }
 
     public Optional<ProductVariantDto> findProductVariantById(Long id) {
         String sql = "SELECT * FROM product_variant WHERE id = ?";
-        return productJdbcTemplate.query(sql, rs -> {
+        return Optional.ofNullable(productJdbcTemplate.query(sql, rs -> {
             if (rs.next()) {
                 return mapToProductVariantDto(rs);
             }
             return null;
-        }, id);
+        }, id));
     }
 
     // ==================== Category Helpers ====================
@@ -162,9 +166,9 @@ public class DatabaseTestHelper {
 
         for (OrderItemDto item : items) {
             String itemSql = "INSERT INTO order_item (order_id, product_id, variant_id, sku_code, product_name, quantity, quantity_shipped, price, status, reserved_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            insertAndGetId(orderJdbcTemplate, itemSql, 
+            insertAndGetId(orderJdbcTemplate, itemSql,
                     orderId, item.getProductId(), item.getVariantId(), item.getSkuCode(), item.getProductName(),
-                    item.getQuantity(), item.getQuantityShipped(), item.getPrice(), item.getStatus().name(), 
+                    item.getQuantity(), item.getQuantityShipped(), item.getPrice(), item.getStatus().name(),
                     item.getReservedAt(), LocalDateTime.now(), LocalDateTime.now());
         }
 
@@ -173,22 +177,22 @@ public class DatabaseTestHelper {
 
     public Optional<OrderDto> findOrderById(Long id) {
         String sql = "SELECT * FROM \"order\" WHERE id = ?";
-        return orderJdbcTemplate.query(sql, rs -> {
+        return Optional.ofNullable(orderJdbcTemplate.query(sql, rs -> {
             if (rs.next()) {
                 return mapToOrderDto(rs);
             }
             return null;
-        }, id);
+        }, id));
     }
 
     public Optional<OrderItemDto> findOrderItemById(Long id) {
         String sql = "SELECT * FROM order_item WHERE id = ?";
-        return orderJdbcTemplate.query(sql, rs -> {
+        return Optional.ofNullable(orderJdbcTemplate.query(sql, rs -> {
             if (rs.next()) {
                 return mapToOrderItemDto(rs);
             }
             return null;
-        }, id);
+        }, id));
     }
 
     public void verifyOrderStatus(Long orderId, OrderDto.OrderStatus expectedStatus) {
@@ -207,11 +211,11 @@ public class DatabaseTestHelper {
 
     // ==================== Shipment Helpers ====================
 
-    public ShipmentDto createShipment(Long orderId, String trackingNumber, String carrier, List<ShipmentDto.ShipmentItemDto> items) {
+    public ShipmentDto createShipment(Long orderId, String trackingNumber, String carrier, List<ShipmentItemDto> items) {
         String shipmentSql = "INSERT INTO shipment (order_id, tracking_number, carrier, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)";
         Long shipmentId = insertAndGetId(orderJdbcTemplate, shipmentSql, orderId, trackingNumber, carrier, "CREATED", LocalDateTime.now(), LocalDateTime.now());
 
-        for (ShipmentDto.ShipmentItemDto item : items) {
+        for (ShipmentItemDto item : items) {
             String itemSql = "INSERT INTO shipment_item (shipment_id, order_item_id, quantity, created_at, updated_at) VALUES (?, ?, ?, ?, ?)";
             insertAndGetId(orderJdbcTemplate, itemSql, shipmentId, item.getOrderItemId(), item.getQuantity(), LocalDateTime.now(), LocalDateTime.now());
         }
@@ -221,12 +225,12 @@ public class DatabaseTestHelper {
 
     public Optional<ShipmentDto> findShipmentById(Long id) {
         String sql = "SELECT * FROM shipment WHERE id = ?";
-        return orderJdbcTemplate.query(sql, rs -> {
+        return Optional.ofNullable(orderJdbcTemplate.query(sql, rs -> {
             if (rs.next()) {
                 return mapToShipmentDto(rs);
             }
             return null;
-        }, id);
+        }, id));
     }
 
     // ==================== Payment Helpers ====================
@@ -275,7 +279,7 @@ public class DatabaseTestHelper {
     // ==================== Idempotency Helpers ====================
 
     public boolean isEventProcessed(UUID eventId) {
-        return processedEventRepository.existsByEventId(eventId);
+        return processedEventRepository.existsByEventId(eventId).block();
     }
 
     // ==================== Private Mapping Methods ====================
@@ -297,24 +301,38 @@ public class DatabaseTestHelper {
 
     private ProductDto mapToProductDto(java.sql.ResultSet rs) throws SQLException {
         ProductDto dto = new ProductDto();
-        dto.setId(rs.getLong("id"));
+        dto.setId(String.valueOf(rs.getLong("id")));
         dto.setName(rs.getString("name"));
         dto.setDescription(rs.getString("description"));
         dto.setPrice(rs.getBigDecimal("price"));
-        dto.setCategoryId(rs.getLong("category_id"));
+        dto.setCategoryId(String.valueOf(rs.getLong("category_id")));
         return dto;
     }
 
     private ProductVariantDto mapToProductVariantDto(java.sql.ResultSet rs) throws SQLException {
+        String attributesJson = rs.getString("attributes");
+        Map<String, String> attributes = attributesJson != null ? parseAttributes(attributesJson) : Map.of();
         ProductVariantDto dto = new ProductVariantDto(
-            rs.getLong("id"),
-            rs.getLong("product_id"),
+            String.valueOf(rs.getLong("id")),
+            String.valueOf(rs.getLong("product_id")),
             rs.getString("sku_code"),
-            rs.getString("attributes"),
+            attributes,
             rs.getBigDecimal("price"),
-            rs.getLong("inventory_id")
+            String.valueOf(rs.getLong("inventory_id"))
         );
         return dto;
+    }
+
+    private Map<String, String> parseAttributes(String json) {
+        if (json == null || json.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper()
+                .readValue(json, new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
+        } catch (Exception e) {
+            return Map.of();
+        }
     }
 
     private OrderDto mapToOrderDto(java.sql.ResultSet rs) throws SQLException {
@@ -330,7 +348,7 @@ public class DatabaseTestHelper {
     }
 
     private OrderItemDto mapToOrderItemDto(java.sql.ResultSet rs) throws SQLException {
-        OrderItemDto dto = new OrderItemDto.OrderItemDto.Builder()
+        OrderItemDto dto = OrderItemDto.builder()
             .id(rs.getLong("id"))
             .productId(rs.getLong("product_id"))
             .variantId(rs.getLong("variant_id"))

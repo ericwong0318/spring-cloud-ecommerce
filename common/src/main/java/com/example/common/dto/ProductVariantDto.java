@@ -14,10 +14,10 @@ import java.util.Map;
 public class ProductVariantDto {
 
     @Schema(description = "Unique identifier", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
-    private Long id;
+    private String id;
 
     @Schema(description = "Product ID", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
-    private Long productId;
+    private String productId;
 
     @NotBlank(message = "SKU code is required")
     @Size(max = 100)
@@ -32,12 +32,12 @@ public class ProductVariantDto {
     private BigDecimal price;
 
     @Schema(description = "Linked inventory ID", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
-    private Long inventoryId;
+    private String inventoryId;
 
     public ProductVariantDto() {
     }
 
-    public ProductVariantDto(Long id, Long productId, String skuCode, Map<String, String> attributes, BigDecimal price, Long inventoryId) {
+    public ProductVariantDto(String id, String productId, String skuCode, Map<String, String> attributes, BigDecimal price, String inventoryId) {
         this.id = id;
         this.productId = productId;
         this.skuCode = skuCode;
@@ -46,19 +46,19 @@ public class ProductVariantDto {
         this.inventoryId = inventoryId;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
-    public Long getProductId() {
+    public String getProductId() {
         return productId;
     }
 
-    public void setProductId(Long productId) {
+    public void setProductId(String productId) {
         this.productId = productId;
     }
 
@@ -86,11 +86,11 @@ public class ProductVariantDto {
         this.price = price;
     }
 
-    public Long getInventoryId() {
+    public String getInventoryId() {
         return inventoryId;
     }
 
-    public void setInventoryId(Long inventoryId) {
+    public void setInventoryId(String inventoryId) {
         this.inventoryId = inventoryId;
     }
 }

@@ -1,4 +1,22 @@
 services:
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=product_db
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: zookeeper
@@ -222,6 +240,8 @@ services:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017
+      - SPRING_DATA_MONGODB_DATABASE=product_db
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=product
@@ -233,6 +253,8 @@ services:
       config-server:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
       otel-collector:
         condition: service_healthy
@@ -577,6 +599,7 @@ networks:
     driver: bridge
 
 volumes:
+  mongodb-data:
   rabbitmq-data:
   inventory-db-data:
   notification-db-data:

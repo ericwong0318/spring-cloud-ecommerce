@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -16,7 +18,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public class ProductDto {
 
     @Schema(description = "Unique identifier", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
-    private Long id;
+    private String id;
 
     @NotBlank(message = "Product name is required")
     @Size(max = 255, message = "Product name must not exceed 255 characters")
@@ -33,15 +35,18 @@ public class ProductDto {
     private BigDecimal price;
 
     @Schema(description = "Category ID", example = "1")
-    private Long categoryId;
+    private String categoryId;
 
     @Schema(description = "Category name (populated on read)", example = "Electronics", accessMode = Schema.AccessMode.READ_ONLY)
     private String categoryName;
 
+    @Schema(description = "Product variants")
+    private List<ProductVariantDto> variants = new ArrayList<>();
+
     public ProductDto() {
     }
 
-    public ProductDto(Long id, String name, String description, BigDecimal price, Long categoryId, String categoryName) {
+    public ProductDto(String id, String name, String description, BigDecimal price, String categoryId, String categoryName) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -50,11 +55,11 @@ public class ProductDto {
         this.categoryName = categoryName;
     }
 
-    public Long getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -82,11 +87,11 @@ public class ProductDto {
         this.price = price;
     }
 
-    public Long getCategoryId() {
+    public String getCategoryId() {
         return categoryId;
     }
 
-    public void setCategoryId(Long categoryId) {
+    public void setCategoryId(String categoryId) {
         this.categoryId = categoryId;
     }
 
@@ -98,28 +103,37 @@ public class ProductDto {
         this.categoryName = categoryName;
     }
 
+    public List<ProductVariantDto> getVariants() {
+        return variants;
+    }
+
+    public void setVariants(List<ProductVariantDto> variants) {
+        this.variants = variants;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ProductDto that = (ProductDto) o;
-        return Objects.equals(id, that.id) && Objects.equals(name, that.name) && Objects.equals(description, that.description) && Objects.equals(price, that.price) && Objects.equals(categoryId, that.categoryId) && Objects.equals(categoryName, that.categoryName);
+        return Objects.equals(id, that.id) && Objects.equals(name, that.name) && Objects.equals(description, that.description) && Objects.equals(price, that.price) && Objects.equals(categoryId, that.categoryId) && Objects.equals(categoryName, that.categoryName) && Objects.equals(variants, that.variants);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, description, price, categoryId, categoryName);
+        return Objects.hash(id, name, description, price, categoryId, categoryName, variants);
     }
 
     @Override
     public String toString() {
         return "ProductDto{" +
-                "id=" + id +
+                "id='" + id + '\'' +
                 ", name='" + name + '\'' +
                 ", description='" + description + '\'' +
                 ", price=" + price +
-                ", categoryId=" + categoryId +
+                ", categoryId='" + categoryId + '\'' +
                 ", categoryName='" + categoryName + '\'' +
+                ", variants=" + variants +
                 '}';
     }
 }

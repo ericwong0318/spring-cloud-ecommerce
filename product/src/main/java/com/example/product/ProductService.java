@@ -4,11 +4,12 @@ import com.example.common.dto.ProductDto;
 import com.example.common.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 public class ProductService {
@@ -23,59 +24,97 @@ public class ProductService {
         this.productMapper = productMapper;
     }
 
-    @Transactional(readOnly = true)
-    public List<ProductDto> getAllProducts() {
+    public Flux<ProductDto> getAllProducts() {
         log.debug("Fetching all products");
-        return productRepository.findAll().stream()
-                .map(productMapper::toDto)
-                .collect(Collectors.toList());
+        return productRepository.findAll()
+                .map(productMapper::toDto);
     }
 
-    @Transactional(readOnly = true)
-    public ProductDto getProductById(Long id) {
+    public Mono<ProductDto> getProductById(String id) {
         log.debug("Fetching product by id: {}", id);
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product", id));
-        return productMapper.toDto(product);
-    }
-
-    @Transactional(readOnly = true)
-    public List<ProductDto> getProductsByCategory(Long categoryId) {
-        log.debug("Fetching products by category id: {}", categoryId);
-        return productRepository.findByCategoryId(categoryId).stream()
+        return productRepository.findById(id)
                 .map(productMapper::toDto)
-                .collect(Collectors.toList());
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", id)));
     }
 
-    @Transactional
-    public ProductDto createProduct(ProductDto productDto) {
+    public Flux<ProductDto> getProductsByCategory(String categoryId) {
+        log.debug("Fetching products by category id: {}", categoryId);
+        return productRepository.findByCategoryId(categoryId)
+                .map(productMapper::toDto);
+    }
+
+    public Flux<ProductDto> getProductsByCategory(String categoryId, Pageable pageable) {
+        log.debug("Fetching products by category id: {} with pagination", categoryId);
+        return productRepository.findByCategoryId(categoryId, pageable)
+                .map(productMapper::toDto);
+    }
+
+    public Mono<ProductDto> createProduct(ProductDto productDto) {
         log.info("Creating product: {}", productDto.getName());
         Product product = productMapper.toEntity(productDto);
-        Product saved = productRepository.save(product);
-        return productMapper.toDto(saved);
+        return productRepository.save(product)
+                .map(productMapper::toDto);
     }
 
-    @Transactional
-    public ProductDto updateProduct(Long id, ProductDto productDto) {
+    public Mono<ProductDto> updateProduct(String id, ProductDto productDto) {
         log.info("Updating product id: {}", id);
-        Product existing = productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product", id));
-
-        existing.setName(productDto.getName());
-        existing.setDescription(productDto.getDescription());
-        existing.setPrice(productDto.getPrice());
-        existing.setCategoryId(productDto.getCategoryId());
-
-        Product saved = productRepository.save(existing);
-        return productMapper.toDto(saved);
+        return productRepository.findById(id)
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", id)))
+                .flatMap(existing -> {
+                    existing.setName(productDto.getName());
+                    existing.setDescription(productDto.getDescription());
+                    existing.setCategoryId(productDto.getCategoryId());
+                    existing.setCategoryName(productDto.getCategoryName());
+                    return productRepository.save(existing);
+                })
+                .map(productMapper::toDto);
     }
 
-    @Transactional
-    public void deleteProduct(Long id) {
+    public Mono<Void> deleteProduct(String id) {
         log.info("Deleting product id: {}", id);
-        if (!productRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Product", id);
+        return productRepository.findById(id)
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", id)))
+                .flatMap(productRepository::delete);
+    }
+
+    public Flux<ProductDto> searchProducts(String name) {
+        log.debug("Searching products by name: {}", name);
+        return productRepository.findByNameContainingIgnoreCase(name)
+                .map(productMapper::toDto);
+    }
+
+    public Flux<ProductDto> searchProducts(String name, Pageable pageable) {
+        log.debug("Searching products by name: {} with pagination", name);
+        return productRepository.findByNameContainingIgnoreCase(name)
+                .map(productMapper::toDto);
+    }
+
+    public Flux<ProductDto> findByAttribute(String key, String value) {
+        log.debug("Finding products by attribute {}:{}", key, value);
+        return productRepository.findByVariantsAttributesKeyAndVariantsAttributesValue(key, value)
+                .map(productMapper::toDto);
+    }
+
+    public Flux<ProductDto> findByAttribute(String key, String value, Pageable pageable) {
+        log.debug("Finding products by attribute {}:{} with pagination", key, value);
+        return productRepository.findByVariantsAttributesKeyAndVariantsAttributesValue(key, value, pageable)
+                .map(productMapper::toDto);
+    }
+
+    public Flux<ProductDto> filterByAttributes(Map<String, String> attrs, Pageable pageable) {
+        log.debug("Filtering products by attributes: {}", attrs);
+        // For multiple attributes, chain the queries
+        Flux<ProductDto> result = getAllProducts();
+        for (Map.Entry<String, String> entry : attrs.entrySet()) {
+            final String k = entry.getKey();
+            final String v = entry.getValue();
+            result = result.filterWhen(dto -> 
+                Mono.justOrEmpty(dto.getVariants())
+                    .flatMapMany(Flux::fromIterable)
+                    .filter(variant -> v.equals(variant.getAttributes().get(k)))
+                    .hasElements()
+            );
         }
-        productRepository.deleteById(id);
+        return result;
     }
 }
