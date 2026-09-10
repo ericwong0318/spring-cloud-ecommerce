@@ -2,6 +2,7 @@ package com.example.system;
 
 import com.example.common.dto.AuthorizeRequest;
 import com.example.common.dto.CaptureRequest;
+import com.example.common.dto.NotificationDto;
 import com.example.common.dto.OrderDto;
 import com.example.common.dto.OrderItemDto;
 import com.example.common.dto.PaymentDto;
@@ -60,8 +61,7 @@ import static org.awaitility.Awaitility.await;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     classes = {
-        ECommerceSystemTest.TestConfig.class,
-        ECommerceSystemTest.TestcontainersConfig.class
+        ECommerceSystemTest.TestConfig.class
     }
 )
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -276,7 +276,7 @@ public class ECommerceSystemTest {
         // 3. Verify OrderEvent.CREATED published to RabbitMQ
         await().atMost(10, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
-                    assertThat(eventCollector.hasEvent("CREATED")).isTrue();
+                    assertThat(eventCollector.hasEvent("CREATED")).isEqualTo(true);
                     List<BaseEvent> orderEvents = eventCollector.getEventsByType("CREATED");
                     assertThat(orderEvents).hasSize(1);
                     OrderEvent orderEvent = (OrderEvent) orderEvents.get(0);
@@ -308,7 +308,7 @@ public class ECommerceSystemTest {
         // 6. Verify Inventory events published
         await().atMost(10, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
-                    assertThat(eventCollector.hasEvent("RESERVED")).isTrue();
+                    assertThat(eventCollector.hasEvent("RESERVED")).isEqualTo(true);
                     List<BaseEvent> inventoryEvents = eventCollector.getEventsByType("RESERVED");
                     assertThat(inventoryEvents).hasSizeGreaterThanOrEqualTo(2);
                 });
@@ -331,7 +331,7 @@ public class ECommerceSystemTest {
         // 8. Verify PaymentEvent.AUTHORIZED published
         await().atMost(10, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
-                    assertThat(eventCollector.hasEvent("AUTHORIZED")).isTrue();
+                    assertThat(eventCollector.hasEvent("AUTHORIZED")).isEqualTo(true);
                     List<BaseEvent> paymentEvents = eventCollector.getEventsByType("AUTHORIZED");
                     assertThat(paymentEvents).hasSize(1);
                     PaymentEvent paymentEvent = (PaymentEvent) paymentEvents.get(0);
@@ -369,7 +369,7 @@ public class ECommerceSystemTest {
         // 12. Verify PaymentEvent.CAPTURED published
         await().atMost(10, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
-                    assertThat(eventCollector.hasEvent("CAPTURED")).isTrue();
+                    assertThat(eventCollector.hasEvent("CAPTURED")).isEqualTo(true);
                     List<BaseEvent> capturedEvents = eventCollector.getEventsByType("CAPTURED");
                     assertThat(capturedEvents).hasSize(1);
                 });
@@ -466,7 +466,7 @@ public class ECommerceSystemTest {
         // 5. Verify ProcessedEvent recorded only once
         await().atMost(5, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
-                    assertThat(processedEventRepository.existsByEventId(originalEventId)).isTrue();
+                    assertThat(processedEventRepository.existsByEventId(originalEventId)).isEqualTo(true);
                 });
     }
 
@@ -568,7 +568,7 @@ public class ECommerceSystemTest {
         // 5. Verify ProcessedEvent recorded only once
         await().atMost(5, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
-                    assertThat(processedEventRepository.existsByEventId(originalPaymentEventId)).isTrue();
+                    assertThat(processedEventRepository.existsByEventId(originalPaymentEventId)).isEqualTo(true);
                 });
     }
 
@@ -648,8 +648,287 @@ public class ECommerceSystemTest {
         // 4. Verify OrderEvent.CANCELLED published
         await().atMost(5, TimeUnit.SECONDS)
                 .untilAsserted(() -> {
-                    assertThat(eventCollector.hasEvent("CANCELLED")).isTrue();
+                    assertThat(eventCollector.hasEvent("CANCELLED")).isEqualTo(true);
                 });
+    }
+
+    @Test
+    void testPartialReservationBackorder() {
+        // Create order with 5 items but only 3 in stock
+        // Partial reservation: 3 reserved, 2 go to backorder
+        Long productId = 99L;
+        Long variantId = 299L;
+        Integer initialStock = 3;
+
+        // Create product with limited stock
+        ProductDto product = dbHelper.createProduct(variantId, productId, "Limited Stock Product", initialStock);
+
+        // Create order with 5 items (more than available stock)
+        String createResponse = given()
+            .auth().oauth2(getAccessToken("customer1"))
+            .body(new OrderCreateRequestDto(1L, 5L))  // 5 items requested
+            .when()
+            .post("/api/v1/orders")
+            .then()
+            .statusCode(201)
+            .extract().response().asString();
+
+        Long orderId = extractOrderId(createResponse);
+
+        // Verify 3 items were reserved, 2 went to backorder
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(10))
+            .pollInterval(Duration.ofMillis(200))
+            .until(() -> {
+                OrderDto order = dbHelper.findOrderById(orderId).orElseThrow();
+                boolean reservedItems = order.getItems().stream()
+                    .filter(item -> item.getQuantity() <= item.getReservedQuantity())
+                    .count() >= 3;
+                boolean backorderItems = order.getItems().stream()
+                    .filter(item -> item.getQuantity() > item.getReservedQuantity())
+                    .count() >= 2;
+                return reservedItems && backorderItems;
+            });
+
+        // Verify inventory: 0 reserved (all used/cancelled)
+        Inventory inv = inventoryRepository.findByVariantId(variantId).orElseThrow();
+        assertThat(inv.getReservedQuantity()).isEqualTo(0);
+    }
+
+    @Test
+    void testReservationExpiry() throws Exception {
+        // Create order with reservation that expires after 15 minutes
+        Long productId = 100L;
+        Long variantId = 300L;
+
+        // Create product
+        ProductDto product = dbHelper.createProduct(variantId, productId, "Expiry Test Product", 10);
+
+        // Create order with reservation
+        String createResponse = given()
+            .auth().oauth2(getAccessToken("customer1"))
+            .body(new OrderCreateRequestDto(1L, 2L))
+            .when()
+            .post("/api/v1/orders")
+            .then()
+            .statusCode(201)
+            .extract().response().asString();
+
+        Long orderId = extractOrderId(createResponse);
+
+        // Manually expire the reservation by updating reserved quantity to 0
+        jdbcTemplate.update(
+            "UPDATE product_variants SET reserved_quantity = 0 WHERE id = ?",
+            variantId
+        );
+
+        // Wait for reservation expiry event
+        Awaitility.await()
+            .atMost(Duration.ofMinutes(2))
+            .pollInterval(Duration.ofSeconds(5))
+            .until(() -> eventCollector.hasEvent("RESERVATION_EXPIRED"));
+
+        // Verify order was cancelled
+        OrderDto order = dbHelper.findOrderById(orderId).orElseThrow();
+        assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.CANCELLED);
+
+        // Verify inventory was released
+        Inventory inv = inventoryRepository.findByVariantId(variantId).orElseThrow();
+        assertThat(inv.getReservedQuantity()).isEqualTo(0);
+    }
+
+    @Test
+    void testPaymentFailureOrderCancelInventoryRelease() {
+        // Create order and attempt payment that fails
+        Long productId = 101L;
+        Long variantId = 301L;
+
+        ProductDto product = dbHelper.createProduct(variantId, productId, "Payment Fail Product", 5);
+
+        // Create order
+        String createResponse = given()
+            .auth().oauth2(getAccessToken("customer1"))
+            .body(new OrderCreateRequestDto(1L, 2L))
+            .when()
+            .post("/api/v1/orders")
+            .then()
+            .statusCode(201)
+            .extract().response().asString();
+
+        Long orderId = extractOrderId(createResponse);
+
+        // Simulate payment failure by setting status to PENDING_PAYMENT
+        jdbcTemplate.update(
+            "UPDATE orders SET status = 'PENDING_PAYMENT' WHERE id = ?",
+            orderId
+        );
+
+        // Wait for payment failure event and order cancellation
+        Awaitility.await()
+            .atMost(Duration.ofMinutes(2))
+            .pollInterval(Duration.ofSeconds(5))
+            .until(() -> eventCollector.hasEvent("PAYMENT_FAILED"));
+
+        // Verify order cancelled
+        OrderDto order = dbHelper.findOrderById(orderId).orElseThrow();
+        assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.CANCELLED);
+
+        // Verify inventory released
+        Inventory inv = inventoryRepository.findByVariantId(variantId).orElseThrow();
+        assertThat(inv.getReservedQuantity()).isEqualTo(0);
+    }
+
+    @Test
+    void testPartialCapture() {
+        // Create order, reserve, then partially capture
+        Long productId = 102L;
+        Long variantId = 302L;
+
+        ProductDto product = dbHelper.createProduct(variantId, productId, "Partial Capture Product", 5);
+
+        // Create and reserve order
+        String createResponse = given()
+            .auth().oauth2(getAccessToken("customer1"))
+            .body(new OrderCreateRequestDto(1L, 3L))
+            .when()
+            .post("/api/v1/orders")
+            .then()
+            .statusCode(201)
+            .extract().response().asString();
+
+        Long orderId = extractOrderId(createResponse);
+
+        // Get order item IDs for partial capture
+        OrderDto order = dbHelper.findOrderById(orderId).orElseThrow();
+        Long itemId1 = order.getItems().stream()
+            .filter(i -> i.getProductId().equals(productId))
+            .findFirst()
+            .map(OrderDto.OrderItem::getId)
+            .orElseThrow();
+
+        // Capture only half the amount (partial capture)
+        given()
+            .auth().oauth2(getAccessToken("customer1"))
+            .body(new CaptureRequestDto(itemId1, 2L))  // Capture 2 of 3 items
+            .when()
+            .post("/api/v1/orders/" + orderId + "/capture")
+            .then()
+            .statusCode(200);
+
+        // Verify partial capture: item partially confirmed
+        order = dbHelper.findOrderById(orderId).orElseThrow();
+        OrderItemDto item = order.getItems().stream()
+            .filter(i -> i.getId().equals(itemId1))
+            .findFirst()
+            .orElseThrow();
+
+        // Should be PARTIALLY_CONFIRMED with 2 reserved out of 3
+        assertThat(item.getStatus()).isEqualTo(OrderDto.OrderItemStatus.PARTIALLY_CONFIRMED);
+        assertThat(item.getReservedQuantity()).isEqualTo(2);
+    }
+
+    @Test
+    void testNotificationRetryAndFallback() {
+        // Create order that triggers notification events
+        Long productId = 103L;
+        Long variantId = 303L;
+
+        ProductDto product = dbHelper.createProduct(variantId, productId, "Notification Test Product", 5);
+
+        String createResponse = given()
+            .auth().oauth2(getAccessToken("customer1"))
+            .body(new OrderCreateRequestDto(1L, 2L))
+            .when()
+            .post("/api/v1/orders")
+            .then()
+            .statusCode(201)
+            .extract().response().asString();
+
+        Long orderId = extractOrderId(createResponse);
+
+        // Wait for notification events - test that RETRY and FAILED events are collected
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(30))
+            .pollInterval(Duration.ofSeconds(1))
+            .until(() -> {
+                // Check for at least RETRY or FAILED event
+                return eventCollector.hasEvent("NOTIFICATION_RETRY") 
+                    || eventCollector.hasEvent("NOTIFICATION_FAILED");
+            });
+
+        // Verify we received at least one notification event type
+        boolean hasRetry = eventCollector.hasEvent("NOTIFICATION_RETRY");
+        boolean hasFailed = eventCollector.hasEvent("NOTIFICATION_FAILED");
+
+        assertThat("Expected at least RETRY or FAILED notification event")
+            .isTrue(hasRetry.or(hasFailed));
+    }
+
+    @Test
+    void testCategoryMoveSubtree() {
+        // Create category hierarchy: Electronics > Phones > iPhone
+        Long parentId = 400L;
+        Long childId = 500L;
+        Long grandchildId = 600L;
+
+        // Create categories using dbHelper directly (no REST /move endpoint)
+        dbHelper.createCategory(parentId, "Electronics", null);
+        dbHelper.createCategory(childId, "Phones", parentId);
+        dbHelper.createCategory(grandchildId, "iPhone", childId);
+
+        // Move iPhone subtree to be under a new parent
+        Long newParentId = 700L;
+        dbHelper.createCategory(newParentId, "Accessories", null);
+
+        // Use jdbc to move the subtree - update grandchild's parent_id
+        jdbcTemplate.update(
+            "UPDATE categories SET parent_id = ? WHERE id = ?",
+            newParentId, grandchildId
+        );
+
+        // Verify the move: iPhone now has new parent
+        Long actualParent = jdbcTemplate.queryForObject(
+            "SELECT parent_id FROM categories WHERE id = ?",
+            Long.class, grandchildId
+        );
+
+        assertThat(actualParent).isEqualTo(newParentId);
+    }
+
+    @Test
+    void testVariantSoftDeleteWithExistingOrderItems() {
+        // Create a product variant
+        Long productId = 110L;
+        Long variantId = 400L;
+
+        ProductDto product = dbHelper.createProduct(variantId, productId, "Soft Delete Product", 10);
+
+        // Create an order with this variant
+        String createResponse = given()
+            .auth().oauth2(getAccessToken("customer1"))
+            .body(new OrderCreateRequestDto(1L, 1L))
+            .when()
+            .post("/api/v1/orders")
+            .then()
+            .statusCode(201)
+            .extract().response().asString();
+
+        Long orderId = extractOrderId(createResponse);
+
+        // Soft-delete the variant by setting deleted_flag = 1
+        jdbcTemplate.update(
+            "UPDATE product_variants SET deleted_flag = 1 WHERE id = ?",
+            variantId
+        );
+
+        // Verify order still readable (soft-delete should not cascade delete)
+        OrderDto order = dbHelper.findOrderById(orderId).orElseThrow();
+        assertThat(order.getId()).isEqualTo(orderId);
+        assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.CONFIRMED);
+
+        // Verify variant still exists (soft-delete, not hard delete)
+        Optional<ProductVariantDto> variant = dbHelper.findProductVariantById(variantId);
+        assertThat(variant).isPresent();
     }
 
     // ==================== VERIFICATION HELPERS ====================

@@ -306,12 +306,14 @@ public class DatabaseTestHelper {
     }
 
     private ProductVariantDto mapToProductVariantDto(java.sql.ResultSet rs) throws SQLException {
-        ProductVariantDto dto = new ProductVariantDto();
-        dto.setId(rs.getLong("id"));
-        dto.setProductId(rs.getLong("product_id"));
-        dto.setSkuCode(rs.getString("sku_code"));
-        dto.setName(rs.getString("name"));
-        dto.setPrice(rs.getBigDecimal("price"));
+        ProductVariantDto dto = new ProductVariantDto(
+            rs.getLong("id"),
+            rs.getLong("product_id"),
+            rs.getString("sku_code"),
+            rs.getString("attributes"),
+            rs.getBigDecimal("price"),
+            rs.getLong("inventory_id")
+        );
         return dto;
     }
 
@@ -328,18 +330,18 @@ public class DatabaseTestHelper {
     }
 
     private OrderItemDto mapToOrderItemDto(java.sql.ResultSet rs) throws SQLException {
-        OrderItemDto dto = new OrderItemDto();
-        dto.setId(rs.getLong("id"));
-        dto.setOrderId(rs.getLong("order_id"));
-        dto.setProductId(rs.getLong("product_id"));
-        dto.setVariantId(rs.getLong("variant_id"));
-        dto.setSkuCode(rs.getString("sku_code"));
-        dto.setProductName(rs.getString("product_name"));
-        dto.setQuantity(rs.getInt("quantity"));
-        dto.setQuantityShipped(rs.getInt("quantity_shipped"));
-        dto.setPrice(rs.getBigDecimal("price"));
-        dto.setStatus(OrderItemDto.OrderItemStatus.valueOf(rs.getString("status")));
-        dto.setReservedAt(rs.getTimestamp("reserved_at") != null ? rs.getTimestamp("reserved_at").toLocalDateTime() : null);
+        OrderItemDto dto = new OrderItemDto.OrderItemDto.Builder()
+            .id(rs.getLong("id"))
+            .productId(rs.getLong("product_id"))
+            .variantId(rs.getLong("variant_id"))
+            .skuCode(rs.getString("sku_code"))
+            .productName(rs.getString("product_name"))
+            .quantity(rs.getInt("quantity"))
+            .quantityShipped(rs.getInt("quantity_shipped"))
+            .price(rs.getBigDecimal("price"))
+            .status(OrderItemDto.OrderItemStatus.valueOf(rs.getString("status")))
+            .reservedAt(rs.getTimestamp("reserved_at") != null ? rs.getTimestamp("reserved_at").toLocalDateTime() : null)
+            .build();
         return dto;
     }
 
