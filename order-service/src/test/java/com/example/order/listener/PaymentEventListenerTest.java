@@ -1,7 +1,6 @@
 package com.example.order.listener;
 
 import com.example.common.event.BaseEvent;
-import com.example.common.event.IdempotentEventProcessor;
 import com.example.common.event.OrderEvent;
 import com.example.common.event.PaymentEvent;
 import com.example.common.exception.ResourceNotFoundException;
@@ -43,7 +42,7 @@ class PaymentEventListenerTest {
     private OrderItemRepository orderItemRepository;
 
     @Mock
-    private IdempotentEventProcessor idempotentEventProcessor;
+    private com.example.order.event.ReactiveIdempotentEventProcessor idempotentEventProcessor;
 
     @Mock
     private OrderService orderService;
@@ -56,7 +55,7 @@ class PaymentEventListenerTest {
 
     @BeforeEach
     void setUp() {
-        listener = new PaymentEventListener(orderRepository, orderItemRepository, idempotentEventProcessor, orderService);
+        listener = new PaymentEventListener(idempotentEventProcessor, orderService);
 
         order = new Order();
         ReflectionTestUtils.setField(order, "id", 1L);
@@ -113,121 +112,74 @@ class PaymentEventListenerTest {
     private void mockIdempotentProcessor(PaymentEvent event) {
         doAnswer(invocation -> {
             @SuppressWarnings("unchecked")
-            Consumer<PaymentEvent> handler = invocation.getArgument(1);
-            handler.accept(event);
-            return null;
-        }).when(idempotentEventProcessor).process(any(BaseEvent.class), any(Consumer.class));
+            java.util.function.Function<PaymentEvent, reactor.core.publisher.Mono<Void>> handler = invocation.getArgument(1);
+            return handler.apply(event);
+        }).when(idempotentEventProcessor).process(any(), any());
     }
 
     @Test
     void handlePaymentCaptured_shouldTransitionOrderToConfirmedAndItemsToReserved() {
         PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
 
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1)).thenReturn(Mono.just(item2));
+        when(orderService.handlePaymentCaptured(1L, event.getAmount())).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(orderRepository).findById(1L);
-        verify(orderRepository).save(argThat(o -> "CONFIRMED".equals(o.getStatus())));
-        verify(orderItemRepository, times(2)).save(any(OrderItem.class));
-        verify(orderService).publishOrderEvent(any(OrderEvent.class));
+        verify(orderService).handlePaymentCaptured(1L, event.getAmount());
     }
 
     @Test
-    void handlePaymentCaptured_shouldSkip_whenOrderNotPending() {
-        PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
-        ReflectionTestUtils.setField(order, "status", "CONFIRMED");
-
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-
-        mockIdempotentProcessor(event);
-
-        listener.handlePaymentEvent(event);
-
-        verify(orderRepository).findById(1L);
-        verify(orderRepository, never()).save(any());
-        verify(orderItemRepository, never()).save(any());
-        verify(orderService, never()).publishOrderEvent(any());
-    }
-
-    @Test
-    void handlePaymentFailed_shouldTransitionOrderToCancelledAndItemsToCancelled() {
+    void handlePaymentFailed_shouldCallOrderServiceHandlePaymentFailed() {
         PaymentEvent event = createPaymentEvent("FAILED", PaymentEvent.PaymentStatus.FAILED);
 
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1)).thenReturn(Mono.just(item2));
+        when(orderService.handlePaymentFailed(1L)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(orderRepository).findById(1L);
-        verify(orderRepository).save(argThat(o -> "CANCELLED".equals(o.getStatus())));
-        verify(orderItemRepository, times(2)).save(argThat(i -> i.getStatus() == OrderItem.OrderItemStatus.CANCELLED));
-        verify(orderService).publishOrderEvent(any(OrderEvent.class));
+        verify(orderService).handlePaymentFailed(1L);
     }
 
     @Test
-    void handlePaymentFailed_shouldSkip_whenOrderNotPending() {
-        PaymentEvent event = createPaymentEvent("FAILED", PaymentEvent.PaymentStatus.FAILED);
-        ReflectionTestUtils.setField(order, "status", "CONFIRMED");
-
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-
-        mockIdempotentProcessor(event);
-
-        listener.handlePaymentEvent(event);
-
-        verify(orderRepository).findById(1L);
-        verify(orderRepository, never()).save(any());
-        verify(orderItemRepository, never()).save(any());
-        verify(orderService, never()).publishOrderEvent(any());
-    }
-
-    @Test
-    void handlePaymentRefunded_shouldCancelItemsAndSetOrderToCancelled_whenAllItemsRefunded() {
-        ReflectionTestUtils.setField(order, "status", "CONFIRMED");
-        ReflectionTestUtils.setField(item1, "status", OrderItem.OrderItemStatus.RESERVED);
-        ReflectionTestUtils.setField(item2, "status", OrderItem.OrderItemStatus.RESERVED);
-
+    void handlePaymentRefunded_shouldCallOrderServiceHandlePaymentRefunded() {
         PaymentEvent event = createPaymentEvent("REFUNDED", PaymentEvent.PaymentStatus.REFUNDED);
 
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1)).thenReturn(Mono.just(item2));
+        when(orderService.handlePaymentRefunded(1L)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(orderRepository).save(argThat(o -> "CANCELLED".equals(o.getStatus())));
-        verify(orderItemRepository, times(2)).save(argThat(i -> i.getStatus() == OrderItem.OrderItemStatus.CANCELLED));
-        verify(orderService).publishOrderEvent(any(OrderEvent.class));
+        verify(orderService).handlePaymentRefunded(1L);
     }
 
     @Test
-    void handlePartiallyRefunded_shouldCancelReservedItems() {
-        ReflectionTestUtils.setField(order, "status", "CONFIRMED");
-        ReflectionTestUtils.setField(item1, "status", OrderItem.OrderItemStatus.RESERVED);
-        ReflectionTestUtils.setField(item2, "status", OrderItem.OrderItemStatus.SHIPPED);
-
+    void handlePartiallyRefunded_shouldCallOrderServiceHandlePaymentPartiallyRefunded() {
         PaymentEvent event = createPaymentEvent("REFUNDED", PaymentEvent.PaymentStatus.PARTIALLY_REFUNDED);
 
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1));
+        when(orderService.handlePaymentPartiallyRefunded(1L)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(orderItemRepository).save(argThat(i -> i.getStatus() == OrderItem.OrderItemStatus.CANCELLED && i.getId() == 1L));
-        verify(orderItemRepository, never()).save(argThat(i -> i.getId() == 2L));
-        verify(orderService).publishOrderEvent(any(OrderEvent.class));
+        verify(orderService).handlePaymentPartiallyRefunded(1L);
+    }
+
+    @Test
+    void handlePaymentAuthorized_shouldCallOrderServiceHandlePaymentAuthorized() {
+        PaymentEvent event = createPaymentEvent("AUTHORIZED", PaymentEvent.PaymentStatus.AUTHORIZED);
+
+        when(orderService.handlePaymentAuthorized(1L)).thenReturn(Mono.empty());
+
+        mockIdempotentProcessor(event);
+
+        listener.handlePaymentEvent(event);
+
+        verify(orderService).handlePaymentAuthorized(1L);
     }
 
     @Test
@@ -235,14 +187,12 @@ class PaymentEventListenerTest {
         PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
 
         doAnswer(invocation -> {
-            // Don't call handler - simulates duplicate detection
-            return null;
-        }).when(idempotentEventProcessor).process(any(BaseEvent.class), any(Consumer.class));
+            return Mono.empty();
+        }).when(idempotentEventProcessor).process(any(), any());
 
         listener.handlePaymentEvent(event);
 
-        verify(orderRepository, never()).findById(anyLong());
-        verify(orderRepository, never()).save(any());
+        verify(orderService, never()).handlePaymentCaptured(anyLong(), any());
     }
 
     @Test
@@ -250,15 +200,12 @@ class PaymentEventListenerTest {
         PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
         ReflectionTestUtils.setField(event, "eventId", null);
 
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
-        when(orderItemRepository.save(any(OrderItem.class))).thenReturn(Mono.just(item1)).thenReturn(Mono.just(item2));
+        when(orderService.handlePaymentCaptured(1L, event.getAmount())).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(orderRepository).findById(1L);
-        verify(orderRepository).save(argThat(o -> "CONFIRMED".equals(o.getStatus())));
+        verify(orderService).handlePaymentCaptured(1L, event.getAmount());
     }
 }

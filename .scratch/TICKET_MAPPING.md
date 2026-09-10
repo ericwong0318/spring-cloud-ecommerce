@@ -65,7 +65,7 @@ This mapping ensures traceability between the two ticket sets.
 | 05b-inventory-ttl | ready-for-agent | 07-inventory-service | ready-for-agent |
 | 06a-payment-scaffold | done | 08-payment-service | ready-for-agent |
 | **06b-payment-auth-capture** | **done** | **08-payment-service** | **done** |
-| 07-order-payment-integration | ready-for-agent | 09-order-service | ready-for-agent |
+| 07-order-payment-integration | **done** | 09-order-service | **done** |
 | 08-notifications | out of scope | — | — |
 | 09a-happy-path | ready-for-agent | 13-e2e-tests | blocked |
 | 09b-edge-cases | ready-for-agent | 13-e2e-tests | blocked |
