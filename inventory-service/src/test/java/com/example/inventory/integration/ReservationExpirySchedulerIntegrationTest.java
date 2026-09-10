@@ -59,7 +59,6 @@ class ReservationExpirySchedulerIntegrationTest {
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("spring.flyway.enabled", () -> "false");
-        registry.add("spring.autoconfigure.exclude", () -> "org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration,org.springframework.boot.autoconfigure.r2dbc.R2dbcTransactionManagerAutoConfiguration,org.springframework.boot.autoconfigure.r2dbc.R2dbcRepositoriesAutoConfiguration");
         registry.add("spring.rabbitmq.host", rabbitmq::getHost);
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
     }

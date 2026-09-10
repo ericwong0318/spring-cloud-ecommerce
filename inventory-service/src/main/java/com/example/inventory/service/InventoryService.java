@@ -43,7 +43,7 @@ public class InventoryService {
 
     @Transactional
     public ReservationResult reserveStock(Long variantId, Integer quantity, Long orderItemId) {
-        Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantId(variantId);
+        Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantIdWithLock(variantId);
         if (inventoryOpt.isPresent()) {
             Inventory inventory = inventoryOpt.get();
             int available = inventory.getQuantity() - inventory.getReservedQuantity();
@@ -86,7 +86,7 @@ public class InventoryService {
 
     @Transactional
     public void releaseReservation(Long variantId, Integer quantity, Long orderItemId) {
-        Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantId(variantId);
+        Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantIdWithLock(variantId);
         if (inventoryOpt.isPresent()) {
             Inventory inventory = inventoryOpt.get();
             int newReserved = Math.max(0, inventory.getReservedQuantity() - quantity);
@@ -102,7 +102,7 @@ public class InventoryService {
 
     @Transactional
     public void confirmStock(Long variantId, Integer quantity) {
-        Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantId(variantId);
+        Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantIdWithLock(variantId);
         if (inventoryOpt.isPresent()) {
             Inventory inventory = inventoryOpt.get();
             inventory.setQuantity(inventory.getQuantity() - quantity);

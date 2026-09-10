@@ -16,11 +16,6 @@ spring:
     show-sql: false
   flyway:
     enabled: false
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration
-      - org.springframework.boot.autoconfigure.r2dbc.R2dbcTransactionManagerAutoConfiguration
-      - org.springframework.boot.autoconfigure.r2dbc.R2dbcRepositoriesAutoConfiguration
   rabbitmq:
     host: localhost
     port: 5672
