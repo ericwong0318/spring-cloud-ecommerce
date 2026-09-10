@@ -15,8 +15,8 @@
 | 04a-order-item-aggregate | OrderItem entity, status transitions | ready-for-agent |
 | 04b-shipment-aggregate | ShipmentItem denormalization | deferred (out of scope) |
 | 04c-order-cancellation-on-reservation-expiry | `ReservationExpiredEvent` flow | ready-for-agent |
-| 05a-inventory-reservation-core | Reserve/release stock, reservation entity | ready-for-agent |
-| 05b-inventory-ttl-scheduler | Scheduler for expired reservations | ready-for-agent |
+| 05a-inventory-reservation-core | Reserve/release stock, reservation entity | **done** |
+| 05b-inventory-ttl-scheduler | Scheduler for expired reservations | **done** |
 | 06a-payment-scaffold | Module scaffold, build, CI | done |
 | 06b-payment-auth-capture | Authorize/capture, idempotency, events | **done** |
 | 07-order-payment-integration | Saga: order.created → stock_reserved → payment.authorized → order.confirmed | **done** |

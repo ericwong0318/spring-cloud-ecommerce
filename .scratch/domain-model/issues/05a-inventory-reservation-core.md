@@ -4,22 +4,22 @@
 
 **Blocked by:** 03a — Product Catalog: ProductVariant Entity + API
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Update `Inventory` entity: ensure `productId` → `variantId` (FK to ProductVariant); clarify `quantity` = on-hand physical stock in JavaDoc/comments
-- [ ] Implement `InventoryService.reserveStock(variantId, qty)`:
+- [x] Update `Inventory` entity: ensure `productId` → `variantId` (FK to ProductVariant); clarify `quantity` = on-hand physical stock in JavaDoc/comments
+- [x] Implement `InventoryService.reserveStock(variantId, qty)`:
   - Returns `ReservationResult {reserved, backordered}`
   - If available ≥ qty: reserve full, backordered = 0
   - If available < qty: reserve available, backordered = qty - available
   - Updates `reservedQuantity`; sets OrderItem.status = RESERVED, `reservedAt = now`
   - **Publishes `InventoryEvent.RESERVED` directly to RabbitMQ** (publisher confirms)
-- [ ] Implement `InventoryService.confirmStock(variantId, qty)`:
+- [x] Implement `InventoryService.confirmStock(variantId, qty)`:
   - Reduces `quantity` by qty, reduces `reservedQuantity` by qty
   - **Publishes `InventoryEvent.CONFIRMED` directly to RabbitMQ**
-- [ ] Implement `InventoryService.releaseReservation(variantId, qty)`:
+- [x] Implement `InventoryService.releaseReservation(variantId, qty)`:
   - Reduces `reservedQuantity` by qty (min 0)
-  - Sets matching OrderItem.status = CANCELLED
+  - Sets matching OrderItem.status = CANCELLED (handled by order-service via ReservationExpiredEvent)
   - **Publishes `ReservationExpiredEvent` + `InventoryEvent.RELEASED` directly to RabbitMQ**
-- [ ] Update `InventoryEvent` in `common`: add `variantId`, `reserved`, `backordered` fields; add `ReservationExpiredEvent` with `{eventId, orderItemId, variantId, quantityReleased}`
-- [ ] Update `InventoryEventListener` to consume `OrderEvent.CREATED` → call `reserveStock` per line; on partial reserve, publish backorder info
-- [ ] Integration tests: full reserve, partial reserve + backorder, confirm, release; verify events via RabbitMQ consumer
+- [x] Update `InventoryEvent` in `common`: add `variantId`, `reserved`, `backordered` fields; add `ReservationExpiredEvent` with `{eventId, orderItemId, variantId, quantityReleased}`
+- [x] Update `InventoryEventListener` to consume `OrderEvent.CREATED` → call `reserveStock` per line; on partial reserve, publish backorder info
+- [x] Integration tests: full reserve, partial reserve + backorder, confirm, release; verify events via RabbitMQ consumer
