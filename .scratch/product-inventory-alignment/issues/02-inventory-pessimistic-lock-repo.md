@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] Add `findByVariantIdWithLock(@Param("variantId") Long variantId)` to `InventoryRepository`
-- [ ] Annotate with `@Lock(LockModeType.PESSIMISTIC_WRITE)` and `@Query("SELECT i FROM Inventory i WHERE i.variantId = :variantId")`
-- [ ] Keep existing methods: `findByVariantId`, `findByProductId`, `findLowStockItems`, `findStaleReservations`
-- [ ] Verify `mvn compile -pl inventory-service` succeeds
-- [ ] Unit test: mock repository, verify lock method called with correct variantId
+- [x] Add `findByVariantIdWithLock(@Param("variantId") Long variantId)` to `InventoryRepository`
+- [x] Annotate with `@Lock(LockModeType.PESSIMISTIC_WRITE)` and `@Query("SELECT i FROM Inventory i WHERE i.variantId = :variantId")`
+- [x] Keep existing methods: `findByVariantId`, `findByProductId`, `findLowStockItems`, `findStaleReservations`
+- [x] Verify `mvn compile -pl inventory-service` succeeds
+- [x] Unit test: mock repository, verify lock method called with correct variantId
