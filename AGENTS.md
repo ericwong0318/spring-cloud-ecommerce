@@ -93,6 +93,15 @@ mvn spring-boot:run -pl notification-service
 4. `mvn clean install -DskipTests` - build all
 5. `docker-compose up -d` - run full stack locally
 
+## /implement Skill - Commit Rule
+**NEVER commit changes after /implement unless explicitly asked by the user.** 
+- The skill implements code and runs tests but leaves committing to the user
+- User must explicitly request: "commit your work" or "git commit"
+- This prevents proactive commits that may surprise the user
+
+## Ticket Tracking Rule
+**After completing work on a ticket, tick the checkboxes in the ticket file (`.scratch/*/issues/*.md`) to mark tasks as done.**
+
 ## Agent skills
 
 ### Issue tracker
