@@ -4,7 +4,7 @@
 
 **Blocked by:** 01-config-server, 02-eureka-server, 04-gateway
 
-**Status:** ready-for-agent
+**Status:** **DONE**
 
 - [x] Service starts on port 8085, registers with Eureka
 - [x] PostgreSQL schema: `payment` (order_id, payment_id, status, authorized_amount, captured_amount, idempotency_key, created_at)

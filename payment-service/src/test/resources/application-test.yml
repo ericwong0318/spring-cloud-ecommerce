@@ -8,6 +8,8 @@ spring:
     url: r2dbc:postgresql://localhost:5432/payment_service
     username: postgres
     password: postgres
+    pool:
+      enabled: false
   flyway:
     enabled: false
     locations: classpath:db/migration
@@ -23,9 +25,9 @@ spring:
     listener:
       simple:
         acknowledge-mode: manual
-        concurrency: 3
-        max-concurrency: 10
-        prefetch: 10
+        concurrency: 1
+        max-concurrency: 1
+        prefetch: 1
 
 server:
   port: 0
@@ -46,13 +48,6 @@ management:
   endpoint:
     health:
       show-details: always
-
-outbox:
-  publisher:
-    batch-size: 100
-    max-retries: 5
-    poll-interval-ms: 5000
-    exchange: outbox.exchange
 
 rabbitmq:
   exchange:

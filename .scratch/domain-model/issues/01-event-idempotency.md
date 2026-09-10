@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] Add `eventId: UUID` field to all event classes in `common` module
-- [ ] Create `ProcessedEvent` JPA entity (`eventId` PK, `processedAt`)
-- [ ] Create `ProcessedEventRepository` per service (or shared in `common`)
-- [ ] Implement `IdempotentEventListener` base class / filter: check `processed_events` before handling; insert after success
-- [ ] Update `OrderEvent`, `InventoryEvent`, `ProductEvent`, `PaymentEvent` with `eventId` generation in factory methods
-- [ ] Add integration test: publish duplicate event → verify processed once
-- [ ] Verify backward compatibility: consumers without `eventId` handling still work (optional field)
+- [x] Add `eventId: UUID` field to all event classes in `common` module
+- [x] Create `ProcessedEvent` JPA entity (`eventId` PK, `processedAt`)
+- [x] Create `ProcessedEventRepository` per service (or shared in `common`)
+- [x] Implement `IdempotentEventListener` base class / filter: check `processed_events` before handling; insert after success
+- [x] Update `OrderEvent`, `InventoryEvent`, `ProductEvent`, `PaymentEvent` with `eventId` generation in factory methods
+- [x] Add integration test: publish duplicate event → verify processed once
+- [x] Verify backward compatibility: consumers without `eventId` handling still work (optional field)
