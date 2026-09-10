@@ -7,7 +7,7 @@
 
 | Ticket | Description | Status |
 |--------|-------------|--------|
-| 01-event-idempotency | Idempotency foundation (`ProcessedEvent`, `IdempotentEventListener`) | ready-for-agent |
+| 01-event-idempotency | Idempotency foundation (`ProcessedEvent`, `IdempotentEventListener`) | **done** |
 | 02-debezium-cdc | Superseded by RabbitMQ decision (ADR-006) | deprecated |
 | 02b-event-driven-reservation-cancellation-rabbitmq | Inventory expiry → order cancellation flow | **done** |
 | 03a-product-variant | Product/variant schema, API | **done** |

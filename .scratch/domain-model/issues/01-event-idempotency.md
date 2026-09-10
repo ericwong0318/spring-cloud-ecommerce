@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** **done**
 
 - [x] Add `eventId: UUID` field to all event classes in `common` module
 - [x] Create `ProcessedEvent` JPA entity (`eventId` PK, `processedAt`)
