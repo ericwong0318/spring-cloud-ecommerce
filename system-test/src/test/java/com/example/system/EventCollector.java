@@ -7,7 +7,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.function.Supplier;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.awaitility.Awaitility;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -21,7 +23,7 @@ import com.example.common.event.BaseEvent;
 public class EventCollector {
 
     private final RabbitTemplate rabbitTemplate;
-    private volatile java.util.List<BaseEvent> events = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private volatile List<BaseEvent> events = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     public EventCollector(RabbitTemplate rabbitTemplate) {
         this.rabbitTemplate = rabbitTemplate;
@@ -32,8 +34,8 @@ public class EventCollector {
      * 
      * @return the list of collected events
      */
-    public java.util.List<BaseEvent> getEvents() {
-        return new java.util.ArrayList<>(events);
+    public List<BaseEvent> getEvents() {
+        return new ArrayList<>(events);
     }
 
     /**
@@ -41,40 +43,6 @@ public class EventCollector {
      */
     public void clear() {
         events.clear();
-    }
-
-    /**
-     * Waits for an event matching the given event type within the timeout.
-     * 
-     * @param eventType the event type to wait for
-     * @param timeout the maximum time to wait
-     * @param unit the time unit of the timeout
-     * @return the matching event, or null if timeout
-     */
-    public BaseEvent awaitEvent(String eventType, long timeout, Supplier<LocalDateTime> nowSupplier, java.util.concurrent.TimeUnit unit) {
-        return Awaitility.await()
-                .atMost(timeout, unit)
-                .until(() -> events.stream().anyMatch(e -> eventType.equals(e.getEventType())),
-                       b -> b);
-    }
-
-    /**
-     * Waits for an event matching the given event type and event ID within the timeout.
-     * 
-     * @param eventType the event type to wait for
-     * @param eventId the event ID to wait for
-     * @param timeout the maximum time to wait
-     * @param unit the time unit of the timeout
-     * @return the matching event, or null if timeout
-     */
-    public BaseEvent awaitEvent(String eventType, UUID eventId, long timeout, Supplier<LocalDateTime> nowSupplier, java.util.concurrent.TimeUnit unit) {
-        return Awaitility.await()
-                .atMost(timeout, unit)
-                .until(() -> events.stream()
-                        .filter(e -> eventType.equals(e.getEventType()) && e.getEventId().equals(eventId))
-                        .findFirst()
-                        .orElse(null),
-                       b -> b != null);
     }
 
     /**
@@ -93,7 +61,7 @@ public class EventCollector {
      * @param eventType the event type to filter by
      * @return the list of matching events
      */
-    public java.util.List<BaseEvent> getEventsByType(String eventType) {
+    public List<BaseEvent> getEventsByType(String eventType) {
         return events.stream()
                 .filter(e -> eventType.equals(e.getEventType()))
                 .toList();
