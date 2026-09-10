@@ -55,7 +55,7 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public List<CategoryDto> getRootCategories() {
         log.debug("Fetching root categories");
-        return categoryRepository.findByParentIsNull().stream()
+        return categoryRepository.findRootsWithChildren().stream()
                 .map(this::buildCategoryTree)
                 .collect(Collectors.toList());
     }
@@ -73,7 +73,13 @@ public class CategoryService {
                     .collect(Collectors.toList())
             );
         }
-        return dto;
+        return new CategoryDto(
+            dto.id(),
+            dto.name(),
+            dto.description(),
+            dto.parentId(),
+            List.of()
+        );
     }
 
     @Transactional
@@ -120,8 +126,8 @@ public class CategoryService {
         Category newParent = categoryRepository.findById(newParentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Parent Category", newParentId));
 
-        // Check for cycles - newParent cannot be a descendant of category
-        if (isDescendant(newParentId, categoryId)) {
+        // Check for cycles - category cannot be an ancestor of newParent (would create cycle)
+        if (isAncestor(categoryId, newParentId)) {
             throw new IllegalArgumentException("Cannot move category under its own descendant (would create cycle)");
         }
 
@@ -137,13 +143,13 @@ public class CategoryService {
         return categoryMapper.toDto(saved);
     }
 
-    private boolean isDescendant(Long potentialDescendant, Long ancestor) {
-        if (potentialDescendant.equals(ancestor)) {
+    private boolean isAncestor(Long potentialAncestor, Long descendant) {
+        if (potentialAncestor.equals(descendant)) {
             return true;
         }
-        List<Category> children = categoryRepository.findByParentId(potentialDescendant);
+        List<Category> children = categoryRepository.findByParentId(potentialAncestor);
         for (Category child : children) {
-            if (isDescendant(child.getId(), ancestor)) {
+            if (isAncestor(child.getId(), descendant)) {
                 return true;
             }
         }
