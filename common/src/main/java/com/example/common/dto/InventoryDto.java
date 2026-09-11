@@ -22,6 +22,9 @@ public class InventoryDto {
     @Schema(description = "Unique identifier", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
     private Long id;
 
+    @Schema(description = "Product variant ID", example = "1", accessMode = Schema.AccessMode.READ_ONLY)
+    private Long variantId;
+
     @NotNull(message = "Product ID is required")
     @Schema(description = "Product ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long productId;

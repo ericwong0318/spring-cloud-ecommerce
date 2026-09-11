@@ -25,6 +25,11 @@ spring:
     connection-timeout: 5s
     publisher-confirm-type: correlated
     publisher-returns: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9000
 
 eureka:
   client:
