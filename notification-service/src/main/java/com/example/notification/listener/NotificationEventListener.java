@@ -8,21 +8,31 @@ import com.example.notification.model.Notification;
 import com.example.notification.repository.NotificationRepository;
 import com.example.notification.service.EmailService;
 import com.example.notification.service.NotificationService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
 @Component
-@RequiredArgsConstructor
 public class NotificationEventListener {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationEventListener.class);
 
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final IdempotentEventProcessor idempotentEventProcessor;
+
+    public NotificationEventListener(NotificationRepository notificationRepository,
+                                     NotificationService notificationService,
+                                     EmailService emailService,
+                                     IdempotentEventProcessor idempotentEventProcessor) {
+        this.notificationRepository = notificationRepository;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
+        this.idempotentEventProcessor = idempotentEventProcessor;
+    }
 
     @RabbitListener(queues = "${rabbitmq.queue.notification-events}")
     @Transactional
@@ -32,7 +42,7 @@ public class NotificationEventListener {
 
     private void handleOrderEventInternal(OrderEvent event) {
         log.info("Received order event: {}", event);
-        
+
         switch (OrderEvent.EventType.valueOf(event.getEventType())) {
             case CREATED -> handleOrderCreated(event);
             case CANCELLED -> handleOrderCancelled(event);
@@ -48,7 +58,7 @@ public class NotificationEventListener {
 
     private void handlePaymentEventInternal(PaymentEvent event) {
         log.info("Received payment event: {}", event);
-        
+
         switch (PaymentEvent.EventType.valueOf(event.getEventType())) {
             case AUTHORIZED -> handlePaymentAuthorized(event);
             case CAPTURED -> handlePaymentSuccess(event);
@@ -66,56 +76,56 @@ public class NotificationEventListener {
 
     private void handlePaymentAuthorized(PaymentEvent event) {
         notificationService.createNotificationFromTemplate(
-                "PAYMENT_AUTHORIZED", "EMAIL", 
-                event.getCustomerEmail(), 
+                "PAYMENT_AUTHORIZED", "EMAIL",
+                event.getCustomerEmail(),
                 event.getOrderId().toString(), "PAYMENT");
         log.info("Created payment authorized notification for order: {}", event.getOrderId());
     }
 
     private void handlePaymentRefunded(PaymentEvent event) {
         notificationService.createNotificationFromTemplate(
-                "PAYMENT_REFUNDED", "EMAIL", 
-                event.getCustomerEmail(), 
+                "PAYMENT_REFUNDED", "EMAIL",
+                event.getCustomerEmail(),
                 event.getOrderId().toString(), "PAYMENT");
         log.info("Created payment refunded notification for order: {}", event.getOrderId());
     }
 
     private void handlePaymentPartiallyRefunded(PaymentEvent event) {
         notificationService.createNotificationFromTemplate(
-                "PAYMENT_PARTIALLY_REFUNDED", "EMAIL", 
-                event.getCustomerEmail(), 
+                "PAYMENT_PARTIALLY_REFUNDED", "EMAIL",
+                event.getCustomerEmail(),
                 event.getOrderId().toString(), "PAYMENT");
         log.info("Created payment partially refunded notification for order: {}", event.getOrderId());
     }
 
     private void handleOrderCreated(OrderEvent event) {
         notificationService.createNotificationFromTemplate(
-                "ORDER_CONFIRMATION", "EMAIL", 
-                event.getCustomerEmail(), 
+                "ORDER_CONFIRMATION", "EMAIL",
+                event.getCustomerEmail(),
                 event.getOrderId().toString(), "ORDER");
         log.info("Created order confirmation notification for order: {}", event.getOrderId());
     }
 
     private void handleOrderCancelled(OrderEvent event) {
         notificationService.createNotificationFromTemplate(
-                "ORDER_CONFIRMATION", "EMAIL", 
-                event.getCustomerEmail(), 
+                "ORDER_CONFIRMATION", "EMAIL",
+                event.getCustomerEmail(),
                 event.getOrderId().toString(), "ORDER");
         log.info("Created order cancellation notification for order: {}", event.getOrderId());
     }
 
     private void handlePaymentSuccess(PaymentEvent event) {
         notificationService.createNotificationFromTemplate(
-                "PAYMENT_SUCCESS", "EMAIL", 
-                event.getCustomerEmail(), 
+                "PAYMENT_SUCCESS", "EMAIL",
+                event.getCustomerEmail(),
                 event.getOrderId().toString(), "PAYMENT");
         log.info("Created payment success notification for order: {}", event.getOrderId());
     }
 
     private void handlePaymentFailed(PaymentEvent event) {
         notificationService.createNotificationFromTemplate(
-                "PAYMENT_FAILED", "EMAIL", 
-                event.getCustomerEmail(), 
+                "PAYMENT_FAILED", "EMAIL",
+                event.getCustomerEmail(),
                 event.getOrderId().toString(), "PAYMENT");
         log.info("Created payment failed notification for order: {}", event.getOrderId());
     }

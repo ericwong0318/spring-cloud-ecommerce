@@ -1,7 +1,8 @@
 package com.example.common.config;
 
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,9 +11,10 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
-@Slf4j
 @Configuration
 public class RestClientConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(RestClientConfig.class);
 
     @Value("${common.rest-client.connect-timeout:5000}")
     private int connectTimeout;

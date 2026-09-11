@@ -7,8 +7,8 @@ import com.example.notification.model.Notification;
 import com.example.notification.model.NotificationTemplate;
 import com.example.notification.repository.NotificationRepository;
 import com.example.notification.repository.NotificationTemplateRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,10 +17,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class NotificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
     private final NotificationRepository notificationRepository;
     private final NotificationTemplateRepository templateRepository;
@@ -29,13 +29,27 @@ public class NotificationService {
     private final NotificationMapper notificationMapper;
     private final OutboxEventPublisher outboxEventPublisher;
 
+    public NotificationService(NotificationRepository notificationRepository,
+                               NotificationTemplateRepository templateRepository,
+                               EmailService emailService,
+                               SmsService smsService,
+                               NotificationMapper notificationMapper,
+                               OutboxEventPublisher outboxEventPublisher) {
+        this.notificationRepository = notificationRepository;
+        this.templateRepository = templateRepository;
+        this.emailService = emailService;
+        this.smsService = smsService;
+        this.notificationMapper = notificationMapper;
+        this.outboxEventPublisher = outboxEventPublisher;
+    }
+
     @Transactional
     public void sendNotification(Notification notification) {
         log.info("Sending notification {} via {}", notification.getId(), notification.getChannel());
-        
+
         try {
             boolean sent = sendViaChannel(notification);
-            
+
             if (sent) {
                 notification.setStatus(Notification.NotificationStatus.SENT);
                 notification.setSentAt(LocalDateTime.now());
@@ -88,12 +102,12 @@ public class NotificationService {
     private void handleSendFailure(Notification notification, String errorMessage) {
         notification.setErrorMessage(errorMessage);
         notification.setRetryCount(notification.getRetryCount() + 1);
-        
+
         if (notification.getRetryCount() >= notification.getMaxRetries()) {
             // Max retries reached - try fallback channel
-            if (notification.getFallbackChannel() != null && 
+            if (notification.getFallbackChannel() != null &&
                 !notification.getFallbackChannel().equals(notification.getChannel().name())) {
-                log.info("Max retries reached for notification {}, trying fallback channel: {}", 
+                log.info("Max retries reached for notification {}, trying fallback channel: {}",
                         notification.getId(), notification.getFallbackChannel());
                 notification.setChannel(Notification.NotificationChannel.valueOf(notification.getFallbackChannel()));
                 notification.setRetryCount(0); // Reset retry count for fallback
@@ -104,7 +118,7 @@ public class NotificationService {
                 // No fallback available - mark as failed
                 notification.setStatus(Notification.NotificationStatus.FAILED);
                 notificationRepository.save(notification);
-                log.error("Notification {} failed after {} retries, no fallback available", 
+                log.error("Notification {} failed after {} retries, no fallback available",
                         notification.getId(), notification.getMaxRetries());
                 publishNotificationEvent("Notification", notification.getId().toString(), "FAILED", notification);
             }
@@ -112,7 +126,7 @@ public class NotificationService {
             // Retry later
             notification.setStatus(Notification.NotificationStatus.RETRYING);
             notificationRepository.save(notification);
-            log.info("Notification {} will be retried (attempt {}/{})", 
+            log.info("Notification {} will be retried (attempt {}/{})",
                     notification.getId(), notification.getRetryCount(), notification.getMaxRetries());
         }
     }
@@ -125,12 +139,12 @@ public class NotificationService {
     public NotificationDto createNotification(NotificationDto notificationDto) {
         Notification notification = notificationMapper.toEntity(notificationDto);
         notification.setStatus(Notification.NotificationStatus.PENDING);
-        
+
         // Apply template if type is specified
         if (notificationDto.getType() != null) {
             applyTemplate(notification);
         }
-        
+
         Notification saved = notificationRepository.save(notification);
         return notificationMapper.toDto(saved);
     }
@@ -138,7 +152,7 @@ public class NotificationService {
     private void applyTemplate(Notification notification) {
         Optional<NotificationTemplate> templateOpt = templateRepository.findByTypeAndChannel(
                 notification.getType().name(), notification.getChannel().name());
-        
+
         if (templateOpt.isPresent()) {
             NotificationTemplate template = templateOpt.get();
             // Simple template variable replacement
@@ -175,7 +189,7 @@ public class NotificationService {
         log.debug("Retrying failed/pending notifications");
         List<Notification> retryableNotifications = notificationRepository.findRetryableNotifications(Notification.NotificationStatus.RETRYING);
         for (Notification notification : retryableNotifications) {
-            log.info("Retrying notification {} (attempt {}/{})", 
+            log.info("Retrying notification {} (attempt {}/{})",
                     notification.getId(), notification.getRetryCount(), notification.getMaxRetries());
             sendNotification(notification);
         }
@@ -192,9 +206,9 @@ public class NotificationService {
         notification.setStatus(Notification.NotificationStatus.PENDING);
         notification.setMaxRetries(3);
         notification.setFallbackChannel("SMS"); // Default fallback to SMS
-        
+
         applyTemplate(notification);
-        
+
         Notification saved = notificationRepository.save(notification);
         return notificationMapper.toDto(saved);
     }
