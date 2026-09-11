@@ -327,10 +327,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
 
         // Verify event published
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
-            ProductEvent event = rabbitTemplate.receiveAndConvert(
-                productEventsQueue.getName(), 
-                new ParameterizedTypeReference<ProductEvent>() {}
-            );
+            ProductEvent event = receivedEvents.poll(5, TimeUnit.SECONDS);
             assertThat(event).isNotNull();
             assertThat(event.getEventType()).isEqualTo("VARIANT_DELETED");
             Long expectedProductId = productId.hashCode() & 0x7FFFFFFFL;
