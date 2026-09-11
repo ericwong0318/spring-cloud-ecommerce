@@ -4,16 +4,16 @@
 
 **Blocked by:** 04a — Order Management: OrderItem Aggregate (Core), 05b — Inventory: TTL Scheduler
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Create `ReservationExpiredEvent` in `common` module: `{eventId, orderItemId, variantId, quantityReleased, reservationExpiresAt}`
-- [ ] Implement `ReservationExpiredEventHandler` in `order-service`:
+- [x] Create `ReservationExpiredEvent` in `common` module: `{eventId, orderItemId, variantId, quantityReleased, reservationExpiresAt}`
+- [x] Implement `ReservationExpiredEventHandler` in `order-service`:
   - Listen on RabbitMQ queue `order.reservation-expired.queue`
   - Idempotency check via `IdempotentEventProcessor` (ticket #01)
   - Find OrderItem by ID, set `status = CANCELLED`
   - Check parent Order: if all OrderItems are CANCELLED or BACKORDERED, transition `Order.status = CANCELLED`
   - Publish `OrderEvent.CANCELLED` to RabbitMQ (so notification-service can notify customer)
-- [ ] Add integration tests:
+- [x] Add integration tests:
   - Publish `ReservationExpiredEvent` → verify OrderItem.status = CANCELLED, Order.status = CANCELLED if all items expired
   - Partial expiry: 2 of 3 items expired → Order remains in PENDING (not all items CANCELLED yet)
   - Duplicate event (same `eventId`) → handled once (idempotency)
