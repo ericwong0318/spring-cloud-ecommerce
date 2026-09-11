@@ -5,7 +5,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +37,10 @@ public class ProductController {
     @Operation(summary = "List all products", description = "Returns a list of all products")
     public Flux<ProductDto> getAllProducts(
             @Parameter(description = "Filter by category ID") @RequestParam(required = false) String categoryId,
-            @Parameter(hidden = true) Pageable pageable) {
+            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "id") String sort) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         if (categoryId != null) {
             return productService.getProductsByCategory(categoryId, pageable);
         }
@@ -54,7 +59,10 @@ public class ProductController {
     @Operation(summary = "Get products by category", description = "Returns products for a specific category")
     public Flux<ProductDto> getProductsByCategory(
             @PathVariable String categoryId,
-            @Parameter(hidden = true) Pageable pageable) {
+            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "id") String sort) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         return productService.getProductsByCategory(categoryId, pageable);
     }
 
@@ -62,7 +70,10 @@ public class ProductController {
     @Operation(summary = "Search products by name", description = "Returns products matching the search query")
     public Flux<ProductDto> searchProducts(
             @Parameter(description = "Search query") @RequestParam String q,
-            @Parameter(hidden = true) Pageable pageable) {
+            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "id") String sort) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         return productService.searchProducts(q, pageable);
     }
 
@@ -70,7 +81,10 @@ public class ProductController {
     @Operation(summary = "Filter products by attributes", description = "Returns products matching the attribute filters")
     public Flux<ProductDto> filterProducts(
             @Parameter(description = "Attribute filters as key=value pairs") @RequestParam Map<String, String> attrs,
-            @Parameter(hidden = true) Pageable pageable) {
+            @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "id") String sort) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         return productService.filterByAttributes(attrs, pageable);
     }
 

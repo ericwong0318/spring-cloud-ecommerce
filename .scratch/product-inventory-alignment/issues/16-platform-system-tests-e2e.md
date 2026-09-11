@@ -4,15 +4,15 @@
 
 **Blocked by:** 05 — Inventory: Concurrency Integration Test, 10 — Product: Reactive Controller, 14 — Platform: Docker Compose MongoDB Service, 15 — Platform: Config Server MongoDB Config
 
-**Status:** in-progress
+**Status:** done
 
 - [x] Update `system-test/pom.xml`: add MongoDB Testcontainers dependency
 - [x] Update `docker-compose.test.yml` to include MongoDB (from ticket 14)
 - [x] Update `TestcontainersConfig` to include MongoDB container
 - [x] Update `ECommerceSystemTest` to use MongoDB for product service (DynamicPropertySource)
 - [x] Update `DatabaseTestHelper` to use MongoDB for product test data (createProduct, findProductById, findProductVariantById)
-- [ ] Verify existing happy-path test: browse products → create order → reserve inventory → authorize payment → confirm order
-- [ ] Add test: product search/filter via reactive endpoints
-- [ ] Add test: concurrent order placement → inventory concurrency (ticket 05) prevents oversell
-- [ ] Verify all tests pass: `mvn verify -pl system-test`
-- [ ] CI pipeline runs system tests on every PR
+- [x] Verify existing happy-path test: browse products → create order → reserve inventory → authorize payment → confirm order
+- [x] Add test: product search/filter via reactive endpoints
+- [x] Add test: concurrent order placement → inventory concurrency (ticket 05) prevents oversell
+- [x] Verify all tests pass: `mvn verify -pl system-test`
+- [x] CI pipeline runs system tests on every PR

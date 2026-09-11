@@ -52,6 +52,33 @@ jobs:
           name: payment-service-test-reports
           path: payment-service/target/surefire-reports/
 
+  system-test:
+    name: System Tests (E2E)
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run system tests
+        run: mvn verify -pl system-test -Dskip.unit.tests=true -B
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-test-reports
+          path: system-test/target/surefire-reports/
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -95,6 +122,36 @@ jobs:
         run: |
           docker save spring-cloud-project/payment-service:1.0.0-SNAPSHOT | gzip > payment-service-image.tar.gz
           ls -lh payment-service-image.tar.gz
+
+  sonarqube:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-sonar-
+
+      - name: Run SonarQube Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: mvn sonar:sonar -B
 
   security-scan:
     name: Security Scan

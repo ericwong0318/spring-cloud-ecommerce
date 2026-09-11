@@ -24,10 +24,14 @@ public class ProductService {
         this.productMapper = productMapper;
     }
 
-    public Flux<ProductDto> getAllProducts() {
-        log.debug("Fetching all products");
-        return productRepository.findAll()
+    public Flux<ProductDto> getAllProducts(Pageable pageable) {
+        log.debug("Fetching all products with pagination");
+        return productRepository.findAllBy(pageable)
                 .map(productMapper::toDto);
+    }
+
+    public Flux<ProductDto> getAllProducts() {
+        return getAllProducts(Pageable.unpaged());
     }
 
     public Mono<ProductDto> getProductById(String id) {

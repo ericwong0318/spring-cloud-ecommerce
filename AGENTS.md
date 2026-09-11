@@ -11,6 +11,7 @@ Multi-module Maven project with 11 services:
 - `order-service` - Order domain service (WebFlux + R2DBC)
 - `inventory-service` - Inventory domain service (WebFlux + R2DBC)
 - `notification-service` - Notification service (WebFlux + JPA)
+- `payment-service` - Payment processing service (WebFlux + R2DBC)
 - `system-test` - System-level integration tests (Testcontainers)
 
 ## Build & Test Commands
@@ -43,6 +44,7 @@ mvn spring-boot:run -pl auth-server
 mvn spring-boot:run -pl order-service
 mvn spring-boot:run -pl inventory-service
 mvn spring-boot:run -pl notification-service
+mvn spring-boot:run -pl payment-service
 ```
 
 ## Key Conventions
@@ -63,6 +65,7 @@ mvn spring-boot:run -pl notification-service
 | order-service | 8083 |
 | inventory-service | 8084 |
 | notification-service | 8085 |
+| payment-service | 8085 |
 
 ## Configuration
 - Local config: `config-server/src/main/resources/config/` (Git repo)

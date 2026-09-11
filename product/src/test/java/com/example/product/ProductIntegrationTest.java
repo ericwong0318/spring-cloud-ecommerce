@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -38,7 +39,7 @@ class ProductIntegrationTest {
     @EnableWebFluxSecurity
     static class TestSecurityConfig {
         @Bean
-        org.springframework.security.web.server.SecurityFilterChain filterChain(ServerHttpSecurity http) {
+        SecurityWebFilterChain filterChain(ServerHttpSecurity http) {
             return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeExchange(auth -> auth.anyExchange().permitAll())

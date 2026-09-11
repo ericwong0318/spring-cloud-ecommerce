@@ -33,9 +33,9 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -189,6 +189,25 @@ public class ECommerceSystemTest {
         registry.add("spring.rabbitmq.port", RABBITMQ::getAmqpPort);
         registry.add("spring.rabbitmq.username", RABBITMQ::getAdminUsername);
         registry.add("spring.rabbitmq.password", RABBITMQ::getAdminPassword);
+
+        // RabbitMQ properties for order service
+        registry.add("rabbitmq.exchange.order", () -> "order.exchange");
+        registry.add("rabbitmq.exchange.payment", () -> "payment.exchange");
+        registry.add("rabbitmq.exchange.inventory", () -> "inventory.exchange");
+        registry.add("rabbitmq.exchange.ecommerce", () -> "ecommerce.exchange");
+        registry.add("rabbitmq.queue.order-events", () -> "order.events.queue");
+        registry.add("rabbitmq.queue.payment-events", () -> "payment.events.queue");
+        registry.add("rabbitmq.queue.inventory-events", () -> "inventory.events.queue");
+        registry.add("rabbitmq.queue.reservation-expired", () -> "reservation.expired.queue");
+        registry.add("rabbitmq.routing-key.order-created", () -> "order.created");
+        registry.add("rabbitmq.routing-key.order-updated", () -> "order.updated");
+        registry.add("rabbitmq.routing-key.order-cancelled", () -> "order.cancelled");
+        registry.add("rabbitmq.routing-key.payment-authorized", () -> "payment.authorized");
+        registry.add("rabbitmq.routing-key.payment-captured", () -> "payment.captured");
+        registry.add("rabbitmq.routing-key.payment-refunded", () -> "payment.refunded");
+        registry.add("rabbitmq.routing-key.payment-failed", () -> "payment.failed");
+        registry.add("rabbitmq.routing-key.inventory-reserved", () -> "inventory.reserved");
+        registry.add("rabbitmq.routing-key.reservation-expired", () -> "reservation.expired");
 
         // Disable service discovery and config server
         registry.add("eureka.client.enabled", () -> "false");
@@ -1168,7 +1187,12 @@ public class ECommerceSystemTest {
         return io.restassured.path.json.JsonPath.from(response).getLong("id");
     }
 
-    @Configuration
+    @SpringBootApplication(
+        exclude = {
+            org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class,
+            org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration.class
+        }
+    )
     static class TestConfig {
         @Bean
         public JdbcTemplate jdbcTemplate(javax.sql.DataSource dataSource) {
@@ -1564,5 +1588,127 @@ public class ECommerceSystemTest {
                 .totalAmount(price.multiply(new BigDecimal(quantity)))
                 .items(items)
                 .build();
+    }
+
+    // ==================== NEW TESTS FOR TICKET 16 ====================
+
+    @Test
+    @DisplayName("Product Search/Filter via Reactive Endpoints")
+    void testProductSearchAndFilter() {
+        // Given: Use existing test products (created in @BeforeEach)
+        // testProductId = 1L, testVariantId1 = 2L, testVariantId2 = 3L
+        // These are set up in @BeforeEach with createInventory
+
+        // Wait for products to be available via product service
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
+            // When: Search products by name
+            String searchResponse = given()
+                    .contentType(ContentType.JSON)
+                    .when()
+                    .get("/api/products/search?q=Laptop")
+                    .then()
+                    .statusCode(200)
+                    .extract()
+                    .asString();
+
+            // Then: Should return results (may be empty if no products in MongoDB)
+            // This tests the reactive endpoint works
+            assertThat(searchResponse).isNotNull();
+        });
+
+        // When: Filter products by attribute
+        String filterResponse = given()
+                .contentType(ContentType.JSON)
+                .when()
+                .get("/api/products/filter?price=999.99")
+                .then()
+                .statusCode(200)
+                .extract()
+                .asString();
+
+        // Then: Should return results
+        assertThat(filterResponse).isNotNull();
+
+        // When: Get products by category
+        String categoryResponse = given()
+                .contentType(ContentType.JSON)
+                .when()
+                .get("/api/products/category/" + testCategoryId)
+                .then()
+                .statusCode(200)
+                .extract()
+                .asString();
+
+        // Then: Should return results
+        assertThat(categoryResponse).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Concurrent Order Placement - Inventory Concurrency Prevents Oversell")
+    void testConcurrentOrderPlacementInventoryConcurrency() {
+        // Given: Inventory with quantity=50 for a variant
+        Long variantId = testVariantId1;
+        int initialQuantity = 50;
+
+        // Reset inventory to known state
+        Inventory inventory = inventoryRepository.findByVariantId(variantId).orElseThrow();
+        inventory.setQuantity(initialQuantity);
+        inventory.setReservedQuantity(0);
+        inventoryRepository.save(inventory);
+
+        // Clear event collector
+        eventCollector.clear();
+
+        int totalRequests = 100; // 100 parallel requests, each ordering 1 unit
+        int expectedSuccess = 50; // Only 50 should succeed
+        int expectedFailure = 50; // 50 should fail with insufficient stock
+
+        MetricsCollector metrics = new MetricsCollector();
+        ParallelExecutor executor = new ParallelExecutor(25); // 25 concurrent threads
+
+        try {
+            // When: Launch 100 parallel requests to POST /orders
+            List<ParallelExecutor.ExecutionResult<String>> results = executor.executeParallel(taskIndex -> {
+                Instant start = Instant.now();
+                try {
+                    OrderDto orderDto = createLoadTestOrder(variantId, 1);
+                    String response = given()
+                            .contentType(ContentType.JSON)
+                            .body(orderDto)
+                            .when()
+                            .post("/v1/orders")
+                            .then()
+                            .extract()
+                            .asString();
+
+                    metrics.recordSuccess("order-create", Duration.between(start, Instant.now()));
+                    return response;
+                } catch (Exception e) {
+                    metrics.recordFailure("order-create", Duration.between(start, Instant.now()), e);
+                    throw e;
+                }
+            }, totalRequests);
+
+            // Then: Verify exactly 50 orders succeed, 50 fail with insufficient stock
+            AssertionHelpers.assertOrderSuccessCount(results, expectedSuccess, expectedFailure);
+
+            // Verify final inventory: quantity=50, reservedQuantity=0, availableQuantity=0
+            AssertionHelpers.assertInventoryState(inventoryRepository, variantId,
+                    initialQuantity, 0, 0);
+
+            // No negative quantities, no lost updates
+            AssertionHelpers.assertNoOversell(inventoryRepository, variantId);
+
+            // Print metrics
+            metrics.printSummary();
+            AssertionHelpers.logErrorBreakdown(results, "ConcurrentOrderPlacementInventoryConcurrency");
+
+            // Verify error types - should be mostly 409 Conflict (insufficient stock)
+            Map<String, Long> errorCounts = AssertionHelpers.categorizeErrors(results);
+            assertThat(errorCounts).containsKey("HttpClientErrorException$Conflict");
+
+        } finally {
+            executor.shutdown(30, TimeUnit.SECONDS);
+        }
     }
 }

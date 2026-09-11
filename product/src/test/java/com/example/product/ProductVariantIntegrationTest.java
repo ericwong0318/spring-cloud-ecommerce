@@ -89,7 +89,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
             String json = (String) message;
             ProductEvent event = objectMapper.readValue(json, ProductEvent.class);
             assertThat(event.getEventType()).isEqualTo("VARIANT_CREATED");
-            assertThat(event.getProductId()).isEqualTo(Long.parseLong(productId));
+            assertThat(event.getProductId()).isEqualTo(productId);
             assertThat(event.getSkuCode()).isEqualTo("TEST-SKU-001");
         });
     }

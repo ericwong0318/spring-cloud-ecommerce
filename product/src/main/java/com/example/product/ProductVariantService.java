@@ -68,34 +68,45 @@ public class ProductVariantService {
                 .map(variantMapper::toDto);
     }
 
-    public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto variantDto) {
-        log.info("Creating variant for product: {}", productId);
+public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto variantDto) {
+        log.info("Creating variant for product: {}, variantDto: {}", productId, variantDto);
         
         return productRepository.findById(productId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + productId)))
                 .flatMap(product -> {
+                    log.debug("Found product: {}", product);
                     boolean skuExists = product.getVariants().stream()
                             .anyMatch(v -> v.getSkuCode().equals(variantDto.getSkuCode()));
                     if (skuExists) {
+                        log.warn("SKU code already exists: {}", variantDto.getSkuCode());
                         return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.getSkuCode()));
                     }
                     
                     ProductVariant variant = variantMapper.toEntity(variantDto);
+                    log.debug("Created variant entity: {}", variant);
                     product.getVariants().add(variant);
                     
                     return productRepository.save(product)
+                            .doOnNext(saved -> log.debug("Saved product: {}", saved))
+                            .doOnError(e -> log.error("Error saving product", e))
                             .then(Mono.just(variant));
                 })
                 .map(variantMapper::toDto)
                 .doOnNext(saved -> {
+                    saved.setProductId(productId);
+                    log.debug("Mapped to DTO: {}", saved);
                     try {
-ProductEvent event = ProductEvent.variantCreated(
-                                 Long.valueOf(productId),
-                                 null,
-                                 saved.getSkuCode(),
-                                 saved.getPrice(),
-                                 saved.getInventoryId() != null ? Long.valueOf(saved.getInventoryId()) : null
-                         );
+                        ProductEvent event = new ProductEvent(
+                                ProductEvent.EventType.VARIANT_CREATED.name(),
+                                java.util.UUID.randomUUID(),
+                                productId,
+                                null,
+                                saved.getPrice(),
+                                null,
+                                null,
+                                saved.getSkuCode(),
+                                java.time.LocalDateTime.now()
+                        );
                         String jsonPayload = objectMapper.writeValueAsString(event);
                         rabbitTemplate.convertAndSend(productExchange, "product.variant.created", jsonPayload);
                         log.info("Published ProductEvent.VARIANT_CREATED to RabbitMQ for variant: {}", saved.getSkuCode());
@@ -136,16 +147,20 @@ ProductEvent event = ProductEvent.variantCreated(
                     return productRepository.save(product)
                             .then(Mono.just(variant));
                 })
-                .map(variantMapper::toDto)
+.map(variantMapper::toDto)
                 .doOnNext(saved -> {
                     try {
-ProductEvent event = ProductEvent.variantUpdated(
-                                 Long.valueOf(productId),
-                                 null,
-                                 saved.getSkuCode(),
-                                 saved.getPrice(),
-                                 saved.getInventoryId() != null ? Long.valueOf(saved.getInventoryId()) : null
-                         );
+                        ProductEvent event = new ProductEvent(
+                                ProductEvent.EventType.VARIANT_UPDATED.name(),
+                                java.util.UUID.randomUUID(),
+                                productId,
+                                null,
+                                saved.getPrice(),
+                                null,
+                                null,
+                                saved.getSkuCode(),
+                                java.time.LocalDateTime.now()
+                        );
                         String jsonPayload = objectMapper.writeValueAsString(event);
                         rabbitTemplate.convertAndSend(productExchange, "product.variant.updated", jsonPayload);
                         log.info("Published ProductEvent.VARIANT_UPDATED to RabbitMQ for variant: {}", saved.getSkuCode());
@@ -171,13 +186,19 @@ ProductEvent event = ProductEvent.variantUpdated(
                     return productRepository.save(product)
                             .then(Mono.just(variantToRemove));
                 })
-                .doOnNext(variant -> {
+.doOnNext(variant -> {
                     try {
-ProductEvent event = ProductEvent.variantDeleted(
-                                 Long.valueOf(productId),
-                                 null,
-                                 variant.getSkuCode()
-                         );
+                        ProductEvent event = new ProductEvent(
+                                ProductEvent.EventType.VARIANT_DELETED.name(),
+                                java.util.UUID.randomUUID(),
+                                productId,
+                                null,
+                                null,
+                                null,
+                                null,
+                                variant.getSkuCode(),
+                                java.time.LocalDateTime.now()
+                        );
                         String jsonPayload = objectMapper.writeValueAsString(event);
                         rabbitTemplate.convertAndSend(productExchange, "product.variant.deleted", jsonPayload);
                         log.info("Published ProductEvent.VARIANT_DELETED to RabbitMQ for variant: {}", variant.getSkuCode());
