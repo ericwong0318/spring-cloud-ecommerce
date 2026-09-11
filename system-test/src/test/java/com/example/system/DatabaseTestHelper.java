@@ -1,7 +1,5 @@
 package com.example.system;
 
-import com.example.common.dto.ProductDto;
-import com.example.common.dto.ProductVariantDto;
 import com.example.common.dto.InventoryDto;
 import com.example.common.dto.OrderDto;
 import com.example.common.dto.OrderItemDto;
@@ -15,9 +13,6 @@ import com.example.common.event.OrderEvent;
 import com.example.common.event.PaymentEvent;
 import com.example.common.event.ProductEvent;
 import com.example.common.event.ReservationExpiredEvent;
-import com.example.product.Product;
-import com.example.product.ProductRepository;
-import com.example.product.ProductMapper;
 import com.example.inventory.model.Inventory;
 import com.example.inventory.repository.InventoryRepository;
 import com.example.order.repository.OrderRepository;
@@ -26,9 +21,7 @@ import com.example.order.repository.ProcessedEventRepository;
 import com.example.order.repository.ShipmentRepository;
 import com.example.payment.repository.PaymentRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
-import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
@@ -41,8 +34,7 @@ import java.util.UUID;
 
 /**
  * Helper class for inserting test data and verifying state across services.
- * Uses direct database access for fast setup and verification.
- * Product data uses MongoDB (reactive), other services use PostgreSQL.
+ * Uses direct database access (PostgreSQL via JdbcTemplate) for setup and verification.
  */
 public class DatabaseTestHelper {
 
@@ -58,9 +50,6 @@ public class DatabaseTestHelper {
     private final ProcessedEventRepository processedEventRepository;
     private final ShipmentRepository shipmentRepository;
     private final PaymentRepository paymentRepository;
-    private final ProductRepository productRepository;
-    private final ProductMapper productMapper;
-    private final ReactiveMongoTemplate mongoTemplate;
 
     public DatabaseTestHelper(JdbcTemplate categoryJdbcTemplate,
                                JdbcTemplate inventoryJdbcTemplate,
@@ -73,10 +62,7 @@ public class DatabaseTestHelper {
                                OrderItemRepository orderItemRepository,
                                ProcessedEventRepository processedEventRepository,
                                ShipmentRepository shipmentRepository,
-                               PaymentRepository paymentRepository,
-                               ProductRepository productRepository,
-                               ProductMapper productMapper,
-                               ReactiveMongoTemplate mongoTemplate) {
+                               PaymentRepository paymentRepository) {
         this.categoryJdbcTemplate = categoryJdbcTemplate;
         this.inventoryJdbcTemplate = inventoryJdbcTemplate;
         this.orderJdbcTemplate = orderJdbcTemplate;
@@ -89,50 +75,6 @@ public class DatabaseTestHelper {
         this.processedEventRepository = processedEventRepository;
         this.shipmentRepository = shipmentRepository;
         this.paymentRepository = paymentRepository;
-        this.productRepository = productRepository;
-        this.productMapper = productMapper;
-        this.mongoTemplate = mongoTemplate;
-    }
-
-    // ==================== Product Helpers (MongoDB) ====================
-
-    public String createProduct(String name, String description, BigDecimal price, String categoryId) {
-        ProductDto productDto = new ProductDto();
-        productDto.setName(name);
-        productDto.setDescription(description);
-        productDto.setPrice(price);
-        productDto.setCategoryId(categoryId);
-        productDto.setCategoryName("Test Category");
-
-        // Add default variant
-        ProductVariantDto variantDto = new ProductVariantDto();
-        variantDto.setSkuCode(name.toUpperCase().replace(" ", "-") + "-DEFAULT");
-        variantDto.setAttributes(Map.of());
-        variantDto.setPrice(price);
-        variantDto.setInventoryId("inv-" + UUID.randomUUID().toString().substring(0, 8));
-        productDto.setVariants(List.of(variantDto));
-
-        Product product = productMapper.toEntity(productDto);
-        product.setVariants(productDto.getVariants().stream()
-                .map(productMapper::toVariantEntity)
-                .toList());
-        Product saved = productRepository.save(product).block();
-        return saved.getId();
-    }
-
-    public Optional<ProductDto> findProductById(String id) {
-        return productRepository.findById(id)
-                .map(productMapper::toDto)
-                .blockOptional();
-    }
-
-    public Optional<ProductVariantDto> findProductVariantById(String skuCode) {
-        return productRepository.findAll()
-                .flatMap(product -> product.getVariants().stream())
-                .filter(v -> v.getSkuCode().equals(skuCode))
-                .map(productMapper::toVariantDto)
-                .next()
-                .blockOptional();
     }
 
     // ==================== Category Helpers ====================
