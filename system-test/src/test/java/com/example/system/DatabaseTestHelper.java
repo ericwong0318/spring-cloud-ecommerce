@@ -15,6 +15,9 @@ import com.example.common.event.OrderEvent;
 import com.example.common.event.PaymentEvent;
 import com.example.common.event.ProductEvent;
 import com.example.common.event.ReservationExpiredEvent;
+import com.example.product.Product;
+import com.example.product.ProductRepository;
+import com.example.product.ProductMapper;
 import com.example.inventory.model.Inventory;
 import com.example.inventory.repository.InventoryRepository;
 import com.example.order.repository.OrderRepository;
@@ -23,7 +26,9 @@ import com.example.order.repository.ProcessedEventRepository;
 import com.example.order.repository.ShipmentRepository;
 import com.example.payment.repository.PaymentRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
@@ -37,10 +42,10 @@ import java.util.UUID;
 /**
  * Helper class for inserting test data and verifying state across services.
  * Uses direct database access for fast setup and verification.
+ * Product data uses MongoDB (reactive), other services use PostgreSQL.
  */
 public class DatabaseTestHelper {
 
-    private final JdbcTemplate productJdbcTemplate;
     private final JdbcTemplate categoryJdbcTemplate;
     private final JdbcTemplate inventoryJdbcTemplate;
     private final JdbcTemplate orderJdbcTemplate;
@@ -53,9 +58,11 @@ public class DatabaseTestHelper {
     private final ProcessedEventRepository processedEventRepository;
     private final ShipmentRepository shipmentRepository;
     private final PaymentRepository paymentRepository;
+    private final ProductRepository productRepository;
+    private final ProductMapper productMapper;
+    private final ReactiveMongoTemplate mongoTemplate;
 
-    public DatabaseTestHelper(JdbcTemplate productJdbcTemplate,
-                               JdbcTemplate categoryJdbcTemplate,
+    public DatabaseTestHelper(JdbcTemplate categoryJdbcTemplate,
                                JdbcTemplate inventoryJdbcTemplate,
                                JdbcTemplate orderJdbcTemplate,
                                JdbcTemplate paymentJdbcTemplate,
@@ -66,8 +73,10 @@ public class DatabaseTestHelper {
                                OrderItemRepository orderItemRepository,
                                ProcessedEventRepository processedEventRepository,
                                ShipmentRepository shipmentRepository,
-                               PaymentRepository paymentRepository) {
-        this.productJdbcTemplate = productJdbcTemplate;
+                               PaymentRepository paymentRepository,
+                               ProductRepository productRepository,
+                               ProductMapper productMapper,
+                               ReactiveMongoTemplate mongoTemplate) {
         this.categoryJdbcTemplate = categoryJdbcTemplate;
         this.inventoryJdbcTemplate = inventoryJdbcTemplate;
         this.orderJdbcTemplate = orderJdbcTemplate;
@@ -80,39 +89,50 @@ public class DatabaseTestHelper {
         this.processedEventRepository = processedEventRepository;
         this.shipmentRepository = shipmentRepository;
         this.paymentRepository = paymentRepository;
+        this.productRepository = productRepository;
+        this.productMapper = productMapper;
+        this.mongoTemplate = mongoTemplate;
     }
 
-    // ==================== Product Helpers ====================
+    // ==================== Product Helpers (MongoDB) ====================
 
-    public Long createProduct(String name, String description, BigDecimal price, Long categoryId) {
-        String sql = "INSERT INTO product (name, description, price, category_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)";
-        Long id = insertAndGetId(productJdbcTemplate, sql, name, description, price, categoryId, LocalDateTime.now(), LocalDateTime.now());
-        return id;
+    public String createProduct(String name, String description, BigDecimal price, String categoryId) {
+        ProductDto productDto = new ProductDto();
+        productDto.setName(name);
+        productDto.setDescription(description);
+        productDto.setPrice(price);
+        productDto.setCategoryId(categoryId);
+        productDto.setCategoryName("Test Category");
+
+        // Add default variant
+        ProductVariantDto variantDto = new ProductVariantDto();
+        variantDto.setSkuCode(name.toUpperCase().replace(" ", "-") + "-DEFAULT");
+        variantDto.setAttributes(Map.of());
+        variantDto.setPrice(price);
+        variantDto.setInventoryId("inv-" + UUID.randomUUID().toString().substring(0, 8));
+        productDto.setVariants(List.of(variantDto));
+
+        Product product = productMapper.toEntity(productDto);
+        product.setVariants(productDto.getVariants().stream()
+                .map(productMapper::toVariantEntity)
+                .toList());
+        Product saved = productRepository.save(product).block();
+        return saved.getId();
     }
 
-    public Long createProductVariant(Long productId, String skuCode, String name, BigDecimal price) {
-        String sql = "INSERT INTO product_variant (product_id, sku_code, name, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)";
-        return insertAndGetId(productJdbcTemplate, sql, productId, skuCode, name, price, LocalDateTime.now(), LocalDateTime.now());
+    public Optional<ProductDto> findProductById(String id) {
+        return productRepository.findById(id)
+                .map(productMapper::toDto)
+                .blockOptional();
     }
 
-    public Optional<ProductDto> findProductById(Long id) {
-        String sql = "SELECT * FROM product WHERE id = ?";
-        return Optional.ofNullable(productJdbcTemplate.query(sql, rs -> {
-            if (rs.next()) {
-                return mapToProductDto(rs);
-            }
-            return null;
-        }, id));
-    }
-
-    public Optional<ProductVariantDto> findProductVariantById(Long id) {
-        String sql = "SELECT * FROM product_variant WHERE id = ?";
-        return Optional.ofNullable(productJdbcTemplate.query(sql, rs -> {
-            if (rs.next()) {
-                return mapToProductVariantDto(rs);
-            }
-            return null;
-        }, id));
+    public Optional<ProductVariantDto> findProductVariantById(String skuCode) {
+        return productRepository.findAll()
+                .flatMap(product -> product.getVariants().stream())
+                .filter(v -> v.getSkuCode().equals(skuCode))
+                .map(productMapper::toVariantDto)
+                .next()
+                .blockOptional();
     }
 
     // ==================== Category Helpers ====================
@@ -236,7 +256,6 @@ public class DatabaseTestHelper {
     // ==================== Payment Helpers ====================
 
     public void verifyPaymentAuthorized(Long orderId, BigDecimal expectedAmount) {
-        // Direct database check
         String sql = "SELECT * FROM payment WHERE order_id = ? AND status = ?";
         PaymentDto payment = paymentJdbcTemplate.queryForObject(sql, (rs, rowNum) -> mapToPaymentDto(rs), orderId, "AUTHORIZED");
         if (payment == null) {
@@ -294,45 +313,7 @@ public class DatabaseTestHelper {
             }
             return ps;
         });
-        // For returning generated keys, we'd need to use a different approach
-        // This is a simplified version - in practice, use KeyHolder
         return null;
-    }
-
-    private ProductDto mapToProductDto(java.sql.ResultSet rs) throws SQLException {
-        ProductDto dto = new ProductDto();
-        dto.setId(String.valueOf(rs.getLong("id")));
-        dto.setName(rs.getString("name"));
-        dto.setDescription(rs.getString("description"));
-        dto.setPrice(rs.getBigDecimal("price"));
-        dto.setCategoryId(String.valueOf(rs.getLong("category_id")));
-        return dto;
-    }
-
-    private ProductVariantDto mapToProductVariantDto(java.sql.ResultSet rs) throws SQLException {
-        String attributesJson = rs.getString("attributes");
-        Map<String, String> attributes = attributesJson != null ? parseAttributes(attributesJson) : Map.of();
-        ProductVariantDto dto = new ProductVariantDto(
-            String.valueOf(rs.getLong("id")),
-            String.valueOf(rs.getLong("product_id")),
-            rs.getString("sku_code"),
-            attributes,
-            rs.getBigDecimal("price"),
-            String.valueOf(rs.getLong("inventory_id"))
-        );
-        return dto;
-    }
-
-    private Map<String, String> parseAttributes(String json) {
-        if (json == null || json.isBlank()) {
-            return Map.of();
-        }
-        try {
-            return new com.fasterxml.jackson.databind.ObjectMapper()
-                .readValue(json, new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
-        } catch (Exception e) {
-            return Map.of();
-        }
     }
 
     private OrderDto mapToOrderDto(java.sql.ResultSet rs) throws SQLException {
