@@ -110,7 +110,7 @@ public class OrderService {
         Order order = orderMapper.toEntity(orderDto);
         order.setStatus(OrderEvent.OrderStatus.PENDING.name());
         if (order.getTotalAmount() == null) {
-            order.setTotalAmount(java.math.BigDecimal.ZERO);
+            order.setTotalAmount(BigDecimal.ZERO);
         }
 
         LocalDateTime now = LocalDateTime.now();
