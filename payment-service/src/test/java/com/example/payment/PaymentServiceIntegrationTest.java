@@ -43,7 +43,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         webTestClient.post()
-                .uri("/api/v1/payments/authorize")
+                .uri("/payments/authorize")
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
@@ -74,7 +74,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         webTestClient.post()
-                .uri("/api/v1/payments/authorize")
+                .uri("/payments/authorize")
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
@@ -82,7 +82,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isCreated();
 
         webTestClient.post()
-                .uri("/api/v1/payments/authorize")
+                .uri("/payments/authorize")
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(request)
@@ -104,7 +104,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         PaymentDto authResponse = webTestClient.post()
-                .uri("/api/v1/payments/authorize")
+                .uri("/payments/authorize")
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(authRequest)
@@ -122,7 +122,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         webTestClient.post()
-                .uri("/api/v1/payments/{id}/capture", paymentId)
+                .uri("/payments/{id}/capture", paymentId)
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(captureRequest)
@@ -151,7 +151,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         PaymentDto authResponse = webTestClient.post()
-                .uri("/api/v1/payments/authorize")
+                .uri("/payments/authorize")
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(authRequest)
@@ -169,7 +169,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         webTestClient.post()
-                .uri("/api/v1/payments/{id}/capture", paymentId)
+                .uri("/payments/{id}/capture", paymentId)
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(captureRequest)
@@ -177,7 +177,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isOk();
 
         webTestClient.post()
-                .uri("/api/v1/payments/{id}/capture", paymentId)
+                .uri("/payments/{id}/capture", paymentId)
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(captureRequest)
@@ -203,7 +203,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         PaymentDto authResponse = webTestClient.post()
-                .uri("/api/v1/payments/authorize")
+                .uri("/payments/authorize")
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(authRequest)
@@ -221,7 +221,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         webTestClient.post()
-                .uri("/api/v1/payments/{id}/capture", paymentId)
+                .uri("/payments/{id}/capture", paymentId)
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(captureRequest)
@@ -234,7 +234,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         webTestClient.post()
-                .uri("/api/v1/payments/{id}/refund", paymentId)
+                .uri("/payments/{id}/refund", paymentId)
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(refundRequest)
@@ -261,7 +261,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         PaymentDto authResponse = webTestClient.post()
-                .uri("/api/v1/payments/authorize")
+                .uri("/payments/authorize")
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(authRequest)
@@ -279,7 +279,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         webTestClient.post()
-                .uri("/api/v1/payments/{id}/capture", paymentId)
+                .uri("/payments/{id}/capture", paymentId)
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(captureRequest)
@@ -292,7 +292,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         webTestClient.post()
-                .uri("/api/v1/payments/{id}/refund", paymentId)
+                .uri("/payments/{id}/refund", paymentId)
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(refundRequest)
@@ -319,7 +319,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         PaymentDto authResponse = webTestClient.post()
-                .uri("/api/v1/payments/authorize")
+                .uri("/payments/authorize")
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(authRequest)
@@ -333,7 +333,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
         Long paymentId = authResponse.getId();
 
         webTestClient.get()
-                .uri("/api/v1/payments/{id}", paymentId)
+                .uri("/payments/{id}", paymentId)
                 .header("Authorization", "Bearer test-token")
                 .exchange()
                 .expectStatus().isOk()
@@ -357,7 +357,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .build();
 
         PaymentDto authResponse = webTestClient.post()
-                .uri("/api/v1/payments/authorize")
+                .uri("/payments/authorize")
                 .header("Authorization", "Bearer test-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(authRequest)
@@ -371,7 +371,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
         Long paymentId = authResponse.getId();
 
         webTestClient.get()
-                .uri("/api/v1/payments/order/{orderId}", 8L)
+                .uri("/payments/order/{orderId}", 8L)
                 .header("Authorization", "Bearer test-token")
                 .exchange()
                 .expectStatus().isOk()

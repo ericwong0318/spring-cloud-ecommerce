@@ -10,19 +10,45 @@ spring:
         locator:
           enabled: true
           lower-case-service-id: true
+      # Path-based API versioning: all public routes use the /api/v1/ prefix and
+      # StripPrefix=2 forwards an unversioned path (e.g. /products/**) downstream.
       routes:
         - id: product-service
           uri: lb://product
           predicates:
-            - Path=/api/products/**
+            - Path=/api/v1/products/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=2
         - id: category-service
           uri: lb://category
           predicates:
-            - Path=/api/categories/**
+            - Path=/api/v1/categories/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=2
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - StripPrefix=2
+        - id: inventory-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/v1/inventory/**
+          filters:
+            - StripPrefix=2
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - StripPrefix=2
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/v1/payments/**
+          filters:
+            - StripPrefix=2
     config:
       import: optional:configserver:http://localhost:8888
 

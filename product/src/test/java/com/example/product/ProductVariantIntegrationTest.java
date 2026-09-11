@@ -58,7 +58,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         productDto.setCategoryId("1");
 
         ProductDto createdProduct = webTestClient.post()
-                .uri("/api/products")
+                .uri("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(productDto)
                 .exchange()
@@ -77,7 +77,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         variantDto.setPrice(new BigDecimal("1099.99"));
 
         ProductVariantDto createdVariant = webTestClient.post()
-                .uri("/api/products/{productId}/variants", productId)
+                .uri("/products/{productId}/variants", productId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(variantDto)
                 .exchange()
@@ -113,7 +113,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         productDto.setCategoryId("1");
 
         ProductDto createdProduct = webTestClient.post()
-                .uri("/api/products")
+                .uri("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(productDto)
                 .exchange()
@@ -137,14 +137,14 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         variant2.setAttributes(Map.of("color", "green"));
 
         webTestClient.post()
-                .uri("/api/products/{productId}/variants", productId)
+                .uri("/products/{productId}/variants", productId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(variant1)
                 .exchange()
                 .expectStatus().isCreated();
 
         webTestClient.post()
-                .uri("/api/products/{productId}/variants", productId)
+                .uri("/products/{productId}/variants", productId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(variant2)
                 .exchange()
@@ -152,7 +152,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
 
         // Get all variants
         List<ProductVariantDto> variants = webTestClient.get()
-                .uri("/api/products/{productId}/variants", productId)
+                .uri("/products/{productId}/variants", productId)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBodyList(ProductVariantDto.class)
@@ -173,7 +173,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         productDto.setCategoryId("1");
 
         ProductDto createdProduct = webTestClient.post()
-                .uri("/api/products")
+                .uri("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(productDto)
                 .exchange()
@@ -190,7 +190,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         variantDto.setPrice(new BigDecimal("249.99"));
 
         ProductVariantDto created = webTestClient.post()
-                .uri("/api/products/{productId}/variants", productId)
+                .uri("/products/{productId}/variants", productId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(variantDto)
                 .exchange()
@@ -201,7 +201,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
 
         // Get variant by SKU code
         ProductVariantDto retrieved = webTestClient.get()
-                .uri("/api/products/{productId}/variants/sku/{skuCode}", productId, "TEST-SKU-004")
+                .uri("/products/{productId}/variants/sku/{skuCode}", productId, "TEST-SKU-004")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(ProductVariantDto.class)
@@ -222,7 +222,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         productDto.setCategoryId("1");
 
         ProductDto createdProduct = webTestClient.post()
-                .uri("/api/products")
+                .uri("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(productDto)
                 .exchange()
@@ -239,7 +239,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         variantDto.setPrice(new BigDecimal("149.99"));
 
         ProductVariantDto created = webTestClient.post()
-                .uri("/api/products/{productId}/variants", productId)
+                .uri("/products/{productId}/variants", productId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(variantDto)
                 .exchange()
@@ -255,7 +255,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         updateDto.setAttributes(Map.of("material", "cotton"));
 
         ProductVariantDto updated = webTestClient.put()
-                .uri("/api/products/{productId}/variants/sku/{skuCode}", productId, "TEST-SKU-005")
+                .uri("/products/{productId}/variants/sku/{skuCode}", productId, "TEST-SKU-005")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updateDto)
                 .exchange()
@@ -287,7 +287,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         productDto.setCategoryId("1");
 
         ProductDto createdProduct = webTestClient.post()
-                .uri("/api/products")
+                .uri("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(productDto)
                 .exchange()
@@ -304,7 +304,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         variantDto.setPrice(new BigDecimal("349.99"));
 
         ProductVariantDto created = webTestClient.post()
-                .uri("/api/products/{productId}/variants", productId)
+                .uri("/products/{productId}/variants", productId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(variantDto)
                 .exchange()
@@ -315,13 +315,13 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
 
         // Delete variant by SKU code
         webTestClient.delete()
-                .uri("/api/products/{productId}/variants/sku/{skuCode}", productId, "TEST-SKU-006")
+                .uri("/products/{productId}/variants/sku/{skuCode}", productId, "TEST-SKU-006")
                 .exchange()
                 .expectStatus().isNoContent();
 
         // Verify variant is deleted
         webTestClient.get()
-                .uri("/api/products/{productId}/variants/sku/{skuCode}", productId, "TEST-SKU-006")
+                .uri("/products/{productId}/variants/sku/{skuCode}", productId, "TEST-SKU-006")
                 .exchange()
                 .expectStatus().isNotFound();
 
@@ -345,7 +345,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         productDto.setCategoryId("1");
 
         ProductDto createdProduct = webTestClient.post()
-                .uri("/api/products")
+                .uri("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(productDto)
                 .exchange()
@@ -362,7 +362,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         variant1.setPrice(new BigDecimal("100.00"));
 
         webTestClient.post()
-                .uri("/api/products/{productId}/variants", productId)
+                .uri("/products/{productId}/variants", productId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(variant1)
                 .exchange()
@@ -374,7 +374,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         variant2.setPrice(new BigDecimal("200.00"));
 
         webTestClient.post()
-                .uri("/api/products/{productId}/variants", productId)
+                .uri("/products/{productId}/variants", productId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(variant2)
                 .exchange()
@@ -390,7 +390,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         productDto.setCategoryId("1");
 
         ProductDto createdProduct = webTestClient.post()
-                .uri("/api/products")
+                .uri("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(productDto)
                 .exchange()
@@ -403,7 +403,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
 
         // Try to get non-existent variant
         webTestClient.get()
-                .uri("/api/products/{productId}/variants/sku/{skuCode}", productId, "NON-EXISTENT")
+                .uri("/products/{productId}/variants/sku/{skuCode}", productId, "NON-EXISTENT")
                 .exchange()
                 .expectStatus().isNotFound();
     }

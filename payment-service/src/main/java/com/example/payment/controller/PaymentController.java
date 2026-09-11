@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 import java.net.URI;
 
 @RestController
-@RequestMapping("/api/v1/payments")
+@RequestMapping("/payments")
 public class PaymentController {
 
     private final PaymentService paymentService;
@@ -30,7 +30,7 @@ public class PaymentController {
                 request.getCurrency(), request.getCustomerId(), request.getCustomerEmail(),
                 request.getIdempotencyKey())
                 .map(authorized -> ResponseEntity
-                        .created(URI.create("/api/payments/" + authorized.getId()))
+                        .created(URI.create("/payments/" + authorized.getId()))
                         .body(authorized));
     }
 

@@ -97,7 +97,7 @@ This platform is a distributed E-Commerce system demonstrating modern microservi
 ### Request Flow (Authenticated Order Placement)
 
 ```
-1. Client → POST /api/orders (Bearer Token)
+1. Client → POST /api/v1/orders (Bearer Token)
        │
        ▼
 2. Gateway validates JWT (via Auth Server public key)
@@ -337,17 +337,35 @@ Each service exposes OpenAPI/Swagger documentation:
 ### Sample Product API
 ```bash
 # Get all products (via Gateway)
-curl http://localhost:8080/api/products
+curl http://localhost:8080/api/v1/products
 
 # Get product by ID
-curl http://localhost:8080/api/products/1
+curl http://localhost:8080/api/v1/products/1
 
 # Create product (requires OAuth2 token)
-curl -X POST http://localhost:8080/api/products \
+curl -X POST http://localhost:8080/api/v1/products \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Laptop","price":999.99,"categoryId":1}'
 ```
+
+### API Versioning
+
+All public API routes are **versioned at the gateway** using a path-based scheme:
+
+- Public (external): `GET /api/v1/products`, `POST /api/v1/orders`, etc.
+- The gateway applies `StripPrefix=2` and forwards an **unversioned** path to the
+  downstream service (e.g. `/products`, `/orders`), so services stay
+  version-agnostic.
+- Introducing `api/v2` later only requires new gateway routes — no service changes.
+
+| Resource | Public (via Gateway :8080) | Service (internal) |
+|----------|-----------------------------|---------------------|
+| Product  | `/api/v1/products/**`       | `/products/**`      |
+| Category | `/api/v1/categories/**`     | `/categories/**`    |
+| Order    | `/api/v1/orders/**`         | `/orders/**`        |
+| Inventory| `/api/v1/inventory/**`      | `/inventory/**`     |
+| Payment  | `/api/v1/payments/**`       | `/payments/**`      |
 
 ---
 
@@ -360,7 +378,7 @@ curl -X POST http://localhost:8080/api/products \
 │ Client │ ──── 1. POST /oauth2/token ────────────▶ │ Auth Server  │
 │        │ ◀── 2. JWT (RS256) ───────────────────── │  :9000       │
 │        │                                          └──────────────┘
-│        │ ──── 3. GET /api/orders + Bearer JWT ───▶ ┌──────────────┐
+│        │ ──── 3. GET /api/v1/orders + Bearer JWT ───▶ ┌──────────────┐
 │        │                                          │   Gateway    │
 │        │                                          │   :8080      │
 │        │                                          │  (validates) │

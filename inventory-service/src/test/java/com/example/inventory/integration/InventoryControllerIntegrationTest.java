@@ -117,7 +117,7 @@ class InventoryControllerIntegrationTest {
             """;
 
         // When
-        mockMvc.perform(post("/api/inventory/reserve")
+        mockMvc.perform(post("/inventory/reserve")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -154,7 +154,7 @@ class InventoryControllerIntegrationTest {
             """;
 
         // When
-        mockMvc.perform(post("/api/inventory/confirm")
+        mockMvc.perform(post("/inventory/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -179,7 +179,7 @@ class InventoryControllerIntegrationTest {
         assertThat(afterReserve.getAvailableQuantity()).isEqualTo(90);
 
         // When
-        mockMvc.perform(delete("/api/inventory/reserve/{orderItemId}", orderItemId)
+        mockMvc.perform(delete("/inventory/reserve/{orderItemId}", orderItemId)
                         .param("variantId", "100")
                         .param("quantity", "10")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -201,7 +201,7 @@ class InventoryControllerIntegrationTest {
     @Test
     void shouldGetInventoryViaController() throws Exception {
         // When
-        mockMvc.perform(get("/api/inventory/{variantId}", variantId))
+        mockMvc.perform(get("/inventory/{variantId}", variantId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.variantId").value(100))
                 .andExpect(jsonPath("$.productId").value(50))
@@ -216,7 +216,7 @@ class InventoryControllerIntegrationTest {
     @Test
     void shouldReturn404ForNonExistentInventory() throws Exception {
         // When
-        mockMvc.perform(get("/api/inventory/{variantId}", 999L))
+        mockMvc.perform(get("/inventory/{variantId}", 999L))
                 .andExpect(status().isNotFound());
     }
 
@@ -232,7 +232,7 @@ class InventoryControllerIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/inventory/reserve")
+        mockMvc.perform(post("/inventory/reserve")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(reserveRequest))
                 .andExpect(status().isOk())
@@ -252,7 +252,7 @@ class InventoryControllerIntegrationTest {
             }
             """;
 
-        mockMvc.perform(post("/api/inventory/confirm")
+        mockMvc.perform(post("/inventory/confirm")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(confirmRequest))
                 .andExpect(status().isOk())
@@ -266,7 +266,7 @@ class InventoryControllerIntegrationTest {
         assertThat(afterConfirm.getAvailableQuantity()).isEqualTo(80);
 
         // Step 3: Release remaining 5 units
-        mockMvc.perform(delete("/api/inventory/reserve/{orderItemId}", 2000L)
+        mockMvc.perform(delete("/inventory/reserve/{orderItemId}", 2000L)
                         .param("variantId", "100")
                         .param("quantity", "5")
                         .contentType(MediaType.APPLICATION_JSON))

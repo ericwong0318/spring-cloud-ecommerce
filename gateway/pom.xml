@@ -28,6 +28,10 @@
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
         </dependency>
@@ -36,5 +40,34 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <!--
+              Spring Cloud Gateway 4.1.6+ calls HttpHeaders.headerSet(), which is
+              only available in Spring Framework 6.2 (Spring Boot 3.4). This project
+              builds against Spring Boot 3.3.5 (Spring Framework 6.1), so pin both
+              gateway artifacts to 4.1.5 — the last 4.1.x release compatible with
+              Spring Framework 6.1. Without this, the starter resolves to 4.2.0
+              while the gateway-server is managed to 4.1.6, causing a
+              NoSuchMethodError at request-forwarding time.
+            -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-gateway</artifactId>
+                <version>4.1.5</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-gateway-server</artifactId>
+                <version>4.1.5</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 </project>

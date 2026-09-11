@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/inventory")
+@RequestMapping("/inventory")
 @Tag(name = "Inventory", description = "Inventory management APIs")
 public class InventoryController {
 

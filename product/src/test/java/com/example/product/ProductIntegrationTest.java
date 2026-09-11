@@ -53,7 +53,7 @@ class ProductIntegrationTest {
         when(productService.getAllProducts()).thenReturn(Flux.just(product));
 
         webTestClient.get()
-                .uri("/api/products")
+                .uri("/products")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBodyList(ProductDto.class)
@@ -71,7 +71,7 @@ class ProductIntegrationTest {
         when(productService.createProduct(any(ProductDto.class))).thenReturn(Mono.just(created));
 
         webTestClient.post()
-                .uri("/api/products")
+                .uri("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("""
                         {

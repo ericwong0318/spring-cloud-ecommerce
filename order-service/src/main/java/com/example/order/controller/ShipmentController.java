@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/orders/{orderId}/shipments")
+@RequestMapping("/orders/{orderId}/shipments")
 public class ShipmentController {
 
     private final ShipmentService shipmentService;

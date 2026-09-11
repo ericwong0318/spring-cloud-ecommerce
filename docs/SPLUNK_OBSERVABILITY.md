@@ -165,10 +165,10 @@ Look for OTel agent initialization:
 curl http://localhost:8080/actuator/health
 
 # Product API
-curl http://localhost:8080/api/products
+curl http://localhost:8080/api/v1/products
 
 # Category API
-curl http://localhost:8080/api/categories
+curl http://localhost:8080/api/v1/categories
 ```
 
 Then check Splunk O11y for new traces.

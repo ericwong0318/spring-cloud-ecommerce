@@ -17,7 +17,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api/products/{productId}/variants")
+@RequestMapping("/products/{productId}/variants")
 @Tag(name = "Product Variant", description = "Product variant management APIs")
 public class ProductVariantController {
 

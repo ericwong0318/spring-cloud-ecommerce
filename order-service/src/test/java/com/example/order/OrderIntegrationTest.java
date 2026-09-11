@@ -41,9 +41,9 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        baseUrl = "http://localhost:" + port + "/api/v1/orders";
+        baseUrl = "http://localhost:" + port + "/orders";
         RestAssured.port = port;
-        RestAssured.basePath = "/api/v1/orders";
+        RestAssured.basePath = "/orders";
         objectMapper.registerModule(new JavaTimeModule());
     }
 

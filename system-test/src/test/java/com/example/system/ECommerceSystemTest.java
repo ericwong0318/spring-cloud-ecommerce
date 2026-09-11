@@ -221,7 +221,7 @@ public class ECommerceSystemTest {
     @BeforeEach
     void setUp() {
         RestAssured.port = port;
-        RestAssured.basePath = "/api";
+        RestAssured.basePath = "/";
 
         eventCollector = new EventCollector(rabbitTemplate);
         dbHelper = new DatabaseTestHelper(
@@ -299,7 +299,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(orderDto)
                 .when()
-                .post("/v1/orders")
+                .post("/orders")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -357,7 +357,7 @@ public class ECommerceSystemTest {
                         testOrderId, totalAmount, "USD", "CUST-001", "customer@example.com",
                         "auth-" + testOrderId + "-" + testPaymentEventId))
                 .when()
-                .post("/v1/payments/authorize")
+                .post("/payments/authorize")
                 .then()
                 .statusCode(201)
                 .extract()
@@ -397,7 +397,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(new CaptureRequest("txn_" + paymentId))
                 .when()
-                .post("/v1/payments/" + paymentId + "/capture")
+                .post("/payments/" + paymentId + "/capture")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -459,7 +459,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(orderDto)
                 .when()
-                .post("/v1/orders")
+                .post("/orders")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -539,7 +539,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(orderDto)
                 .when()
-                .post("/v1/orders")
+                .post("/orders")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -562,7 +562,7 @@ public class ECommerceSystemTest {
                         duplicateOrderId, totalAmount, "USD", "CUST-003", "customer3@example.com",
                         "auth-" + duplicateOrderId + "-original"))
                 .when()
-                .post("/v1/payments/authorize")
+                .post("/payments/authorize")
                 .then()
                 .statusCode(201)
                 .extract()
@@ -641,7 +641,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(orderDto)
                 .when()
-                .post("/v1/orders")
+                .post("/orders")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -727,7 +727,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(orderDto)
                 .when()
-                .post("/v1/orders")
+                .post("/orders")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -780,7 +780,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(orderDto)
                 .when()
-                .post("/v1/orders")
+                .post("/orders")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -850,7 +850,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(orderDto)
                 .when()
-                .post("/v1/orders")
+                .post("/orders")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -941,7 +941,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(orderDto)
                 .when()
-                .post("/v1/orders")
+                .post("/orders")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -964,7 +964,7 @@ public class ECommerceSystemTest {
                         partialOrderId, totalAmount, "USD", "CUST-PARTIAL", "partial@example.com",
                         "auth-" + partialOrderId + "-" + UUID.randomUUID()))
                 .when()
-                .post("/v1/payments/authorize")
+                .post("/payments/authorize")
                 .then()
                 .statusCode(201)
                 .extract()
@@ -977,7 +977,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(new CaptureRequest("txn_partial_" + paymentId))
                 .when()
-                .post("/v1/payments/" + paymentId + "/capture")
+                .post("/payments/" + paymentId + "/capture")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -1026,7 +1026,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(orderDto)
                 .when()
-                .post("/v1/orders")
+                .post("/orders")
                 .then()
                 .statusCode(200);
 
@@ -1035,7 +1035,7 @@ public class ECommerceSystemTest {
                 .untilAsserted(() -> {
                     OrderDto order = dbHelper.findOrderById(
                             io.restassured.path.json.JsonPath.from(given()
-                                    .when().get("/v1/orders/" + "CUST-NOTIFY")
+                                    .when().get("/orders/" + "CUST-NOTIFY")
                                     .then().extract().asString()
                             ).getLong("id")).orElseThrow();
                     assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.RESERVED);
@@ -1120,7 +1120,7 @@ public class ECommerceSystemTest {
                 .contentType(ContentType.JSON)
                 .body(orderDto)
                 .when()
-                .post("/v1/orders")
+                .post("/orders")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -1236,7 +1236,7 @@ public class ECommerceSystemTest {
                             .contentType(ContentType.JSON)
                             .body(orderDto)
                             .when()
-                            .post("/v1/orders")
+                            .post("/orders")
                             .then()
                             .extract()
                             .asString();
@@ -1305,7 +1305,7 @@ public class ECommerceSystemTest {
                             .contentType(ContentType.JSON)
                             .body(orderDto)
                             .when()
-                            .post("/v1/orders")
+                            .post("/orders")
                             .then()
                             .statusCode(200)
                             .extract()
@@ -1354,7 +1354,7 @@ public class ECommerceSystemTest {
                                     orderId, amount, "USD", "CUST-LOAD-" + orderId, "load@example.com",
                                     "auth-" + orderId + "-" + UUID.randomUUID()))
                             .when()
-                            .post("/v1/payments/authorize")
+                            .post("/payments/authorize")
                             .then()
                             .statusCode(201)
                             .extract()
@@ -1392,7 +1392,7 @@ public class ECommerceSystemTest {
                             .contentType(ContentType.JSON)
                             .body(new CaptureRequest("txn_" + paymentId))
                             .when()
-                            .post("/v1/payments/" + paymentId + "/capture")
+                            .post("/payments/" + paymentId + "/capture")
                             .then()
                             .statusCode(200)
                             .extract()
@@ -1461,7 +1461,7 @@ public class ECommerceSystemTest {
                     .contentType(ContentType.JSON)
                     .body(orderDto)
                     .when()
-                    .post("/v1/orders")
+                    .post("/orders")
                     .then()
                     .statusCode(200)
                     .extract()
@@ -1605,7 +1605,7 @@ public class ECommerceSystemTest {
             String searchResponse = given()
                     .contentType(ContentType.JSON)
                     .when()
-                    .get("/api/products/search?q=Laptop")
+                    .get("/products/search?q=Laptop")
                     .then()
                     .statusCode(200)
                     .extract()
@@ -1620,7 +1620,7 @@ public class ECommerceSystemTest {
         String filterResponse = given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/products/filter?price=999.99")
+                .get("/products/filter?price=999.99")
                 .then()
                 .statusCode(200)
                 .extract()
@@ -1633,7 +1633,7 @@ public class ECommerceSystemTest {
         String categoryResponse = given()
                 .contentType(ContentType.JSON)
                 .when()
-                .get("/api/products/category/" + testCategoryId)
+                .get("/products/category/" + testCategoryId)
                 .then()
                 .statusCode(200)
                 .extract()
@@ -1676,7 +1676,7 @@ public class ECommerceSystemTest {
                             .contentType(ContentType.JSON)
                             .body(orderDto)
                             .when()
-                            .post("/v1/orders")
+                            .post("/orders")
                             .then()
                             .extract()
                             .asString();
