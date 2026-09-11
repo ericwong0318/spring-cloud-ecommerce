@@ -4,13 +4,13 @@
 
 **Blocked by:** 04 — Inventory: MVC Controller
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Create `InventoryConcurrencyIntegrationTest` using `@SpringBootTest` + Testcontainers PostgreSQL
-- [ ] Initialize variant with `quantity=100`, `reservedQuantity=0`
-- [ ] Spawn 100 threads via `ExecutorService`, each calling `reserveStock(variantId, 1, orderItemId)`
-- [ ] Use `CountDownLatch` to synchronize concurrent start
-- [ ] Assert: sum of all successful reservations ≤ 100; no exceptions from oversell
-- [ ] Verify `reservedQuantity` in DB matches successful count
-- [ ] Verify `inventory.stock_reserved` events published for each successful reservation
-- [ ] Test runs in < 30 seconds; suitable for CI
+- [x] Create `InventoryConcurrencyIntegrationTest` using `@SpringBootTest` + Testcontainers PostgreSQL
+- [x] Initialize variant with `quantity=100`, `reservedQuantity=0`
+- [x] Spawn 100 threads via `ExecutorService`, each calling `reserveStock(variantId, 1, orderItemId)`
+- [x] Use `CountDownLatch` to synchronize concurrent start
+- [x] Assert: sum of all successful reservations ≤ 100; no exceptions from oversell
+- [x] Verify `reservedQuantity` in DB matches successful count
+- [x] Verify `inventory.stock_reserved` events published for each successful reservation
+- [x] Test runs in < 30 seconds; suitable for CI

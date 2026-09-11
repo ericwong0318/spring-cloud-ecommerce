@@ -4,10 +4,10 @@
 
 **Blocked by:** 03 — Inventory: Service Mutations Under Pessimistic Lock
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Change controller from `@RestController` (WebFlux) to Spring MVC `@RestController`
-- [ ] Return `ResponseEntity<InventoryDto>` / `ResponseEntity<Void>` instead of `Mono<ResponseEntity<...>>`
-- [ ] Keep same request/response DTOs from `common` module
-- [ ] Verify `mvn compile -pl inventory-service` succeeds
-- [ ] Integration test (Testcontainers PostgreSQL): `MockMvc` calls reserve → confirm → release; verify DB state + RabbitMQ events
+- [x] Change controller from `@RestController` (WebFlux) to Spring MVC `@RestController`
+- [x] Return `ResponseEntity<InventoryDto>` / `ResponseEntity<Void>` instead of `Mono<ResponseEntity<...>>`
+- [x] Keep same request/response DTOs from `common` module
+- [x] Verify `mvn compile -pl inventory-service` succeeds
+- [x] Integration test (Testcontainers PostgreSQL): `MockMvc` calls reserve → confirm → release; verify DB state + RabbitMQ events

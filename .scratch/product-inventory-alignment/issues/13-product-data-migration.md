@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 — Product: MongoDB Document Model, 08 — Product: Reactive Repository, 12 — Product: MongoDB Configuration
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Create `ProductMigrationRunner` implementing `CommandLineRunner` (or standalone main class)
 - [x] Read all products from PostgreSQL via `JdbcTemplate` (temporary dependency) or separate migration module

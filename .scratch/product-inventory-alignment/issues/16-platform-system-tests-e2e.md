@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 — Inventory: Concurrency Integration Test, 10 — Product: Reactive Controller, 14 — Platform: Docker Compose MongoDB Service, 15 — Platform: Config Server MongoDB Config
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 - [x] Update `system-test/pom.xml`: add MongoDB Testcontainers dependency
 - [x] Update `docker-compose.test.yml` to include MongoDB (from ticket 14)

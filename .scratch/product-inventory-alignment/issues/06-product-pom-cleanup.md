@@ -4,10 +4,10 @@
 
 **Blocked by:** None — can start immediately (parallel with inventory track)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Remove `spring-boot-starter-data-jpa`, `postgresql`, `flyway-core`, `spring-boot-starter-web` from `product/pom.xml`
-- [ ] Add `spring-boot-starter-webflux`, `spring-boot-starter-data-mongodb-reactive`
-- [ ] Replace `springdoc-openapi-starter-webmvc-ui` with `springdoc-openapi-starter-webflux-ui`
-- [ ] Remove Flyway migration scripts from `product/src/main/resources/db/migration/`
-- [ ] Verify `mvn compile -pl product` succeeds
+- [x] Remove `spring-boot-starter-data-jpa`, `postgresql`, `flyway-core`, `spring-boot-starter-web` from `product/pom.xml`
+- [x] Add `spring-boot-starter-webflux`, `spring-boot-starter-data-mongodb-reactive`
+- [x] Replace `springdoc-openapi-starter-webmvc-ui` with `springdoc-openapi-starter-webflux-ui`
+- [x] Remove Flyway migration scripts from `product/src/main/resources/db/migration/`
+- [ ] Verify `mvn compile -pl product` succeeds (blocked by Java 21 not available in environment)

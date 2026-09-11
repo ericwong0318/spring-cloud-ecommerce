@@ -4,11 +4,11 @@
 
 **Blocked by:** 14 — Platform: Docker Compose MongoDB Service
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Add `config-server/src/main/resources/config/product.yml` with:
   - `spring.data.mongodb.uri`, `spring.data.mongodb.database`
   - Profile-specific values: `dev` (localhost), `docker` (mongodb:27017), `prod` (managed URI)
-- [ ] Ensure product service `bootstrap.yml` imports config from Config Server
-- [ ] Verify product service starts in each profile and connects to correct MongoDB
-- [ ] Verify no hardcoded MongoDB config in product service `application.yml`
+- [x] Ensure product service `bootstrap.yml` imports config from Config Server (done via spring.cloud.config.import)
+- [x] Verify product service starts in each profile and connects to correct MongoDB (via test profiles)
+- [x] Verify no hardcoded MongoDB config in product service `application.yml` (only in config server)

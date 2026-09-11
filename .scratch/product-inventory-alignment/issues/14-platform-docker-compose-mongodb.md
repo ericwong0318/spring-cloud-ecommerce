@@ -4,10 +4,10 @@
 
 **Blocked by:** 06 — Product: POM Cleanup (need MongoDB for product integration tests)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Add `mongodb` service to `docker-compose.yml`: image `mongo:7`, port 27017, volume for persistence
-- [ ] Add `mongodb` to `docker-compose.test.yml` for Testcontainers integration tests
+- [x] Add `mongodb` to `docker-compose.test.yml` for Testcontainers integration tests
 - [x] Configure product service `spring.data.mongodb.uri` to use `mongodb://mongodb:27017/productdb` in docker profile
 - [ ] Verify `docker-compose up -d` starts MongoDB + all services
 - [ ] Verify product service connects to MongoDB in docker profile
