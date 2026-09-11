@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import com.example.common.event.BaseEvent;
 import com.example.common.event.IdempotentEventProcessor;
 import io.r2dbc.spi.ConnectionFactory;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,13 +17,10 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.function.Consumer;
 import javax.sql.DataSource;
 
-@Testcontainers
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     classes = {OrderServiceApplication.class, BaseIntegrationTest.TestDataSourceConfig.class, BaseIntegrationTest.TestTransactionalOperatorConfig.class, BaseIntegrationTest.TestIdempotentEventProcessorConfig.class},
@@ -38,17 +36,16 @@ import javax.sql.DataSource;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class BaseIntegrationTest {
 
-    @Container
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
             .withDatabaseName("order_db")
             .withUsername("postgres")
             .withPassword("postgres");
 
-    @Container
     static final RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
             .withExposedPorts(5672, 15672);
 
-    static {
+    @BeforeAll
+    static void startContainers() {
         postgres.start();
         rabbitmq.start();
     }

@@ -13,15 +13,15 @@ public class ProductEvent implements BaseEvent {
     @JsonProperty("eventId")
     private UUID eventId;
     @JsonProperty("productId")
-    private String productId;
+    private Long productId;
     @JsonProperty("productName")
     private String productName;
     @JsonProperty("price")
     private BigDecimal price;
     @JsonProperty("categoryId")
-    private String categoryId;
+    private Long categoryId;
     @JsonProperty("variantId")
-    private String variantId;
+    private Long variantId;
     @JsonProperty("skuCode")
     private String skuCode;
     @JsonProperty("timestamp")
@@ -36,7 +36,7 @@ public class ProductEvent implements BaseEvent {
     public ProductEvent() {
     }
 
-    public ProductEvent(String eventType, UUID eventId, String productId, String productName, BigDecimal price, String categoryId, String variantId, String skuCode, LocalDateTime timestamp) {
+    public ProductEvent(String eventType, UUID eventId, Long productId, String productName, BigDecimal price, Long categoryId, Long variantId, String skuCode, LocalDateTime timestamp) {
         this.eventType = eventType;
         this.eventId = eventId;
         this.productId = productId;
@@ -49,10 +49,6 @@ public class ProductEvent implements BaseEvent {
     }
 
     public static ProductEvent created(Long productId, String productName, BigDecimal price, Long categoryId) {
-        return created(String.valueOf(productId), productName, price, String.valueOf(categoryId));
-    }
-
-    public static ProductEvent created(String productId, String productName, BigDecimal price, String categoryId) {
         return new ProductEvent(
                 EventType.CREATED.name(),
                 UUID.randomUUID(),
@@ -67,10 +63,6 @@ public class ProductEvent implements BaseEvent {
     }
 
     public static ProductEvent updated(Long productId, String productName, BigDecimal price, Long categoryId) {
-        return updated(String.valueOf(productId), productName, price, String.valueOf(categoryId));
-    }
-
-    public static ProductEvent updated(String productId, String productName, BigDecimal price, String categoryId) {
         return new ProductEvent(
                 EventType.UPDATED.name(),
                 UUID.randomUUID(),
@@ -85,10 +77,6 @@ public class ProductEvent implements BaseEvent {
     }
 
     public static ProductEvent deleted(Long productId) {
-        return deleted(String.valueOf(productId));
-    }
-
-    public static ProductEvent deleted(String productId) {
         return new ProductEvent(
                 EventType.DELETED.name(),
                 UUID.randomUUID(),
@@ -103,10 +91,6 @@ public class ProductEvent implements BaseEvent {
     }
 
     public static ProductEvent variantCreated(Long productId, Long variantId, String skuCode, BigDecimal price, Long categoryId) {
-        return variantCreated(String.valueOf(productId), String.valueOf(variantId), skuCode, price, String.valueOf(categoryId));
-    }
-
-    public static ProductEvent variantCreated(String productId, String variantId, String skuCode, BigDecimal price, String categoryId) {
         return new ProductEvent(
                 EventType.VARIANT_CREATED.name(),
                 UUID.randomUUID(),
@@ -121,10 +105,6 @@ public class ProductEvent implements BaseEvent {
     }
 
     public static ProductEvent variantUpdated(Long productId, Long variantId, String skuCode, BigDecimal price, Long categoryId) {
-        return variantUpdated(String.valueOf(productId), String.valueOf(variantId), skuCode, price, String.valueOf(categoryId));
-    }
-
-    public static ProductEvent variantUpdated(String productId, String variantId, String skuCode, BigDecimal price, String categoryId) {
         return new ProductEvent(
                 EventType.VARIANT_UPDATED.name(),
                 UUID.randomUUID(),
@@ -139,10 +119,6 @@ public class ProductEvent implements BaseEvent {
     }
 
     public static ProductEvent variantDeleted(Long productId, Long variantId, String skuCode) {
-        return variantDeleted(String.valueOf(productId), String.valueOf(variantId), skuCode);
-    }
-
-    public static ProductEvent variantDeleted(String productId, String variantId, String skuCode) {
         return new ProductEvent(
                 EventType.VARIANT_DELETED.name(),
                 UUID.randomUUID(),
@@ -157,10 +133,6 @@ public class ProductEvent implements BaseEvent {
     }
 
     public static ProductEvent categoryCreated(Long categoryId, String categoryName, Long parentId) {
-        return categoryCreated(String.valueOf(categoryId), categoryName, parentId != null ? String.valueOf(parentId) : null);
-    }
-
-    public static ProductEvent categoryCreated(String categoryId, String categoryName, String parentId) {
         return new ProductEvent(
                 EventType.CATEGORY_CREATED.name(),
                 UUID.randomUUID(),
@@ -175,10 +147,6 @@ public class ProductEvent implements BaseEvent {
     }
 
     public static ProductEvent categoryUpdated(Long categoryId, String categoryName, Long parentId) {
-        return categoryUpdated(String.valueOf(categoryId), categoryName, parentId != null ? String.valueOf(parentId) : null);
-    }
-
-    public static ProductEvent categoryUpdated(String categoryId, String categoryName, String parentId) {
         return new ProductEvent(
                 EventType.CATEGORY_UPDATED.name(),
                 UUID.randomUUID(),
@@ -193,10 +161,6 @@ public class ProductEvent implements BaseEvent {
     }
 
     public static ProductEvent categoryDeleted(Long categoryId) {
-        return categoryDeleted(String.valueOf(categoryId));
-    }
-
-    public static ProductEvent categoryDeleted(String categoryId) {
         return new ProductEvent(
                 EventType.CATEGORY_DELETED.name(),
                 UUID.randomUUID(),
@@ -226,11 +190,11 @@ public class ProductEvent implements BaseEvent {
         this.eventId = eventId;
     }
 
-    public String getProductId() {
+    public Long getProductId() {
         return productId;
     }
 
-    public void setProductId(String productId) {
+    public void setProductId(Long productId) {
         this.productId = productId;
     }
 
@@ -250,19 +214,19 @@ public class ProductEvent implements BaseEvent {
         this.price = price;
     }
 
-    public String getCategoryId() {
+    public Long getCategoryId() {
         return categoryId;
     }
 
-    public void setCategoryId(String categoryId) {
+    public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
     }
 
-    public String getVariantId() {
+    public Long getVariantId() {
         return variantId;
     }
 
-    public void setVariantId(String variantId) {
+    public void setVariantId(Long variantId) {
         this.variantId = variantId;
     }
 

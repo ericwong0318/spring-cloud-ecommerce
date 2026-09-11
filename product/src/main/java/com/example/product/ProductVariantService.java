@@ -8,9 +8,6 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -28,19 +25,25 @@ public class ProductVariantService {
     private final ProductRepository productRepository;
     private final ProductVariantMapper variantMapper;
     private final RabbitTemplate rabbitTemplate;
-    private final ObjectMapper objectMapper;
     private final String productExchange;
 
     public ProductVariantService(ProductRepository productRepository,
                                  ProductVariantMapper variantMapper,
                                  RabbitTemplate rabbitTemplate,
-                                 ObjectMapper objectMapper,
                                  @Value("${rabbitmq.exchange.product}") String productExchange) {
         this.productRepository = productRepository;
         this.variantMapper = variantMapper;
         this.rabbitTemplate = rabbitTemplate;
-        this.objectMapper = objectMapper;
         this.productExchange = productExchange;
+    }
+
+    private Long toEventId(String mongoId) {
+        if (mongoId == null) return null;
+        try {
+            return Long.parseLong(mongoId.substring(0, 15), 16);
+        } catch (NumberFormatException e) {
+            return mongoId.hashCode() & 0x7FFFFFFFL;
+        }
     }
 
     public Flux<ProductVariantDto> getVariantsByProductId(String productId) {
@@ -96,22 +99,22 @@ public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto
                     saved.setProductId(productId);
                     log.debug("Mapped to DTO: {}", saved);
                     try {
+                        Long eventProductId = toEventId(productId);
                         ProductEvent event = new ProductEvent(
                                 ProductEvent.EventType.VARIANT_CREATED.name(),
                                 java.util.UUID.randomUUID(),
-                                productId,
+                                eventProductId,
                                 null,
                                 saved.getPrice(),
                                 null,
-                                null,
+                                eventProductId,
                                 saved.getSkuCode(),
                                 java.time.LocalDateTime.now()
                         );
-                        String jsonPayload = objectMapper.writeValueAsString(event);
-                        rabbitTemplate.convertAndSend(productExchange, "product.variant.created", jsonPayload);
+                        rabbitTemplate.convertAndSend(productExchange, "product.variant.created", event);
                         log.info("Published ProductEvent.VARIANT_CREATED to RabbitMQ for variant: {}", saved.getSkuCode());
-                    } catch (JsonProcessingException e) {
-                        log.error("Failed to serialize ProductEvent for variant: {}", saved.getSkuCode(), e);
+                    } catch (Exception e) {
+                        log.error("Failed to publish ProductEvent for variant: {}", saved.getSkuCode(), e);
                     }
                 });
     }
@@ -150,22 +153,22 @@ public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto
 .map(variantMapper::toDto)
                 .doOnNext(saved -> {
                     try {
+                        Long eventProductId = toEventId(productId);
                         ProductEvent event = new ProductEvent(
                                 ProductEvent.EventType.VARIANT_UPDATED.name(),
                                 java.util.UUID.randomUUID(),
-                                productId,
+                                eventProductId,
                                 null,
                                 saved.getPrice(),
                                 null,
-                                null,
+                                eventProductId,
                                 saved.getSkuCode(),
                                 java.time.LocalDateTime.now()
                         );
-                        String jsonPayload = objectMapper.writeValueAsString(event);
-                        rabbitTemplate.convertAndSend(productExchange, "product.variant.updated", jsonPayload);
+                        rabbitTemplate.convertAndSend(productExchange, "product.variant.updated", event);
                         log.info("Published ProductEvent.VARIANT_UPDATED to RabbitMQ for variant: {}", saved.getSkuCode());
-                    } catch (JsonProcessingException e) {
-                        log.error("Failed to serialize ProductEvent for variant: {}", saved.getSkuCode(), e);
+                    } catch (Exception e) {
+                        log.error("Failed to publish ProductEvent for variant: {}", saved.getSkuCode(), e);
                     }
                 });
     }
@@ -188,22 +191,22 @@ public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto
                 })
 .doOnNext(variant -> {
                     try {
+                        Long eventProductId = toEventId(productId);
                         ProductEvent event = new ProductEvent(
                                 ProductEvent.EventType.VARIANT_DELETED.name(),
                                 java.util.UUID.randomUUID(),
-                                productId,
+                                eventProductId,
                                 null,
                                 null,
                                 null,
-                                null,
+                                eventProductId,
                                 variant.getSkuCode(),
                                 java.time.LocalDateTime.now()
                         );
-                        String jsonPayload = objectMapper.writeValueAsString(event);
-                        rabbitTemplate.convertAndSend(productExchange, "product.variant.deleted", jsonPayload);
+                        rabbitTemplate.convertAndSend(productExchange, "product.variant.deleted", event);
                         log.info("Published ProductEvent.VARIANT_DELETED to RabbitMQ for variant: {}", variant.getSkuCode());
-                    } catch (JsonProcessingException e) {
-                        log.error("Failed to serialize ProductEvent for variant: {}", variant.getSkuCode(), e);
+                    } catch (Exception e) {
+                        log.error("Failed to publish ProductEvent for variant: {}", variant.getSkuCode(), e);
                     }
                 })
                 .then();
