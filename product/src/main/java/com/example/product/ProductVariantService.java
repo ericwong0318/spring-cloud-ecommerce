@@ -89,13 +89,13 @@ public class ProductVariantService {
                 .map(variantMapper::toDto)
                 .doOnNext(saved -> {
                     try {
-                        ProductEvent event = ProductEvent.variantCreated(
-                                productId,
-                                null,
-                                saved.getSkuCode(),
-                                saved.getPrice(),
-                                saved.getInventoryId() != null ? saved.getInventoryId() : "0"
-                        );
+ProductEvent event = ProductEvent.variantCreated(
+                                 Long.valueOf(productId),
+                                 null,
+                                 saved.getSkuCode(),
+                                 saved.getPrice(),
+                                 saved.getInventoryId() != null ? Long.valueOf(saved.getInventoryId()) : null
+                         );
                         String jsonPayload = objectMapper.writeValueAsString(event);
                         rabbitTemplate.convertAndSend(productExchange, "product.variant.created", jsonPayload);
                         log.info("Published ProductEvent.VARIANT_CREATED to RabbitMQ for variant: {}", saved.getSkuCode());
@@ -139,13 +139,13 @@ public class ProductVariantService {
                 .map(variantMapper::toDto)
                 .doOnNext(saved -> {
                     try {
-                        ProductEvent event = ProductEvent.variantUpdated(
-                                productId,
-                                null,
-                                saved.getSkuCode(),
-                                saved.getPrice(),
-                                saved.getInventoryId() != null ? saved.getInventoryId() : "0"
-                        );
+ProductEvent event = ProductEvent.variantUpdated(
+                                 Long.valueOf(productId),
+                                 null,
+                                 saved.getSkuCode(),
+                                 saved.getPrice(),
+                                 saved.getInventoryId() != null ? Long.valueOf(saved.getInventoryId()) : null
+                         );
                         String jsonPayload = objectMapper.writeValueAsString(event);
                         rabbitTemplate.convertAndSend(productExchange, "product.variant.updated", jsonPayload);
                         log.info("Published ProductEvent.VARIANT_UPDATED to RabbitMQ for variant: {}", saved.getSkuCode());
@@ -173,11 +173,11 @@ public class ProductVariantService {
                 })
                 .doOnNext(variant -> {
                     try {
-                        ProductEvent event = ProductEvent.variantDeleted(
-                                productId,
-                                null,
-                                variant.getSkuCode()
-                        );
+ProductEvent event = ProductEvent.variantDeleted(
+                                 Long.valueOf(productId),
+                                 null,
+                                 variant.getSkuCode()
+                         );
                         String jsonPayload = objectMapper.writeValueAsString(event);
                         rabbitTemplate.convertAndSend(productExchange, "product.variant.deleted", jsonPayload);
                         log.info("Published ProductEvent.VARIANT_DELETED to RabbitMQ for variant: {}", variant.getSkuCode());

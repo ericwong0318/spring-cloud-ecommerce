@@ -3,79 +3,90 @@ package com.example.product;
 import com.example.common.dto.ProductDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.assertj.core.api.Assertions.assertThat;
 
-@WebMvcTest(ProductController.class)
-@Import(ProductController.class)
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+@ActiveProfiles("test")
+@WebFluxTest(ProductController.class)
+@Import({ProductController.class, ProductIntegrationTest.TestSecurityConfig.class})
 class ProductIntegrationTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebTestClient webTestClient;
 
     @MockBean
     private ProductService productService;
 
     @Configuration
+    @EnableWebFluxSecurity
     static class TestSecurityConfig {
         @Bean
-        @Primary
-        SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-            http
+        org.springframework.security.web.server.SecurityFilterChain filterChain(ServerHttpSecurity http) {
+            return http
                 .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
-            return http.build();
+                .authorizeExchange(auth -> auth.anyExchange().permitAll())
+                .build();
         }
     }
 
     @Test
-    void whenAllProductsRetrieved_thenReturn200() throws Exception {
-        ProductDto product = new ProductDto(1L, "Test Product", "Description", BigDecimal.valueOf(99.99), 1L, null);
-        when(productService.getAllProducts()).thenReturn(List.of(product));
+    void whenAllProductsRetrieved_thenReturn200() {
+        ProductDto product = new ProductDto("1", "Test Product", "Description", BigDecimal.valueOf(99.99), "1", null);
+        when(productService.getAllProducts()).thenReturn(Flux.just(product));
 
-        mockMvc.perform(get("/api/products"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].name").value("Test Product"))
-                .andExpect(jsonPath("$[0].price").value(99.99));
+        webTestClient.get()
+                .uri("/api/products")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(ProductDto.class)
+                .hasSize(1)
+                .value(list -> {
+                    assertThat(list.get(0).getId()).isEqualTo("1");
+                    assertThat(list.get(0).getName()).isEqualTo("Test Product");
+                    assertThat(list.get(0).getPrice()).isEqualByComparingTo(BigDecimal.valueOf(99.99));
+                });
     }
 
     @Test
-    void whenProductCreated_thenReturn201() throws Exception {
-        ProductDto created = new ProductDto(1L, "New Product", "Description", BigDecimal.valueOf(49.99), 1L, null);
-        when(productService.createProduct(any(ProductDto.class))).thenReturn(created);
+    void whenProductCreated_thenReturn201() {
+        ProductDto created = new ProductDto("1", "New Product", "Description", BigDecimal.valueOf(49.99), "1", null);
+        when(productService.createProduct(any(ProductDto.class))).thenReturn(Mono.just(created));
 
-        mockMvc.perform(post("/api/products")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                    "name": "New Product",
-                                    "description": "Description",
-                                    "price": 49.99,
-                                    "categoryId": 1
-                                }
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value("New Product"))
-                .andExpect(jsonPath("$.price").value(49.99));
+        webTestClient.post()
+                .uri("/api/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("""
+                        {
+                            "name": "New Product",
+                            "description": "Description",
+                            "price": 49.99,
+                            "categoryId": "1"
+                        }
+                        """)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody(ProductDto.class)
+                .value(product -> {
+                    assertThat(product.getId()).isEqualTo("1");
+                    assertThat(product.getName()).isEqualTo("New Product");
+                    assertThat(product.getPrice()).isEqualByComparingTo(BigDecimal.valueOf(49.99));
+                });
     }
 }

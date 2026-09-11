@@ -435,7 +435,7 @@ public class OrderEvent implements BaseEvent {
     }
 
     public enum OrderItemStatus {
-        PENDING, RESERVED, SHIPPED, BACKORDERED, CANCELLED
+        PENDING, RESERVED, SHIPPED, BACKORDERED, PARTIALLY_CONFIRMED, CANCELLED
     }
 
     public static OrderEvent created(Long orderId, String customerId, String customerEmail,

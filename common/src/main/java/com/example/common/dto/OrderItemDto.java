@@ -217,6 +217,6 @@ public class OrderItemDto {
     }
 
     public enum OrderItemStatus {
-        PENDING, RESERVED, SHIPPED, BACKORDERED, CANCELLED
+        PENDING, RESERVED, SHIPPED, BACKORDERED, PARTIALLY_CONFIRMED, CANCELLED
     }
 }
