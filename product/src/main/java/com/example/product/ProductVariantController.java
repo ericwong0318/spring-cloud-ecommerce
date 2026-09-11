@@ -13,7 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/products/{productId}/variants")
@@ -35,29 +36,10 @@ public class ProductVariantController {
             @ApiResponse(responseCode = "404", description = "Product not found",
                     content = @Content)
     })
-    public List<ProductVariantDto> getVariantsByProductId(
+    public Flux<ProductVariantDto> getVariantsByProductId(
             @Parameter(description = "ID of the product to get variants for", required = true)
-            @PathVariable Long productId) {
+            @PathVariable String productId) {
         return productVariantService.getVariantsByProductId(productId);
-    }
-
-    @GetMapping("/{id}")
-    @Operation(summary = "Get variant by ID", description = "Returns a single variant by its ID")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Successfully retrieved variant",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ProductVariantDto.class))),
-            @ApiResponse(responseCode = "404", description = "Variant not found",
-                    content = @Content)
-    })
-    public ResponseEntity<ProductVariantDto> getVariantById(
-            @Parameter(description = "ID of the product", required = true)
-            @PathVariable Long productId,
-            @Parameter(description = "ID of the variant to get", required = true)
-            @PathVariable Long id) {
-        return productVariantService.getVariantById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/sku/{skuCode}")
@@ -69,14 +51,14 @@ public class ProductVariantController {
             @ApiResponse(responseCode = "404", description = "Variant not found",
                     content = @Content)
     })
-    public ResponseEntity<ProductVariantDto> getVariantBySkuCode(
+    public Mono<ResponseEntity<ProductVariantDto>> getVariantBySkuCode(
             @Parameter(description = "ID of the product", required = true)
-            @PathVariable Long productId,
+            @PathVariable String productId,
             @Parameter(description = "SKU code of the variant to get", required = true)
             @PathVariable String skuCode) {
-        return productVariantService.getVariantBySkuCode(skuCode)
+        return productVariantService.getVariantByProductIdAndSkuCode(productId, skuCode)
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
     @PostMapping
@@ -90,24 +72,23 @@ public class ProductVariantController {
             @ApiResponse(responseCode = "404", description = "Product not found",
                     content = @Content)
     })
-    public ResponseEntity<ProductVariantDto> createVariant(
+    public Mono<ResponseEntity<ProductVariantDto>> createVariant(
             @Parameter(description = "ID of the product to create variant for", required = true)
-            @PathVariable Long productId,
+            @PathVariable String productId,
             @Valid @RequestBody ProductVariantDto variantDto) {
-        try {
-            ProductVariantDto created = productVariantService.createVariant(productId, variantDto);
-            return ResponseEntity
-                    .status(201)
-                    .body(created);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(null);
-        }
+        return productVariantService.createVariant(productId, variantDto)
+                .map(created -> ResponseEntity
+                        .status(HttpStatus.CREATED)
+                        .body(created))
+                .onErrorResume(IllegalArgumentException.class, e -> 
+                    Mono.just(ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .<ProductVariantDto>body(null))
+                );
     }
 
-    @PutMapping("/{id}")
-    @Operation(summary = "Update an existing variant", description = "Updates an existing variant")
+    @PutMapping("/sku/{skuCode}")
+    @Operation(summary = "Update an existing variant", description = "Updates an existing variant by SKU code")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully updated variant",
                     content = @Content(mediaType = "application/json",
@@ -117,35 +98,38 @@ public class ProductVariantController {
             @ApiResponse(responseCode = "404", description = "Variant not found",
                     content = @Content)
     })
-    public ResponseEntity<ProductVariantDto> updateVariant(
+    public Mono<ResponseEntity<ProductVariantDto>> updateVariant(
             @Parameter(description = "ID of the product", required = true)
-            @PathVariable Long productId,
-            @Parameter(description = "ID of the variant to update", required = true)
-            @PathVariable Long id,
+            @PathVariable String productId,
+            @Parameter(description = "SKU code of the variant to update", required = true)
+            @PathVariable String skuCode,
             @Valid @RequestBody ProductVariantDto variantDto) {
-        try {
-            ProductVariantDto updated = productVariantService.updateVariant(id, variantDto);
-            return ResponseEntity.ok(updated);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body(null);
-        }
+        return productVariantService.updateVariant(productId, skuCode, variantDto)
+                .map(ResponseEntity::ok)
+                .onErrorResume(IllegalArgumentException.class, e -> 
+                    Mono.just(ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .<ProductVariantDto>body(null))
+                )
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
-    @DeleteMapping("/{id}")
-    @Operation(summary = "Delete a variant", description = "Deletes a variant by its ID")
+    @DeleteMapping("/sku/{skuCode}")
+    @Operation(summary = "Delete a variant", description = "Deletes a variant by its SKU code")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Successfully deleted variant"),
             @ApiResponse(responseCode = "404", description = "Variant not found",
                     content = @Content)
     })
-    public ResponseEntity<Void> deleteVariant(
+    public Mono<ResponseEntity<Void>> deleteVariant(
             @Parameter(description = "ID of the product", required = true)
-            @PathVariable Long productId,
-            @Parameter(description = "ID of the variant to delete", required = true)
-            @PathVariable Long id) {
-        productVariantService.deleteVariant(id);
-        return ResponseEntity.noContent().build();
+            @PathVariable String productId,
+            @Parameter(description = "SKU code of the variant to delete", required = true)
+            @PathVariable String skuCode) {
+        return productVariantService.deleteVariant(productId, skuCode)
+                .thenReturn(ResponseEntity.noContent().<Void>build())
+                .onErrorResume(IllegalArgumentException.class, e -> 
+                    Mono.just(ResponseEntity.notFound().<Void>build())
+                );
     }
 }

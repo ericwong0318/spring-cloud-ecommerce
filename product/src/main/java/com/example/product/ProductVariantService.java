@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,142 +17,174 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 @Service
 public class ProductVariantService {
 
     private static final Logger log = LoggerFactory.getLogger(ProductVariantService.class);
 
-    private final com.example.product.ProductRepository productRepository;
-    private final ProductVariantRepository variantRepository;
+    private final ProductRepository productRepository;
     private final ProductVariantMapper variantMapper;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
     private final String productExchange;
 
-    public ProductVariantService(com.example.product.ProductRepository productRepository, ProductVariantRepository variantRepository,
-                                 ProductVariantMapper variantMapper, RabbitTemplate rabbitTemplate, ObjectMapper objectMapper,
+    public ProductVariantService(ProductRepository productRepository,
+                                 ProductVariantMapper variantMapper,
+                                 RabbitTemplate rabbitTemplate,
+                                 ObjectMapper objectMapper,
                                  @Value("${rabbitmq.exchange.product}") String productExchange) {
         this.productRepository = productRepository;
-        this.variantRepository = variantRepository;
         this.variantMapper = variantMapper;
         this.rabbitTemplate = rabbitTemplate;
         this.objectMapper = objectMapper;
         this.productExchange = productExchange;
     }
 
-    @Transactional(readOnly = true)
-    public List<ProductVariantDto> getVariantsByProductId(Long productId) {
+    public Flux<ProductVariantDto> getVariantsByProductId(String productId) {
         log.debug("Fetching variants for product: {}", productId);
-        return variantRepository.findByProductId(productId).stream()
-                .map(variantMapper::toDto)
-                .collect(Collectors.toList());
+        return productRepository.findById(productId)
+                .flatMapMany(product -> Flux.fromIterable(product.getVariants()))
+                .map(variantMapper::toDto);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<ProductVariantDto> getVariantById(Long id) {
-        log.debug("Fetching variant by id: {}", id);
-        return variantRepository.findById(id).map(variantMapper::toDto);
+    public Mono<ProductVariantDto> getVariantByProductIdAndSkuCode(String productId, String skuCode) {
+        log.debug("Fetching variant by skuCode: {} for product: {}", skuCode, productId);
+        return productRepository.findById(productId)
+                .flatMapMany(product -> Flux.fromIterable(product.getVariants()))
+                .filter(variant -> variant.getSkuCode().equals(skuCode))
+                .next()
+                .map(variantMapper::toDto);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<ProductVariantDto> getVariantBySkuCode(String skuCode) {
+    public Mono<ProductVariantDto> getVariantBySkuCode(String skuCode) {
         log.debug("Fetching variant by skuCode: {}", skuCode);
-        return variantRepository.findBySkuCode(skuCode).map(variantMapper::toDto);
+        return productRepository.findAll()
+                .flatMap(product -> Flux.fromIterable(product.getVariants()))
+                .filter(variant -> variant.getSkuCode().equals(skuCode))
+                .next()
+                .map(variantMapper::toDto);
     }
 
-    @Transactional
-    public ProductVariantDto createVariant(Long productId, ProductVariantDto variantDto) {
+    public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto variantDto) {
         log.info("Creating variant for product: {}", productId);
         
-        if (variantRepository.existsBySkuCode(variantDto.getSkuCode())) {
-            throw new IllegalArgumentException("SKU code already exists: " + variantDto.getSkuCode());
-        }
-
-        com.example.product.Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
-
-        ProductVariant variant = variantMapper.toEntity(variantDto);
-        variant.setProduct(product);
-        ProductVariant saved = variantRepository.save(variant);
-
-        // Publish variant created event to RabbitMQ direct
-        ProductEvent event = ProductEvent.variantCreated(
-                productId, 
-                saved.getId(), 
-                saved.getSkuCode(), 
-                saved.getPrice(), 
-                product.getCategoryId()
-        );
-        try {
-            String jsonPayload = objectMapper.writeValueAsString(event);
-            rabbitTemplate.convertAndSend(productExchange, "product.variant.created", jsonPayload);
-            log.info("Published ProductEvent.VARIANT_CREATED to RabbitMQ for variant: {}", saved.getId());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize ProductEvent for variant: {}", saved.getId(), e);
-            throw new RuntimeException("Failed to serialize ProductEvent", e);
-        }
-
-        return variantMapper.toDto(saved);
+        return productRepository.findById(productId)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + productId)))
+                .flatMap(product -> {
+                    boolean skuExists = product.getVariants().stream()
+                            .anyMatch(v -> v.getSkuCode().equals(variantDto.getSkuCode()));
+                    if (skuExists) {
+                        return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.getSkuCode()));
+                    }
+                    
+                    ProductVariant variant = variantMapper.toEntity(variantDto);
+                    product.getVariants().add(variant);
+                    
+                    return productRepository.save(product)
+                            .then(Mono.just(variant));
+                })
+                .map(variantMapper::toDto)
+                .doOnNext(saved -> {
+                    try {
+                        ProductEvent event = ProductEvent.variantCreated(
+                                productId,
+                                null,
+                                saved.getSkuCode(),
+                                saved.getPrice(),
+                                saved.getInventoryId() != null ? saved.getInventoryId() : "0"
+                        );
+                        String jsonPayload = objectMapper.writeValueAsString(event);
+                        rabbitTemplate.convertAndSend(productExchange, "product.variant.created", jsonPayload);
+                        log.info("Published ProductEvent.VARIANT_CREATED to RabbitMQ for variant: {}", saved.getSkuCode());
+                    } catch (JsonProcessingException e) {
+                        log.error("Failed to serialize ProductEvent for variant: {}", saved.getSkuCode(), e);
+                    }
+                });
     }
 
-    @Transactional
-    public ProductVariantDto updateVariant(Long id, ProductVariantDto variantDto) {
-        log.info("Updating variant: {}", id);
-
-        ProductVariant existing = variantRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Variant not found: " + id));
-
-        if (!existing.getSkuCode().equals(variantDto.getSkuCode()) 
-                && variantRepository.existsBySkuCode(variantDto.getSkuCode())) {
-            throw new IllegalArgumentException("SKU code already exists: " + variantDto.getSkuCode());
-        }
-
-        existing.setSkuCode(variantDto.getSkuCode());
-        existing.setAttributes(variantDto.getAttributes());
-        existing.setPrice(variantDto.getPrice());
-        ProductVariant saved = variantRepository.save(existing);
-
-        // Publish variant updated event to RabbitMQ direct
-        ProductEvent event = ProductEvent.variantUpdated(
-                saved.getProduct().getId(),
-                saved.getId(),
-                saved.getSkuCode(),
-                saved.getPrice(),
-                saved.getProduct().getCategoryId()
-        );
-        try {
-            String jsonPayload = objectMapper.writeValueAsString(event);
-            rabbitTemplate.convertAndSend(productExchange, "product.variant.updated", jsonPayload);
-            log.info("Published ProductEvent.VARIANT_UPDATED to RabbitMQ for variant: {}", saved.getId());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize ProductEvent for variant: {}", saved.getId(), e);
-            throw new RuntimeException("Failed to serialize ProductEvent", e);
-        }
-
-        return variantMapper.toDto(saved);
+    public Mono<ProductVariantDto> updateVariant(String productId, String skuCode, ProductVariantDto variantDto) {
+        log.info("Updating variant with skuCode: {} for product: {}", skuCode, productId);
+        
+        return productRepository.findById(productId)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + productId)))
+                .flatMap(product -> {
+                    Optional<ProductVariant> existingVariant = product.getVariants().stream()
+                            .filter(v -> v.getSkuCode().equals(skuCode))
+                            .findFirst();
+                    
+                    if (existingVariant.isEmpty()) {
+                        return Mono.error(new IllegalArgumentException("Variant not found: " + skuCode));
+                    }
+                    
+                    if (!skuCode.equals(variantDto.getSkuCode())) {
+                        boolean skuExists = product.getVariants().stream()
+                                .anyMatch(v -> v.getSkuCode().equals(variantDto.getSkuCode()));
+                        if (skuExists) {
+                            return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.getSkuCode()));
+                        }
+                    }
+                    
+                    ProductVariant variant = existingVariant.get();
+                    variant.setSkuCode(variantDto.getSkuCode());
+                    variant.setAttributes(variantDto.getAttributes());
+                    variant.setPrice(variantDto.getPrice());
+                    variant.setInventoryId(variantDto.getInventoryId());
+                    
+                    return productRepository.save(product)
+                            .then(Mono.just(variant));
+                })
+                .map(variantMapper::toDto)
+                .doOnNext(saved -> {
+                    try {
+                        ProductEvent event = ProductEvent.variantUpdated(
+                                productId,
+                                null,
+                                saved.getSkuCode(),
+                                saved.getPrice(),
+                                saved.getInventoryId() != null ? saved.getInventoryId() : "0"
+                        );
+                        String jsonPayload = objectMapper.writeValueAsString(event);
+                        rabbitTemplate.convertAndSend(productExchange, "product.variant.updated", jsonPayload);
+                        log.info("Published ProductEvent.VARIANT_UPDATED to RabbitMQ for variant: {}", saved.getSkuCode());
+                    } catch (JsonProcessingException e) {
+                        log.error("Failed to serialize ProductEvent for variant: {}", saved.getSkuCode(), e);
+                    }
+                });
     }
 
-    @Transactional
-    public void deleteVariant(Long id) {
-        log.info("Deleting variant: {}", id);
-
-        ProductVariant variant = variantRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Variant not found: " + id));
-
-        Long productId = variant.getProduct().getId();
-        String skuCode = variant.getSkuCode();
-
-        variantRepository.delete(variant);
-
-        // Publish variant deleted event to RabbitMQ direct
-        ProductEvent event = ProductEvent.variantDeleted(productId, id, skuCode);
-        try {
-            String jsonPayload = objectMapper.writeValueAsString(event);
-            rabbitTemplate.convertAndSend(productExchange, "product.variant.deleted", jsonPayload);
-            log.info("Published ProductEvent.VARIANT_DELETED to RabbitMQ for variant: {}", id);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize ProductEvent for variant: {}", id, e);
-            throw new RuntimeException("Failed to serialize ProductEvent", e);
-        }
+    public Mono<Void> deleteVariant(String productId, String skuCode) {
+        log.info("Deleting variant with skuCode: {} for product: {}", skuCode, productId);
+        
+        return productRepository.findById(productId)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + productId)))
+                .flatMap(product -> {
+                    ProductVariant variantToRemove = product.getVariants().stream()
+                            .filter(v -> v.getSkuCode().equals(skuCode))
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalArgumentException("Variant not found: " + skuCode));
+                    
+                    product.getVariants().remove(variantToRemove);
+                    
+                    return productRepository.save(product)
+                            .then(Mono.just(variantToRemove));
+                })
+                .doOnNext(variant -> {
+                    try {
+                        ProductEvent event = ProductEvent.variantDeleted(
+                                productId,
+                                null,
+                                variant.getSkuCode()
+                        );
+                        String jsonPayload = objectMapper.writeValueAsString(event);
+                        rabbitTemplate.convertAndSend(productExchange, "product.variant.deleted", jsonPayload);
+                        log.info("Published ProductEvent.VARIANT_DELETED to RabbitMQ for variant: {}", variant.getSkuCode());
+                    } catch (JsonProcessingException e) {
+                        log.error("Failed to serialize ProductEvent for variant: {}", variant.getSkuCode(), e);
+                    }
+                })
+                .then();
     }
 }

@@ -4,10 +4,11 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Remove `spring-boot-starter-webflux`, `spring-boot-starter-data-r2dbc`, `r2dbc-postgresql` from `inventory-service/pom.xml`
-- [ ] Add `spring-boot-starter-web`, `springdoc-openapi-starter-webmvc-ui`
-- [ ] Remove `spring-boot-starter-webflux` from test scope
-- [ ] Verify `mvn compile -pl inventory-service` succeeds
-- [ ] Verify service starts with `mvn spring-boot:run -pl inventory-service` (no reactive beans)
+- [x] Remove `spring-boot-starter-webflux`, `spring-boot-starter-data-r2dbc`, `r2dbc-postgresql` from `inventory-service/pom.xml` (already not present)
+- [x] Add `spring-boot-starter-web`, `springdoc-openapi-starter-webmvc-ui` (already present)
+- [x] Remove `reactor-test` from test scope in `inventory-service/pom.xml`
+- [x] Remove R2DBC autoconfigure exclusions from test config (`application-test.yml` and `ReservationExpirySchedulerIntegrationTest.java`)
+- [x] Verify `mvn compile -pl inventory-service` succeeds
+- [x] Verify unit tests pass (`mvn test -pl inventory-service -Dtest=InventoryServiceTest`)
