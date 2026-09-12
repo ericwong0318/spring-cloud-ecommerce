@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately (registries already exist in common module).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Identify all external calls: WebClient/RestClient calls between services, Gateway route filters
 - [x] Add `@CircuitBreaker` on WebClient calls in services (order-service → inventory-service, payment-service, etc.)

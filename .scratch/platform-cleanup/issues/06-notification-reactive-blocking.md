@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Decision: Choose one — (A) Migrate to R2DBC + Reactive repositories, or (B) Switch to Spring MVC + JPA → **(B) Switch to Spring MVC + JPA**
 - [ ] If (A): Replace `spring-boot-starter-data-jpa` with `spring-boot-starter-data-r2dbc` + `r2dbc-postgresql` in notification-service/pom.xml

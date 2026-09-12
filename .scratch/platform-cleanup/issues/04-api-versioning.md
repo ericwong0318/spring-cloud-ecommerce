@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Gateway Security Hardening (prefer to do together to avoid multiple gateway changes)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Update `GatewayApplication.java` routes from `/api/products/**` → `/api/v1/products/**`
 - [x] Update routes for categories, orders, inventory, notifications, payments to use `/api/v1/`

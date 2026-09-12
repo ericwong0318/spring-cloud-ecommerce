@@ -4,11 +4,11 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Remove `@Slf4j` from `GlobalExceptionHandler.java` and replace with explicit `LoggerFactory.getLogger()`
-- [ ] Convert `Notification.java` and `NotificationTemplate.java` (notification-service) from `@Data`/`@Builder`/`@NoArgsConstructor`/`@AllArgsConstructor` to explicit code
-- [ ] Convert `PageResponse.java`, `InventoryDto.java`, `ProblemDetailResponse.java`, `NotificationDto.java` (common) from `@Data`/`@Builder`/`@NoArgsConstructor`/`@AllArgsConstructor` to explicit code or Records
-- [ ] Remove lombok dependency and annotation processor from `inventory-service/pom.xml`, `notification-service/pom.xml`, `common/pom.xml` (if present), and root POM dependencyManagement
-- [ ] Run tests for affected modules: `mvn test -pl common,inventory-service,notification-service` and verify all pass
-- [ ] Verify no Lombok annotations remain in main source code: `grep -r "lombok" --include="*.java" */src/main/java`
+- [x] Remove `@Slf4j` from `GlobalExceptionHandler.java` and replace with explicit `LoggerFactory.getLogger()`
+- [x] Convert `Notification.java` and `NotificationTemplate.java` (notification-service) from `@Data`/`@Builder`/`@NoArgsConstructor`/`@AllArgsConstructor` to explicit code
+- [x] Convert `PageResponse.java`, `InventoryDto.java`, `ProblemDetailResponse.java`, `NotificationDto.java` (common) from `@Data`/`@Builder`/`@NoArgsConstructor`/`@AllArgsConstructor` to explicit code or Records
+- [x] Remove lombok dependency and annotation processor from `inventory-service/pom.xml`, `notification-service/pom.xml`, `common/pom.xml` (if present), and root POM dependencyManagement
+- [x] Run tests for affected modules: `mvn test -pl common,inventory-service,notification-service` and verify all pass
+- [x] Verify no Lombok annotations remain in main source code: `grep -r "lombok" --include="*.java" */src/main/java`
