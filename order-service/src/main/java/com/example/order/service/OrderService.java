@@ -179,14 +179,9 @@ public class OrderService {
                     return orderRepository.save(existing);
                 })
                 .flatMap(saved -> {
-                    try {
-                        String jsonPayload = objectMapper.writeValueAsString(OrderEvent.statusChanged(saved.getId(), mapToEventOrderStatus(OrderEvent.OrderStatus.valueOf(saved.getStatus()))));
-                        rabbitTemplate.convertAndSend(orderExchange, "order.updated", jsonPayload);
-                        log.info("Published OrderEvent.UPDATED to RabbitMQ for order: {}", saved.getId());
-                    } catch (JsonProcessingException e) {
-                        log.error("Failed to serialize OrderEvent for order: {}", saved.getId(), e);
-                        throw new RuntimeException("Failed to serialize OrderEvent", e);
-                    }
+                    OrderEvent event = OrderEvent.statusChanged(saved.getId(), mapToEventOrderStatus(OrderEvent.OrderStatus.valueOf(saved.getStatus())));
+                    rabbitTemplate.convertAndSend(orderExchange, "order.updated", event);
+                    log.info("Published OrderEvent.UPDATED to RabbitMQ for order: {}", saved.getId());
                     return Mono.just(saved);
                 })
                 .map(orderMapper::toDto));
@@ -205,31 +200,26 @@ public class OrderService {
 
     public void publishOrderEvent(OrderEvent event) {
         log.info("Publishing OrderEvent: eventType={}, orderId={}", event.getEventType(), event.getOrderId());
-        try {
-            String jsonPayload = objectMapper.writeValueAsString(event);
-            String routingKey;
-            switch (event.getEventType()) {
-                case "CREATED":
-                    routingKey = "order.created";
-                    break;
-                case "UPDATED":
-                    routingKey = "order.updated";
-                    break;
-                case "CANCELLED":
-                    routingKey = "order.cancelled";
-                    break;
-                case "CONFIRMED":
-                    routingKey = "order.confirmed";
-                    break;
-                default:
-                    routingKey = "order.updated";
-            }
-            rabbitTemplate.convertAndSend(orderExchange, routingKey, jsonPayload);
-            rabbitTemplate.convertAndSend(ecommerceExchange, routingKey, jsonPayload);
-            log.info("Published OrderEvent {} to RabbitMQ for order: {}", event.getEventType(), event.getOrderId());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize OrderEvent for order: {}", event.getOrderId(), e);
-            throw new RuntimeException("Failed to serialize OrderEvent", e);
+        String routingKey;
+        switch (event.getEventType()) {
+            case "CREATED":
+                routingKey = "order.created";
+                break;
+            case "UPDATED":
+                routingKey = "order.updated";
+                break;
+            case "CANCELLED":
+                routingKey = "order.cancelled";
+                break;
+            case "CONFIRMED":
+                routingKey = "order.confirmed";
+                break;
+            default:
+                routingKey = "order.updated";
+        }
+        rabbitTemplate.convertAndSend(orderExchange, routingKey, event);
+        rabbitTemplate.convertAndSend(ecommerceExchange, routingKey, event);
+        log.info("Published OrderEvent {} to RabbitMQ for order: {}", event.getEventType(), event.getOrderId());
         }
     }
 
