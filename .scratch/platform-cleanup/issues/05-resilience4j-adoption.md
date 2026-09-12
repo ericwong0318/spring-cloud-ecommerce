@@ -6,12 +6,12 @@
 
 **Status:** ready-for-agent
 
-- [ ] Identify all external calls: WebClient/RestClient calls between services, Gateway route filters
-- [ ] Add `@CircuitBreaker` on WebClient calls in services (order-service → inventory-service, payment-service, etc.)
-- [ ] Add `@Retry` with exponential backoff on idempotent operations
-- [ ] Add `@TimeLimiter` on async calls to enforce timeouts
-- [ ] Add `@RateLimiter` on high-throughput endpoints if needed
-- [ ] Configure fallback methods for circuit breaker open state
-- [ ] Add Resilience4j actuator endpoints exposure: `management.endpoints.web.exposure.include=health,circuitbreakers,ratelimiters`
-- [ ] Add `@CircuitBreaker` on Gateway routes via `CircuitBreakerGatewayFilterFactory` if using Spring Cloud Gateway resilience
-- [ ] Run integration tests to verify resilience behavior: `mvn verify -pl order-service,payment-service,inventory-service`
+- [x] Identify all external calls: WebClient/RestClient calls between services, Gateway route filters
+- [x] Add `@CircuitBreaker` on WebClient calls in services (order-service → inventory-service, payment-service, etc.)
+- [x] Add `@Retry` with exponential backoff on idempotent operations
+- [x] Add `@TimeLimiter` on async calls to enforce timeouts
+- [x] Add `@RateLimiter` on high-throughput endpoints if needed
+- [x] Configure fallback methods for circuit breaker open state
+- [x] Add Resilience4j actuator endpoints exposure: `management.endpoints.web.exposure.include=health,circuitbreakers,ratelimiters`
+- [x] Add `@CircuitBreaker` on Gateway routes via `CircuitBreakerGatewayFilterFactory` if using Spring Cloud Gateway resilience
+- [x] Run integration tests to verify resilience behavior: `mvn verify -pl order-service,payment-service,inventory-service`
