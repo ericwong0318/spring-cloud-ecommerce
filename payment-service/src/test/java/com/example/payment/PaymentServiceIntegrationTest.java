@@ -330,7 +330,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertNotNull(authResponse);
-        Long paymentId = authResponse.getId();
+        Long paymentId = authResponse.id();
 
         webTestClient.get()
                 .uri("/payments/{id}", paymentId)
@@ -339,7 +339,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody(PaymentDto.class)
                 .value(response -> {
-                    assertEquals(paymentId, response.getId());
+                    assertEquals(paymentId, response.id());
                 });
     }
 
@@ -368,7 +368,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertNotNull(authResponse);
-        Long paymentId = authResponse.getId();
+        Long paymentId = authResponse.id();
 
         webTestClient.get()
                 .uri("/payments/order/{orderId}", 8L)
@@ -377,7 +377,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody(PaymentDto.class)
                 .value(response -> {
-                    assertEquals(paymentId, response.getId());
+                    assertEquals(paymentId, response.id());
                 });
     }
 }

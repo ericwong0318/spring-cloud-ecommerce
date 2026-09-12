@@ -79,6 +79,74 @@ jobs:
           name: payment-service-test-reports
           path: payment-service/target/surefire-reports/
 
+  openapi-constraint-check:
+    name: OpenAPI Constraint Check
+    runs-on: ubuntu-latest
+    needs: validate
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build all modules
+        run: mvn clean install -DskipTests -B
+
+      - name: Build verifier
+        run: mvn package -pl ci/validation -B
+
+      - name: Start infrastructure
+        run: docker-compose -f docker-compose.test.yml up -d
+
+      - name: Wait for infrastructure health
+        run: |
+          for service in mongodb postgres rabbitmq; do
+            echo "Waiting for $service..."
+            timeout 120 bash -c "until docker-compose -f docker-compose.test.yml ps $service | grep -q healthy; do sleep 5; done"
+          done
+
+      - name: Start services
+        run: |
+          # Start services in background
+          SERVICES="config-server eureka-server auth-server gateway product category order-service inventory-service notification-service payment-service"
+          for svc in $SERVICES; do
+            echo "Starting $svc..."
+            (cd $svc && nohup mvn spring-boot:run -Dspring-boot.run.profiles=docker > ../logs/$svc.log 2>&1 &)
+          done
+
+      - name: Wait for services health
+        run: |
+          mkdir -p logs
+          SERVICES="config-server:8888 eureka-server:8761 auth-server:9000 gateway:8080 product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8085 payment-service:8086"
+          for svc_port in $SERVICES; do
+            svc=${svc_port%:*}
+            port=${svc_port#*:}
+            echo "Waiting for $svc on port $port..."
+            timeout 180 bash -c "until curl -sf http://localhost:$port/actuator/health | grep -q UP; do sleep 5; done"
+          done
+
+      - name: Run OpenAPI constraint verification
+        run: |
+          java -jar ci/validation/target/openapi-constraint-verifier-1.0.0-SNAPSHOT.jar \
+            http://localhost:8081 \
+            http://localhost:8082 \
+            http://localhost:8083 \
+            http://localhost:8084 \
+            http://localhost:8085 \
+            http://localhost:8086
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose -f docker-compose.test.yml down -v
+          pkill -f spring-boot:run || true
+
   system-test:
     name: System Tests (E2E)
     runs-on: ubuntu-latest

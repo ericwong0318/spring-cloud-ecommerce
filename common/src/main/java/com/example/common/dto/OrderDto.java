@@ -45,4 +45,38 @@ public record OrderDto(
     public enum OrderStatus {
         PENDING, RESERVED, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
     }
+
+    public OrderDto withStatus(OrderStatus status) {
+        return new OrderDto(id, customerId, customerEmail, status, totalAmount, items, shipments, createdAt, updatedAt);
+    }
+
+    public static OrderDtoBuilder builder() {
+        return new OrderDtoBuilder();
+    }
+
+    public static class OrderDtoBuilder {
+        private Long id;
+        private String customerId;
+        private String customerEmail;
+        private OrderStatus status;
+        private BigDecimal totalAmount;
+        private List<OrderItemDto> items;
+        private List<ShipmentDto> shipments;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+
+        public OrderDtoBuilder id(Long id) { this.id = id; return this; }
+        public OrderDtoBuilder customerId(String customerId) { this.customerId = customerId; return this; }
+        public OrderDtoBuilder customerEmail(String customerEmail) { this.customerEmail = customerEmail; return this; }
+        public OrderDtoBuilder status(OrderStatus status) { this.status = status; return this; }
+        public OrderDtoBuilder totalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; return this; }
+        public OrderDtoBuilder items(List<OrderItemDto> items) { this.items = items; return this; }
+        public OrderDtoBuilder shipments(List<ShipmentDto> shipments) { this.shipments = shipments; return this; }
+        public OrderDtoBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
+        public OrderDtoBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
+
+        public OrderDto build() {
+            return new OrderDto(id, customerId, customerEmail, status, totalAmount, items, shipments, createdAt, updatedAt);
+        }
+    }
 }

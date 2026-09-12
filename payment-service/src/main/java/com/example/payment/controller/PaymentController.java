@@ -26,11 +26,11 @@ public class PaymentController {
     @PostMapping("/authorize")
     public Mono<ResponseEntity<PaymentDto>> authorizePayment(
             @Valid @RequestBody AuthorizeRequest request) {
-        return paymentService.authorizePayment(request.getOrderId(), request.getAmount(),
-                request.getCurrency(), request.getCustomerId(), request.getCustomerEmail(),
-                request.getIdempotencyKey())
+        return paymentService.authorizePayment(request.orderId(), request.amount(),
+                request.currency(), request.customerId(), request.customerEmail(),
+                request.idempotencyKey())
                 .map(authorized -> ResponseEntity
-                        .created(URI.create("/payments/" + authorized.getId()))
+                        .created(URI.create("/payments/" + authorized.id()))
                         .body(authorized));
     }
 
@@ -38,8 +38,8 @@ public class PaymentController {
     public Mono<ResponseEntity<PaymentDto>> capturePayment(
             @PathVariable Long id,
             @Valid @RequestBody CaptureRequest request) {
-        return paymentService.capturePayment(id, request.getGatewayTransactionId(),
-                "capture-" + id + "-" + request.getGatewayTransactionId())
+        return paymentService.capturePayment(id, request.gatewayTransactionId(),
+                "capture-" + id + "-" + request.gatewayTransactionId())
                 .map(ResponseEntity::ok);
     }
 
@@ -47,8 +47,8 @@ public class PaymentController {
     public Mono<ResponseEntity<PaymentDto>> refundPayment(
             @PathVariable Long id,
             @Valid @RequestBody RefundRequest request) {
-        return paymentService.refundPayment(id, request.getAmount(), request.getReason(),
-                "refund-" + id + "-" + request.getAmount())
+        return paymentService.refundPayment(id, request.amount(), request.reason(),
+                "refund-" + id + "-" + request.amount())
                 .map(ResponseEntity::ok);
     }
 

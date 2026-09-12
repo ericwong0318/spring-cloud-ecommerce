@@ -65,7 +65,7 @@ public class InventoryEventListener {
                         idempotencyKey
                 )
                 .doOnNext(payment -> log.info("Payment authorized for inventory reservation: paymentId={}, variantId={}",
-                        payment.getId(), event.getVariantId()))
+                        payment.id(), event.getVariantId()))
                 .doOnError(error -> log.error("Failed to authorize payment for inventory reservation: variantId={}, error={}",
                         event.getVariantId(), error.getMessage()))
                 .then();

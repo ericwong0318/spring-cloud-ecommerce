@@ -3,6 +3,7 @@ package com.example.order.controller;
 import com.example.common.dto.OrderDto;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.service.OrderService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,7 +20,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<OrderDto>> createOrder(@RequestBody OrderDto orderDto) {
+    public Mono<ResponseEntity<OrderDto>> createOrder(@Valid @RequestBody OrderDto orderDto) {
         return orderService.createOrder(orderDto)
                 .map(ResponseEntity::ok);
     }

@@ -203,20 +203,20 @@ public class PaymentService {
     }
 
     private PaymentDto toDto(Payment payment) {
-        PaymentDto dto = new PaymentDto();
-        dto.setId(payment.id());
-        dto.setOrderId(payment.orderId());
-        dto.setAmount(payment.amount());
-        dto.setCurrency(payment.currency());
-        dto.setStatus(PaymentDto.PaymentStatus.valueOf(payment.status().name()));
-        dto.setGatewayTransactionId(payment.gatewayTransactionId());
-        dto.setIdempotencyKey(payment.idempotencyKey());
-        dto.setAuthorizedAt(payment.authorizedAt());
-        dto.setCapturedAt(payment.capturedAt());
-        dto.setRefundedAt(payment.refundedAt());
-        dto.setCreatedAt(payment.createdAt());
-        dto.setUpdatedAt(payment.updatedAt());
-        return dto;
+        return new PaymentDto(
+                payment.id(),
+                payment.orderId(),
+                payment.amount(),
+                payment.currency(),
+                PaymentDto.PaymentStatus.valueOf(payment.status().name()),
+                payment.gatewayTransactionId(),
+                payment.idempotencyKey(),
+                payment.authorizedAt(),
+                payment.capturedAt(),
+                payment.refundedAt(),
+                payment.createdAt(),
+                payment.updatedAt()
+        );
     }
 
     public static class PaymentNotFoundException extends RuntimeException {

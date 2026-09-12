@@ -3,6 +3,7 @@ package com.example.order.controller;
 import com.example.common.dto.ShipmentDto;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.service.ShipmentService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,7 +22,7 @@ public class ShipmentController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<ShipmentDto>> createShipment(@PathVariable Long orderId, @RequestBody ShipmentDto shipmentDto) {
+    public Mono<ResponseEntity<ShipmentDto>> createShipment(@PathVariable Long orderId, @Valid @RequestBody ShipmentDto shipmentDto) {
         return shipmentService.createShipment(orderId, shipmentDto)
                 .map(ResponseEntity::ok)
                 .onErrorResume(e -> e instanceof ResourceNotFoundException,
