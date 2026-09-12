@@ -2,6 +2,7 @@ package com.example.common.event;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -41,6 +42,7 @@ public class OutboxEventPublisher {
 
     @Scheduled(fixedDelayString = "${outbox.publisher.poll-interval-ms:5000}")
     @Transactional
+    @SchedulerLock(name = "outboxPublisher", lockAtLeastFor = "30s", lockAtMostFor = "5m")
     public void publishOutboxEvents() {
         List<OutboxEvent> events = outboxEventRepository.findUnpublishedEventsWithRetryLimit(maxRetries);
         if (events.isEmpty()) {
