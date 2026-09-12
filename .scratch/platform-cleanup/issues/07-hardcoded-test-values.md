@@ -4,10 +4,10 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Add `@Value("${rabbitmq.exchange.order}")` and `@Value("${rabbitmq.exchange.ecommerce}")` fields to test class
-- [ ] Create `src/test/resources/application-test.yml` with test exchange names
-- [ ] Or use `@TestPropertySource` to inject test values
-- [ ] Update `OrderServiceTest.setUp()` to use injected values instead of hardcoded strings
-- [ ] Run test: `mvn test -pl order-service -Dtest=OrderServiceTest`
+- [x] Add `@Value("${rabbitmq.exchange.order}")` and `@Value("${rabbitmq.exchange.ecommerce}")` fields to test class
+- [x] Create `src/test/resources/application-test.yml` with test exchange names
+- [x] Use `@TestPropertySource` to inject test values
+- [x] Update `OrderServiceTest.setUp()` to use injected values instead of hardcoded strings
+- [x] Run test: `mvn test -pl order-service -Dtest=OrderServiceTest`

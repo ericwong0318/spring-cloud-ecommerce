@@ -18,6 +18,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -38,8 +41,15 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({SpringExtension.class, MockitoExtension.class})
+@TestPropertySource("classpath:application-test.yml")
 class OrderServiceTest {
+
+    @Value("${rabbitmq.exchange.order}")
+    private String orderExchange;
+
+    @Value("${rabbitmq.exchange.ecommerce}")
+    private String ecommerceExchange;
 
     @Mock(lenient = true)
     private OrderRepository orderRepository;
@@ -67,7 +77,7 @@ class OrderServiceTest {
     void setUp() {
         orderService = new OrderService(orderRepository, orderItemRepository, orderMapper,
                 rabbitTemplate, new ObjectMapper().registerModule(new JavaTimeModule()),
-                transactionalOperator, "order.exchange", "ecommerce.events");
+                transactionalOperator, orderExchange, ecommerceExchange);
 
         // Mock TransactionalOperator to pass through the publisher (no actual transaction in tests)
         when(transactionalOperator.transactional(any(Mono.class))).thenAnswer(inv -> inv.getArgument(0));

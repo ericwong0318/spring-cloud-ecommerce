@@ -1,0 +1,4 @@
+rabbitmq:
+  exchange:
+    order: order.exchange
+    ecommerce: ecommerce.events
