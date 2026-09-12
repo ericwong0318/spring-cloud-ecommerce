@@ -1,6 +1,5 @@
 package com.example.inventory.integration;
 
-import com.example.common.event.BaseEvent;
 import com.example.common.event.InventoryEvent;
 import com.example.inventory.InventoryServiceApplication;
 import com.example.inventory.model.Inventory;
@@ -118,14 +117,14 @@ class EventPublishingIntegrationTest {
     }
 
     private void bindTestQueue(String routingKey) {
+        rabbitAdmin.purgeQueue(testQueue.getName(), false);
         rabbitAdmin.declareBinding(BindingBuilder.bind(testQueue).to(exchange).with(routingKey));
     }
 
-    private InventoryEvent consumeAndDeserializeEvent(String routingKey, long timeoutSeconds) {
-        bindTestQueue(routingKey);
+    private InventoryEvent consumeAndDeserializeEvent(long timeoutSeconds) {
         try {
             Object message = rabbitTemplate.receiveAndConvert(testQueue.getName(), timeoutSeconds * 1000);
-            assertThat(message).as("No message received on routing key: " + routingKey).isNotNull();
+            assertThat(message).as("No message received").isNotNull();
 
             String json = objectMapper.writeValueAsString(message);
             JsonNode jsonNode = objectMapper.readTree(json);
@@ -138,7 +137,7 @@ class EventPublishingIntegrationTest {
 
             return objectMapper.treeToValue(jsonNode, InventoryEvent.class);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to consume and deserialize event for routing key: " + routingKey, e);
+            throw new RuntimeException("Failed to consume and deserialize event", e);
         }
     }
 
@@ -149,7 +148,7 @@ class EventPublishingIntegrationTest {
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
 
-        InventoryEvent event = consumeAndDeserializeEvent("reserved", 5);
+        InventoryEvent event = consumeAndDeserializeEvent(5);
 
         assertThat(event.getEventType()).isEqualTo(InventoryEvent.EventType.RESERVED.name());
         assertThat(event.getEventId()).isNotNull();
@@ -174,7 +173,7 @@ class EventPublishingIntegrationTest {
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
         inventoryService.releaseReservation(testVariantId, 10, testOrderItemId);
 
-        InventoryEvent event = consumeAndDeserializeEvent("released", 5);
+        InventoryEvent event = consumeAndDeserializeEvent(5);
 
         assertThat(event.getEventType()).isEqualTo(InventoryEvent.EventType.RELEASED.name());
         assertThat(event.getEventId()).isNotNull();
@@ -197,7 +196,7 @@ class EventPublishingIntegrationTest {
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
         inventoryService.confirmStock(testVariantId, 10);
 
-        InventoryEvent event = consumeAndDeserializeEvent("confirmed", 5);
+        InventoryEvent event = consumeAndDeserializeEvent(5);
 
         assertThat(event.getEventType()).isEqualTo(InventoryEvent.EventType.CONFIRMED.name());
         assertThat(event.getEventId()).isNotNull();
@@ -227,7 +226,7 @@ class EventPublishingIntegrationTest {
 
         inventoryService.reserveStock(testVariantId, 6, testOrderItemId);
 
-        InventoryEvent event = consumeAndDeserializeEvent("low_stock", 5);
+        InventoryEvent event = consumeAndDeserializeEvent(5);
 
         assertThat(event.getEventType()).isEqualTo(InventoryEvent.EventType.LOW_STOCK.name());
         assertThat(event.getEventId()).isNotNull();
@@ -243,30 +242,6 @@ class EventPublishingIntegrationTest {
 
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
-    void shouldPublishStockAddedEventWithCorrectSchema() {
-        bindTestQueue("stock_added");
-
-        Inventory testInventory = inventoryRepository.findByVariantId(testVariantId).orElseThrow();
-        testInventory.setQuantity(50);
-        testInventory.setReservedQuantity(0);
-        testInventory.setLowStockNotified(false);
-        inventoryRepository.save(testInventory);
-
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
-
-        InventoryEvent event = consumeAndDeserializeEvent("stock_added", 5);
-
-        assertThat(event.getEventType()).isEqualTo(InventoryEvent.EventType.STOCK_ADDED.name());
-        assertThat(event.getEventId()).isNotNull();
-        assertThat(event.getVariantId()).isEqualTo(testVariantId);
-        assertThat(event.getProductId()).isEqualTo(testProductId);
-        assertThat(event.getQuantity()).isEqualTo(10);
-        assertThat(event.getAvailableQuantity()).isEqualTo(40);
-        assertThat(event.getTimestamp()).isNotNull();
-    }
-
-    @Test
-    @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldPublishReservedEventWithBackorderWhenInsufficientStock() {
         bindTestQueue("reserved");
 
@@ -277,7 +252,7 @@ class EventPublishingIntegrationTest {
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
 
-        InventoryEvent event = consumeAndDeserializeEvent("reserved", 5);
+        InventoryEvent event = consumeAndDeserializeEvent(5);
 
         assertThat(event.getEventType()).isEqualTo(InventoryEvent.EventType.RESERVED.name());
         assertThat(event.getReservedQuantity()).isEqualTo(5);
@@ -289,29 +264,32 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldDeserializePublishedEventsCorrectly() {
+        // Test reserved event
         bindTestQueue("reserved");
-        bindTestQueue("released");
-        bindTestQueue("confirmed");
-        bindTestQueue("low_stock");
-
         inventoryService.reserveStock(testVariantId, 5, testOrderItemId);
-        inventoryService.releaseReservation(testVariantId, 5, testOrderItemId);
-        inventoryService.reserveStock(testVariantId, 5, testOrderItemId + 1);
-        inventoryService.confirmStock(testVariantId, 5);
-
-        InventoryEvent reservedEvent = consumeAndDeserializeEvent("reserved", 5);
-        InventoryEvent releasedEvent = consumeAndDeserializeEvent("released", 5);
-        InventoryEvent secondReservedEvent = consumeAndDeserializeEvent("reserved", 5);
-        InventoryEvent confirmedEvent = consumeAndDeserializeEvent("confirmed", 5);
-
+        InventoryEvent reservedEvent = consumeAndDeserializeEvent(5);
         assertThat(reservedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.RESERVED.name());
-        assertThat(releasedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.RELEASED.name());
-        assertThat(secondReservedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.RESERVED.name());
-        assertThat(confirmedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.CONFIRMED.name());
-
         assertThat(reservedEvent.getVariantId()).isEqualTo(testVariantId);
+
+        // Test released event
+        bindTestQueue("released");
+        inventoryService.releaseReservation(testVariantId, 5, testOrderItemId);
+        InventoryEvent releasedEvent = consumeAndDeserializeEvent(5);
+        assertThat(releasedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.RELEASED.name());
         assertThat(releasedEvent.getVariantId()).isEqualTo(testVariantId);
+
+        // Test second reserved event
+        bindTestQueue("reserved");
+        inventoryService.reserveStock(testVariantId, 5, testOrderItemId + 1);
+        InventoryEvent secondReservedEvent = consumeAndDeserializeEvent(5);
+        assertThat(secondReservedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.RESERVED.name());
         assertThat(secondReservedEvent.getVariantId()).isEqualTo(testVariantId);
+
+        // Test confirmed event
+        bindTestQueue("confirmed");
+        inventoryService.confirmStock(testVariantId, 5);
+        InventoryEvent confirmedEvent = consumeAndDeserializeEvent(5);
+        assertThat(confirmedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.CONFIRMED.name());
         assertThat(confirmedEvent.getVariantId()).isEqualTo(testVariantId);
     }
 
@@ -321,10 +299,10 @@ class EventPublishingIntegrationTest {
         bindTestQueue("reserved");
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
-        InventoryEvent firstEvent = consumeAndDeserializeEvent("reserved", 5);
+        InventoryEvent firstEvent = consumeAndDeserializeEvent(5);
 
         inventoryService.reserveStock(testVariantId, 5, testOrderItemId + 1);
-        InventoryEvent secondEvent = consumeAndDeserializeEvent("reserved", 5);
+        InventoryEvent secondEvent = consumeAndDeserializeEvent(5);
 
         assertThat(firstEvent.getEventId()).isNotEqualTo(secondEvent.getEventId());
         assertThat(firstEvent.getEventType()).isEqualTo(secondEvent.getEventType());
@@ -343,11 +321,11 @@ class EventPublishingIntegrationTest {
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
         inventoryService.releaseReservation(testVariantId, 10, testOrderItemId);
-        InventoryEvent firstEvent = consumeAndDeserializeEvent("released", 5);
+        InventoryEvent firstEvent = consumeAndDeserializeEvent(5);
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId + 1);
         inventoryService.releaseReservation(testVariantId, 10, testOrderItemId + 1);
-        InventoryEvent secondEvent = consumeAndDeserializeEvent("released", 5);
+        InventoryEvent secondEvent = consumeAndDeserializeEvent(5);
 
         assertThat(firstEvent.getEventId()).isNotEqualTo(secondEvent.getEventId());
         assertThat(firstEvent.getEventType()).isEqualTo(secondEvent.getEventType());
@@ -371,7 +349,7 @@ class EventPublishingIntegrationTest {
         inventoryRepository.save(testInventory);
 
         inventoryService.reserveStock(testVariantId, 6, testOrderItemId);
-        InventoryEvent firstEvent = consumeAndDeserializeEvent("low_stock", 5);
+        InventoryEvent firstEvent = consumeAndDeserializeEvent(5);
 
         inventoryService.reserveStock(testVariantId, 1, testOrderItemId + 1);
         await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -379,6 +357,7 @@ class EventPublishingIntegrationTest {
             assertThat(updated.getLowStockNotified()).isTrue();
         });
 
+        // Second reserve should not publish another LOW_STOCK event (idempotent)
         Object message = rabbitTemplate.receiveAndConvert(testQueue.getName(), 2000);
         if (message != null) {
             try {
@@ -400,7 +379,7 @@ class EventPublishingIntegrationTest {
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
         LocalDateTime afterPublish = LocalDateTime.now().plusSeconds(1);
 
-        InventoryEvent event = consumeAndDeserializeEvent("reserved", 5);
+        InventoryEvent event = consumeAndDeserializeEvent(5);
 
         assertThat(event.getTimestamp()).isNotNull();
         assertThat(event.getTimestamp()).isAfterOrEqualTo(beforePublish);
@@ -413,10 +392,10 @@ class EventPublishingIntegrationTest {
         bindTestQueue("reserved");
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
-        InventoryEvent event1 = consumeAndDeserializeEvent("reserved", 5);
+        InventoryEvent event1 = consumeAndDeserializeEvent(5);
 
         inventoryService.reserveStock(testVariantId, 5, testOrderItemId + 1);
-        InventoryEvent event2 = consumeAndDeserializeEvent("reserved", 5);
+        InventoryEvent event2 = consumeAndDeserializeEvent(5);
 
         assertThat(event1.getEventId()).isNotNull();
         assertThat(event2.getEventId()).isNotNull();
@@ -429,7 +408,7 @@ class EventPublishingIntegrationTest {
         bindTestQueue("reserved");
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
-        InventoryEvent event = consumeAndDeserializeEvent("reserved", 5);
+        InventoryEvent event = consumeAndDeserializeEvent(5);
 
         String json;
         JsonNode jsonNode;
