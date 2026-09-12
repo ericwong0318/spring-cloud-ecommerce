@@ -7,6 +7,10 @@ import com.example.payment.event.PaymentEventPublisher;
 import com.example.payment.gateway.MockPaymentGateway;
 import com.example.payment.repository.PaymentRepository;
 import com.example.payment.repository.ProcessedEventRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -38,8 +42,11 @@ public class PaymentService {
         this.transactionalOperator = transactionalOperator;
     }
 
+@CircuitBreaker(name = "payment-service", fallbackMethod = "authorizePaymentFallback")
+    @Retry(name = "payment-service")
+    @TimeLimiter(name = "payment-service")
     public Mono<PaymentDto> authorizePayment(Long orderId, BigDecimal amount, String currency,
-                                              String customerId, String customerEmail, String idempotencyKey) {
+                                               String customerId, String customerEmail, String idempotencyKey) {
         log.info("Authorizing payment for order: {} with idempotency key: {}", orderId, idempotencyKey);
 
         return paymentRepository.findByIdempotencyKey(idempotencyKey)
@@ -79,6 +86,16 @@ public class PaymentService {
                 .as(transactionalOperator::transactional);
     }
 
+    private Mono<PaymentDto> authorizePaymentFallback(Long orderId, BigDecimal amount, String currency,
+                                                      String customerId, String customerEmail, String idempotencyKey, Exception ex) {
+        log.error("Circuit breaker fallback for authorizePayment: orderId={}, error={}", orderId, ex.getMessage());
+        // Return a failed payment or throw an exception
+        return Mono.error(new PaymentGatewayUnavailableException("Payment gateway unavailable: " + ex.getMessage()));
+    }
+
+    @CircuitBreaker(name = "payment-service", fallbackMethod = "capturePaymentFallback")
+    @Retry(name = "payment-service")
+    @TimeLimiter(name = "payment-service")
     public Mono<PaymentDto> capturePayment(Long paymentId, String gatewayTransactionId, String idempotencyKey) {
         log.info("Capturing payment: {} with idempotency key: {}", paymentId, idempotencyKey);
 
@@ -107,6 +124,14 @@ public class PaymentService {
                 .as(transactionalOperator::transactional);
     }
 
+    private Mono<PaymentDto> capturePaymentFallback(Long paymentId, String gatewayTransactionId, String idempotencyKey, Exception ex) {
+        log.error("Circuit breaker fallback for capturePayment: paymentId={}, error={}", paymentId, ex.getMessage());
+        return Mono.error(new PaymentGatewayUnavailableException("Payment gateway unavailable: " + ex.getMessage()));
+    }
+
+    @CircuitBreaker(name = "payment-service", fallbackMethod = "refundPaymentFallback")
+    @Retry(name = "payment-service")
+    @TimeLimiter(name = "payment-service")
     public Mono<PaymentDto> refundPayment(Long paymentId, BigDecimal amount, String reason, String idempotencyKey) {
         log.info("Refunding payment: {} amount: {} with idempotency key: {}", paymentId, amount, idempotencyKey);
 
@@ -147,6 +172,17 @@ public class PaymentService {
                             });
                 }))
                 .as(transactionalOperator::transactional);
+    }
+
+    private Mono<PaymentDto> refundPaymentFallback(Long paymentId, BigDecimal amount, String reason, String idempotencyKey, Exception ex) {
+        log.error("Circuit breaker fallback for refundPayment: paymentId={}, error={}", paymentId, ex.getMessage());
+        return Mono.error(new PaymentGatewayUnavailableException("Payment gateway unavailable: " + ex.getMessage()));
+    }
+
+    public static class PaymentGatewayUnavailableException extends RuntimeException {
+        public PaymentGatewayUnavailableException(String message) {
+            super(message);
+        }
     }
 
     public Mono<PaymentDto> getPaymentById(Long id) {

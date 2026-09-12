@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.header.ReferrerPolicyServerHttpHeadersWriter;
+import org.springframework.security.web.server.header.XFrameOptionsServerHttpHeadersWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
@@ -31,12 +32,12 @@ public class SecurityConfig {
 
 @Bean
     public SecurityWebFilterChain securityFilterChain(ServerHttpSecurity http,
-                                                     TokenRelayGatewayFilterFactory tokenRelay) {
+                                                      TokenRelayGatewayFilterFactory tokenRelay) {
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .cors(cors -> cors.disable())
             .headers(headers -> headers
-                .frameOptions(frame -> frame.mode(org.springframework.security.config.web.server.XFrameOptionsServerHttpHeadersWriter.Mode.DENY))
+                .frameOptions(frame -> frame.mode(XFrameOptionsServerHttpHeadersWriter.Mode.DENY))
                 .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'"))
                 .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyServerHttpHeadersWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
             )
@@ -134,18 +135,6 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", corsConfig);
         return new CorsWebFilter(source);
-    }
-
-    private org.springframework.security.config.web.server.ServerHttpSecurity.CorsSpec corsConfigurationSource() {
-        return cors -> cors.configurationSource(request -> {
-            CorsConfiguration config = new CorsConfiguration();
-            config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:8080"));
-            config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-            config.setAllowedHeaders(List.of("*"));
-            config.setAllowCredentials(true);
-            config.setMaxAge(3600L);
-            return config;
-        });
     }
 
     @Bean

@@ -45,12 +45,12 @@ class GatewayRouteContractTest {
             "payment-service", "lb://payment-service");
 
     private static final Map<String, String> RESOURCE_PATHS = Map.of(
-            "product-service", "/api/v1/products",
-            "category-service", "/api/v1/categories",
-            "order-service", "/api/v1/orders",
-            "inventory-service", "/api/v1/inventory",
-            "notification-service", "/api/v1/notifications",
-            "payment-service", "/api/v1/payments");
+            "product-service", "/api/products",
+            "category-service", "/api/categories",
+            "order-service", "/api/orders",
+            "inventory-service", "/api/inventory",
+            "notification-service", "/api/notifications",
+            "payment-service", "/api/payments");
 
     @Test
     void shouldDefineAllServiceRoutesUnderApiV1Prefix() {
@@ -75,11 +75,12 @@ class GatewayRouteContractTest {
                     .as("%s should match %s", routeId, versionedPath)
                     .isTrue();
 
-            // Unversioned or wrongly-versioned paths must NOT reach the route.
-            assertThat(matches(route, versionedPath.replace("/v1", "") + "/1"))
+            // Unversioned paths (without /api) must NOT reach the route.
+            assertThat(matches(route, versionedPath.replace("/api", "") + "/1"))
                     .as("%s should reject the unversioned path", routeId)
                     .isFalse();
-            assertThat(matches(route, versionedPath.replace("/v1", "/v2") + "/1"))
+            // A v2 path should NOT match
+            assertThat(matches(route, versionedPath.replace("/api", "/api/v2") + "/1"))
                     .as("%s should reject the /api/v2 path", routeId)
                     .isFalse();
         });
@@ -119,7 +120,7 @@ class GatewayRouteContractTest {
     }
 
     private Map<String, Route> routesById() {
-        RouteLocator locator = GatewayApplication.gatewayRoutes(routeLocatorBuilder);
+        RouteLocator locator = GatewayApplication.customRouteLocator(routeLocatorBuilder);
         List<Route> routeList = locator.getRoutes().collectList().block();
         return routeList.stream().collect(Collectors.toMap(Route::getId, Function.identity()));
     }

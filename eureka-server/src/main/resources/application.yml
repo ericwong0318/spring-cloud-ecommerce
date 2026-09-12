@@ -11,3 +11,12 @@ logging:
     level:
         com.netflix.eureka: OFF
         com.netflix.discovery: OFF
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,circuitbreakers,ratelimiters
+  endpoint:
+    health:
+      show-details: always

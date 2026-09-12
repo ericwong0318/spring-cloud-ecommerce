@@ -9,6 +9,10 @@ import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -25,6 +29,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
 import reactor.core.publisher.Flux;
@@ -277,6 +283,9 @@ public class OrderService {
 
     // Saga orchestrator methods
 
+    @CircuitBreaker(name = "order-service", fallbackMethod = "handleInventoryReservedFallback")
+    @Retry(name = "order-service")
+    @TimeLimiter(name = "order-service")
     public Mono<Void> handleInventoryReserved(Long variantId, Integer reservedQuantity, Integer backorderedQuantity) {
         log.info("Handling inventory reserved for variant: {}, reserved={}, backordered={}", variantId, reservedQuantity, backorderedQuantity);
 
@@ -303,6 +312,15 @@ public class OrderService {
         return Mono.empty();
     }
 
+    private Mono<Void> handleInventoryReservedFallback(Long variantId, Integer reservedQuantity, Integer backorderedQuantity, Exception ex) {
+        log.error("Circuit breaker fallback for handleInventoryReserved: variantId={}, error={}", variantId, ex.getMessage());
+        // Could publish a compensating event or schedule retry
+        return Mono.empty();
+    }
+
+    @CircuitBreaker(name = "order-service", fallbackMethod = "handlePaymentAuthorizedFallback")
+    @Retry(name = "order-service")
+    @TimeLimiter(name = "order-service")
     public Mono<Void> handlePaymentAuthorized(Long orderId) {
         log.info("Handling payment authorized for order: {}", orderId);
         return orderRepository.findById(orderId)
@@ -315,6 +333,14 @@ public class OrderService {
                 .then();
     }
 
+    private Mono<Void> handlePaymentAuthorizedFallback(Long orderId, Exception ex) {
+        log.error("Circuit breaker fallback for handlePaymentAuthorized: orderId={}, error={}", orderId, ex.getMessage());
+        return Mono.empty();
+    }
+
+    @CircuitBreaker(name = "order-service", fallbackMethod = "handlePaymentCapturedFallback")
+    @Retry(name = "order-service")
+    @TimeLimiter(name = "order-service")
     public Mono<Void> handlePaymentCaptured(Long orderId, BigDecimal capturedAmount) {
         log.info("Handling payment captured for order: {}, amount={}", orderId, capturedAmount);
         Mono<Order> orderMono = orderRepository.findById(orderId)
@@ -361,6 +387,14 @@ public class OrderService {
         .as(transactionalOperator::transactional);
     }
 
+    private Mono<Void> handlePaymentCapturedFallback(Long orderId, BigDecimal capturedAmount, Exception ex) {
+        log.error("Circuit breaker fallback for handlePaymentCaptured: orderId={}, error={}", orderId, ex.getMessage());
+        return Mono.empty();
+    }
+
+    @CircuitBreaker(name = "order-service", fallbackMethod = "handlePaymentFailedFallback")
+    @Retry(name = "order-service")
+    @TimeLimiter(name = "order-service")
     public Mono<Void> handlePaymentFailed(Long orderId) {
         log.info("Handling payment failed for order: {}", orderId);
         Mono<Order> orderMono = orderRepository.findById(orderId)
@@ -407,6 +441,14 @@ public class OrderService {
         .as(transactionalOperator::transactional);
     }
 
+    private Mono<Void> handlePaymentFailedFallback(Long orderId, Exception ex) {
+        log.error("Circuit breaker fallback for handlePaymentFailed: orderId={}, error={}", orderId, ex.getMessage());
+        return Mono.empty();
+    }
+
+    @CircuitBreaker(name = "order-service", fallbackMethod = "handleReservationExpiredFallback")
+    @Retry(name = "order-service")
+    @TimeLimiter(name = "order-service")
     public Mono<Void> handleReservationExpired(Long orderItemId) {
         log.info("Handling reservation expired for orderItem: {}", orderItemId);
         return orderItemRepository.findById(orderItemId)
@@ -418,6 +460,11 @@ public class OrderService {
                 })
                 .switchIfEmpty(Mono.empty())
                 .as(transactionalOperator::transactional);
+    }
+
+    private Mono<Void> handleReservationExpiredFallback(Long orderItemId, Exception ex) {
+        log.error("Circuit breaker fallback for handleReservationExpired: orderItemId={}, error={}", orderItemId, ex.getMessage());
+        return Mono.empty();
     }
 
     private Mono<Void> checkAndTransitionOrderToReserved(Long orderId) {
