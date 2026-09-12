@@ -4,13 +4,13 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Create `SecurityConfig.java` in gateway module with `SecurityFilterChain` bean
-- [ ] Enable `TokenRelayGatewayFilterFactory` to forward JWT tokens to downstream services
-- [ ] Configure route-specific security: public routes (health, actuator) vs protected routes
-- [ ] Add rate limiting using `RequestRateLimiterGatewayFilterFactory` with Redis or in-memory backend
-- [ ] Configure CORS for gateway
-- [ ] Add JWT validation (issuer, audience, claims) matching auth-server configuration
-- [ ] Test: verify tokens issued by auth-server (`http://localhost:9000/oauth2/token`) work through gateway to services
-- [ ] Run gateway tests: `mvn test -pl gateway`
+- [x] Create `SecurityConfig.java` in gateway module with `SecurityFilterChain` bean
+- [x] Enable `TokenRelayGatewayFilterFactory` to forward JWT tokens to downstream services
+- [x] Configure route-specific security: public routes (health, actuator) vs protected routes
+- [x] Add rate limiting using `RequestRateLimiterGatewayFilterFactory` with Redis or in-memory backend
+- [x] Configure CORS for gateway
+- [x] Add JWT validation (issuer, audience, claims) matching auth-server configuration
+- [x] Test: verify tokens issued by auth-server (`http://localhost:9000/oauth2/token`) work through gateway to services
+- [x] Run gateway tests: `mvn test -pl gateway`
