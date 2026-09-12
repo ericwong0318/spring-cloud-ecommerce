@@ -6,17 +6,17 @@
 
 **Status:** ready-for-agent
 
-- [ ] Convert `ProductDto.java` to a record (currently 139 lines of boilerplate)
-- [ ] Convert `OrderDto.java` to a record (currently 204 lines with builder pattern)
-- [ ] Convert `OrderItemDto.java` to a record
-- [ ] Convert `ShipmentDto.java` to a record
-- [ ] Convert `ShipmentItemDto.java` to a record
-- [ ] Convert `PaymentDto.java` to a record
-- [ ] Convert `InventoryDto.java` to a record (also has Lombok - see ticket 01)
-- [ ] Convert `NotificationDto.java` to a record (also has Lombok - see ticket 01)
-- [ ] Convert `PageResponse.java` to a record (also has Lombok - see ticket 01)
-- [ ] Convert `ProblemDetailResponse.java` to a record (also has Lombok - see ticket 01)
-- [ ] Convert `ProductVariantDto.java` to a record
-- [ ] Convert `ReserveStockRequest.java`, `ConfirmStockRequest.java`, `AuthorizeRequest.java`, `CaptureRequest.java`, `RefundRequest.java` to records
-- [ ] Update any mappers (MapStruct) that reference these DTOs
-- [ ] Run all tests: `mvn test -pl common,product,order-service,payment-service,inventory-service,notification-service`
+- [x] Convert `ProductDto.java` to a record (currently 139 lines of boilerplate)
+- [x] Convert `OrderDto.java` to a record (currently 204 lines with builder pattern)
+- [x] Convert `OrderItemDto.java` to a record
+- [x] Convert `ShipmentDto.java` to a record
+- [x] Convert `ShipmentItemDto.java` to a record
+- [x] Convert `PaymentDto.java` to a record
+- [x] Convert `InventoryDto.java` to a record (also has Lombok - see ticket 01)
+- [x] Convert `NotificationDto.java` to a record (also has Lombok - see ticket 01)
+- [x] Convert `PageResponse.java` to a record (also has Lombok - see ticket 01)
+- [x] Convert `ProblemDetailResponse.java` to a record (also has Lombok - see ticket 01)
+- [x] Convert `ProductVariantDto.java` to a record
+- [x] Convert `ReserveStockRequest.java`, `ConfirmStockRequest.java`, `AuthorizeRequest.java`, `CaptureRequest.java`, `RefundRequest.java` to records
+- [x] Update any mappers (MapStruct) that reference these DTOs
+- [x] Run all tests: `mvn test -pl common,product,order-service,payment-service,inventory-service,notification-service`

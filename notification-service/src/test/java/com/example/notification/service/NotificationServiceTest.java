@@ -50,19 +50,24 @@ class NotificationServiceTest {
 
     @BeforeEach
     void setUp() {
-        notificationDto = NotificationDto.builder()
-                .id(1L)
-                .recipient("customer@example.com")
-                .subject("Test Subject")
-                .content("Test Content")
-                .type(NotificationDto.NotificationType.ORDER_CONFIRMATION)
-                .channel(NotificationDto.NotificationChannel.EMAIL)
-                .status(NotificationDto.NotificationStatus.PENDING)
-                .referenceId("100")
-                .referenceType("ORDER")
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+        notificationDto = new NotificationDto(
+                1L,
+                "customer@example.com",
+                "Test Subject",
+                "Test Content",
+                NotificationDto.NotificationType.ORDER_CONFIRMATION,
+                NotificationDto.NotificationChannel.EMAIL,
+                NotificationDto.NotificationStatus.PENDING,
+                "100",
+                "ORDER",
+                null,
+                0,
+                3,
+                null,
+                null,
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
 
         notification = new Notification();
         notification.setId(1L);
@@ -88,9 +93,9 @@ class NotificationServiceTest {
         NotificationDto result = notificationService.createNotification(notificationDto);
 
         assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(1L);
-        assertThat(result.getRecipient()).isEqualTo("customer@example.com");
-        assertThat(result.getStatus()).isEqualTo(NotificationDto.NotificationStatus.PENDING);
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.recipient()).isEqualTo("customer@example.com");
+        assertThat(result.status()).isEqualTo(NotificationDto.NotificationStatus.PENDING);
         verify(notificationMapper).toEntity(notificationDto);
         verify(notificationRepository).save(any(Notification.class));
         verify(notificationMapper).toDto(notification);

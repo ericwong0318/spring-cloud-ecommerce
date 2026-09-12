@@ -47,21 +47,40 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         objectMapper.registerModule(new JavaTimeModule());
     }
 
+    private OrderDto createOrderDto(String customerId, String customerEmail, BigDecimal totalAmount, List<OrderItemDto> items) {
+        return new OrderDto(
+                null,
+                customerId,
+                customerEmail,
+                OrderDto.OrderStatus.PENDING,
+                totalAmount,
+                items,
+                null,
+                null,
+                null
+        );
+    }
+
+    private OrderItemDto createOrderItemDto(Long productId, Long variantId, Integer quantity, BigDecimal price) {
+        return new OrderItemDto(
+                null,
+                productId,
+                variantId,
+                null,
+                null,
+                quantity,
+                0,
+                price,
+                OrderItemDto.OrderItemStatus.PENDING,
+                null
+        );
+    }
+
     @Test
     void createOrder_shouldCreateOrderAndPublishEvent() {
-        OrderDto orderDto = OrderDto.builder()
-                .customerId("CUST-001")
-                .customerEmail("customer@example.com")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(new BigDecimal("1999.98"))
-                .items(List.of(
-                        OrderItemDto.builder()
-                                .productId(1L)
-                                .variantId(1L)
-                                .quantity(2)
-                                .price(new BigDecimal("999.99"))
-                                .build()))
-                .build();
+        OrderDto orderDto = createOrderDto("CUST-001", "customer@example.com",
+                new BigDecimal("1999.98"),
+                List.of(createOrderItemDto(1L, 1L, 2, new BigDecimal("999.99"))));
 
         OrderDto createdOrder = given()
                 .contentType(ContentType.JSON)
@@ -73,30 +92,20 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .extract()
                 .as(OrderDto.class);
 
-        assertThat(createdOrder.getId()).isNotNull();
-        assertThat(createdOrder.getCustomerId()).isEqualTo("CUST-001");
-        assertThat(createdOrder.getStatus()).isEqualTo(OrderDto.OrderStatus.PENDING);
-        assertThat(createdOrder.getItems()).hasSize(1);
-        assertThat(createdOrder.getItems().get(0).getVariantId()).isEqualTo(1L);
-        assertThat(createdOrder.getItems().get(0).getStatus()).isEqualTo(OrderItemDto.OrderItemStatus.PENDING);
+        assertThat(createdOrder.id()).isNotNull();
+        assertThat(createdOrder.customerId()).isEqualTo("CUST-001");
+        assertThat(createdOrder.status()).isEqualTo(OrderDto.OrderStatus.PENDING);
+        assertThat(createdOrder.items()).hasSize(1);
+        assertThat(createdOrder.items().get(0).variantId()).isEqualTo(1L);
+        assertThat(createdOrder.items().get(0).status()).isEqualTo(OrderItemDto.OrderItemStatus.PENDING);
     }
 
     @Test
     void getOrder_shouldReturnOrder_whenExists() {
         // First create an order
-        OrderDto orderDto = OrderDto.builder()
-                .customerId("CUST-002")
-                .customerEmail("customer2@example.com")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(new BigDecimal("999.99"))
-                .items(List.of(
-                        OrderItemDto.builder()
-                                .productId(2L)
-                                .variantId(2L)
-                                .quantity(1)
-                                .price(new BigDecimal("999.99"))
-                                .build()))
-                .build();
+        OrderDto orderDto = createOrderDto("CUST-002", "customer2@example.com",
+                new BigDecimal("999.99"),
+                List.of(createOrderItemDto(2L, 2L, 1, new BigDecimal("999.99"))));
 
         OrderDto createdOrder = given()
                 .contentType(ContentType.JSON)
@@ -111,32 +120,22 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         // Then get the order
         OrderDto retrievedOrder = given()
                 .when()
-                .get("/{id}", createdOrder.getId())
+                .get("/{id}", createdOrder.id())
                 .then()
                 .statusCode(HttpStatus.OK.value())
                 .extract()
                 .as(OrderDto.class);
 
-        assertThat(retrievedOrder.getId()).isEqualTo(createdOrder.getId());
-        assertThat(retrievedOrder.getCustomerId()).isEqualTo("CUST-002");
+        assertThat(retrievedOrder.id()).isEqualTo(createdOrder.id());
+        assertThat(retrievedOrder.customerId()).isEqualTo("CUST-002");
     }
 
     @Test
     void cancelOrder_shouldCancelOrder_whenPending() {
         // First create an order
-        OrderDto orderDto = OrderDto.builder()
-                .customerId("CUST-003")
-                .customerEmail("customer3@example.com")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(new BigDecimal("49.99"))
-                .items(List.of(
-                        OrderItemDto.builder()
-                                .productId(3L)
-                                .variantId(3L)
-                                .quantity(1)
-                                .price(new BigDecimal("49.99"))
-                                .build()))
-                .build();
+        OrderDto orderDto = createOrderDto("CUST-003", "customer3@example.com",
+                new BigDecimal("49.99"),
+                List.of(createOrderItemDto(3L, 3L, 1, new BigDecimal("49.99"))));
 
         OrderDto createdOrder = given()
                 .contentType(ContentType.JSON)
@@ -151,32 +150,22 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         // Cancel the order
         OrderDto cancelledOrder = given()
                 .when()
-                .post("/{id}/cancel", createdOrder.getId())
+                .post("/{id}/cancel", createdOrder.id())
                 .then()
                 .statusCode(HttpStatus.OK.value())
                 .extract()
                 .as(OrderDto.class);
 
-        assertThat(cancelledOrder.getStatus()).isEqualTo(OrderDto.OrderStatus.CANCELLED);
-        assertThat(cancelledOrder.getItems().get(0).getStatus()).isEqualTo(OrderItemDto.OrderItemStatus.CANCELLED);
+        assertThat(cancelledOrder.status()).isEqualTo(OrderDto.OrderStatus.CANCELLED);
+        assertThat(cancelledOrder.items().get(0).status()).isEqualTo(OrderItemDto.OrderItemStatus.CANCELLED);
     }
 
     @Test
     void cancelOrder_shouldReturn409_whenOrderNotPending() {
         // First create an order
-        OrderDto orderDto = OrderDto.builder()
-                .customerId("CUST-004")
-                .customerEmail("customer4@example.com")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(new BigDecimal("49.99"))
-                .items(List.of(
-                        OrderItemDto.builder()
-                                .productId(4L)
-                                .variantId(4L)
-                                .quantity(1)
-                                .price(new BigDecimal("49.99"))
-                                .build()))
-                .build();
+        OrderDto orderDto = createOrderDto("CUST-004", "customer4@example.com",
+                new BigDecimal("49.99"),
+                List.of(createOrderItemDto(4L, 4L, 1, new BigDecimal("49.99"))));
 
         OrderDto createdOrder = given()
                 .contentType(ContentType.JSON)
@@ -191,14 +180,14 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         // First cancel - should succeed
         given()
                 .when()
-                .post("/{id}/cancel", createdOrder.getId())
+                .post("/{id}/cancel", createdOrder.id())
                 .then()
                 .statusCode(HttpStatus.OK.value());
 
         // Second cancel - should fail with 409 Conflict
         given()
                 .when()
-                .post("/{id}/cancel", createdOrder.getId())
+                .post("/{id}/cancel", createdOrder.id())
                 .then()
                 .statusCode(HttpStatus.CONFLICT.value());
     }
@@ -206,19 +195,9 @@ class OrderIntegrationTest extends BaseIntegrationTest {
     @Test
     void fullSaga_shouldTransitionOrderToConfirmed_whenPaymentCaptured() {
         // Create order
-        OrderDto orderDto = OrderDto.builder()
-                .customerId("CUST-005")
-                .customerEmail("customer5@example.com")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(new BigDecimal("1999.98"))
-                .items(List.of(
-                        OrderItemDto.builder()
-                                .productId(5L)
-                                .variantId(5L)
-                                .quantity(2)
-                                .price(new BigDecimal("999.99"))
-                                .build()))
-                .build();
+        OrderDto orderDto = createOrderDto("CUST-005", "customer5@example.com",
+                new BigDecimal("1999.98"),
+                List.of(createOrderItemDto(5L, 5L, 2, new BigDecimal("999.99"))));
 
         OrderDto createdOrder = given()
                 .contentType(ContentType.JSON)
@@ -230,7 +209,7 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .extract()
                 .as(OrderDto.class);
 
-        Long orderId = createdOrder.getId();
+        Long orderId = createdOrder.id();
 
         // Simulate inventory reservation success
         InventoryEvent reservedEvent = InventoryEvent.reserved(5L, 5L, 2, 0);
@@ -246,8 +225,8 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                     .statusCode(HttpStatus.OK.value())
                     .extract()
                     .as(OrderDto.class);
-            assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.RESERVED);
-            assertThat(order.getItems().get(0).getStatus()).isEqualTo(OrderItemDto.OrderItemStatus.RESERVED);
+            assertThat(order.status()).isEqualTo(OrderDto.OrderStatus.RESERVED);
+            assertThat(order.items().get(0).status()).isEqualTo(OrderItemDto.OrderItemStatus.RESERVED);
         });
 
         // Simulate payment captured
@@ -275,27 +254,17 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                     .statusCode(HttpStatus.OK.value())
                     .extract()
                     .as(OrderDto.class);
-            assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.CONFIRMED);
-            assertThat(order.getItems().get(0).getStatus()).isEqualTo(OrderItemDto.OrderItemStatus.RESERVED);
+            assertThat(order.status()).isEqualTo(OrderDto.OrderStatus.CONFIRMED);
+            assertThat(order.items().get(0).status()).isEqualTo(OrderItemDto.OrderItemStatus.RESERVED);
         });
     }
 
     @Test
     void fullSaga_shouldCancelOrder_whenPaymentFailed() {
         // Create order
-        OrderDto orderDto = OrderDto.builder()
-                .customerId("CUST-006")
-                .customerEmail("customer6@example.com")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(new BigDecimal("49.99"))
-                .items(List.of(
-                        OrderItemDto.builder()
-                                .productId(6L)
-                                .variantId(6L)
-                                .quantity(1)
-                                .price(new BigDecimal("49.99"))
-                                .build()))
-                .build();
+        OrderDto orderDto = createOrderDto("CUST-006", "customer6@example.com",
+                new BigDecimal("49.99"),
+                List.of(createOrderItemDto(6L, 6L, 1, new BigDecimal("49.99"))));
 
         OrderDto createdOrder = given()
                 .contentType(ContentType.JSON)
@@ -307,7 +276,7 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .extract()
                 .as(OrderDto.class);
 
-        Long orderId = createdOrder.getId();
+        Long orderId = createdOrder.id();
 
         // Simulate inventory reservation success
         InventoryEvent reservedEvent = InventoryEvent.reserved(6L, 6L, 1, 0);
@@ -323,7 +292,7 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                     .statusCode(HttpStatus.OK.value())
                     .extract()
                     .as(OrderDto.class);
-            assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.RESERVED);
+            assertThat(order.status()).isEqualTo(OrderDto.OrderStatus.RESERVED);
         });
 
         // Simulate payment failed
@@ -351,27 +320,17 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                     .statusCode(HttpStatus.OK.value())
                     .extract()
                     .as(OrderDto.class);
-            assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.CANCELLED);
-            assertThat(order.getItems().get(0).getStatus()).isEqualTo(OrderItemDto.OrderItemStatus.CANCELLED);
+            assertThat(order.status()).isEqualTo(OrderDto.OrderStatus.CANCELLED);
+            assertThat(order.items().get(0).status()).isEqualTo(OrderItemDto.OrderItemStatus.CANCELLED);
         });
     }
 
     @Test
     void fullSaga_shouldCancelOrder_whenReservationExpired() {
         // Create order
-        OrderDto orderDto = OrderDto.builder()
-                .customerId("CUST-007")
-                .customerEmail("customer7@example.com")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(new BigDecimal("999.99"))
-                .items(List.of(
-                        OrderItemDto.builder()
-                                .productId(7L)
-                                .variantId(7L)
-                                .quantity(1)
-                                .price(new BigDecimal("999.99"))
-                                .build()))
-                .build();
+        OrderDto orderDto = createOrderDto("CUST-007", "customer7@example.com",
+                new BigDecimal("999.99"),
+                List.of(createOrderItemDto(7L, 7L, 1, new BigDecimal("999.99"))));
 
         OrderDto createdOrder = given()
                 .contentType(ContentType.JSON)
@@ -383,8 +342,8 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .extract()
                 .as(OrderDto.class);
 
-        Long orderId = createdOrder.getId();
-        Long orderItemId = createdOrder.getItems().get(0).getId();
+        Long orderId = createdOrder.id();
+        Long orderItemId = createdOrder.items().get(0).id();
 
         // Simulate inventory reservation success
         InventoryEvent reservedEvent = InventoryEvent.reserved(7L, 7L, 1, 0);
@@ -400,8 +359,8 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                     .statusCode(HttpStatus.OK.value())
                     .extract()
                     .as(OrderDto.class);
-            assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.RESERVED);
-            assertThat(order.getItems().get(0).getStatus()).isEqualTo(OrderItemDto.OrderItemStatus.RESERVED);
+            assertThat(order.status()).isEqualTo(OrderDto.OrderStatus.RESERVED);
+            assertThat(order.items().get(0).status()).isEqualTo(OrderItemDto.OrderItemStatus.RESERVED);
         });
 
         // Simulate reservation expired
@@ -418,33 +377,20 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                     .statusCode(HttpStatus.OK.value())
                     .extract()
                     .as(OrderDto.class);
-            assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.CANCELLED);
-            assertThat(order.getItems().get(0).getStatus()).isEqualTo(OrderItemDto.OrderItemStatus.CANCELLED);
+            assertThat(order.status()).isEqualTo(OrderDto.OrderStatus.CANCELLED);
+            assertThat(order.items().get(0).status()).isEqualTo(OrderItemDto.OrderItemStatus.CANCELLED);
         });
     }
 
     @Test
     void partialReservation_shouldSetItemToBackordered() {
         // Create order with two items
-        OrderDto orderDto = OrderDto.builder()
-                .customerId("CUST-008")
-                .customerEmail("customer8@example.com")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(new BigDecimal("1049.98"))
-                .items(List.of(
-                        OrderItemDto.builder()
-                                .productId(8L)
-                                .variantId(8L)
-                                .quantity(1)
-                                .price(new BigDecimal("999.99"))
-                                .build(),
-                        OrderItemDto.builder()
-                                .productId(9L)
-                                .variantId(9L)
-                                .quantity(1)
-                                .price(new BigDecimal("49.99"))
-                                .build()))
-                .build();
+        OrderDto orderDto = createOrderDto("CUST-008", "customer8@example.com",
+                new BigDecimal("1049.98"),
+                List.of(
+                        createOrderItemDto(8L, 8L, 1, new BigDecimal("999.99")),
+                        createOrderItemDto(9L, 9L, 1, new BigDecimal("49.99"))
+                ));
 
         OrderDto createdOrder = given()
                 .contentType(ContentType.JSON)
@@ -456,7 +402,7 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .extract()
                 .as(OrderDto.class);
 
-        Long orderId = createdOrder.getId();
+        Long orderId = createdOrder.id();
 
         // Simulate partial reservation - first item fully reserved, second item backordered
         InventoryEvent reservedEvent1 = InventoryEvent.reserved(8L, 8L, 1, 0);
@@ -477,11 +423,11 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                     .extract()
                     .as(OrderDto.class);
                     // Order should be RESERVED (one item RESERVED, one BACKORDERED)
-                    assertThat(order.getStatus()).isEqualTo(OrderDto.OrderStatus.RESERVED);
-                    assertThat(order.getItems()).hasSize(2);
+                    assertThat(order.status()).isEqualTo(OrderDto.OrderStatus.RESERVED);
+                    assertThat(order.items()).hasSize(2);
                     // Find the backordered item
-                    boolean hasBackordered = order.getItems().stream()
-                            .anyMatch(item -> item.getStatus() == OrderItemDto.OrderItemStatus.BACKORDERED);
+                    boolean hasBackordered = order.items().stream()
+                            .anyMatch(item -> item.status() == OrderItemDto.OrderItemStatus.BACKORDERED);
                     assertThat(hasBackordered).isTrue();
         });
     }

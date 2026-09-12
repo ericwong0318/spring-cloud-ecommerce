@@ -14,11 +14,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.r2dbc.connection.R2dbcTransactionManager;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -28,7 +28,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -64,7 +63,7 @@ class OrderServiceTest {
     private RabbitTemplate rabbitTemplate;
 
     @Mock(lenient = true)
-    private TransactionalOperator transactionalOperator;
+    private R2dbcTransactionManager transactionManager;
 
     private ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
@@ -75,32 +74,36 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        TransactionalOperator transactionalOperator = TransactionalOperator.create(transactionManager);
         orderService = new OrderService(orderRepository, orderItemRepository, orderMapper,
-                rabbitTemplate, new ObjectMapper().registerModule(new JavaTimeModule()),
-                transactionalOperator, orderExchange, ecommerceExchange);
+                objectMapper,
+                transactionalOperator,
+                rabbitTemplate, orderExchange, ecommerceExchange);
 
         // Mock TransactionalOperator to pass through the publisher (no actual transaction in tests)
         when(transactionalOperator.transactional(any(Mono.class))).thenAnswer(inv -> inv.getArgument(0));
         when(transactionalOperator.transactional(any(Flux.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        orderDto = OrderDto.builder()
-                .id(1L)
-                .customerId("CUST-001")
-                .customerEmail("customer@example.com")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(new BigDecimal("1999.98"))
-                .items(Collections.emptyList())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+        LocalDateTime now = LocalDateTime.now();
+        orderDto = new OrderDto(
+                1L,
+                "CUST-001",
+                "customer@example.com",
+                OrderDto.OrderStatus.PENDING,
+                new BigDecimal("1999.98"),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                now,
+                now
+        );
 
         order = new Order();
         order.setId(1L);
         order.setCustomerId("CUST-001");
         order.setStatus("PENDING");
         order.setTotalAmount(new BigDecimal("1999.98"));
-        order.setCreatedAt(LocalDateTime.now());
-        order.setUpdatedAt(LocalDateTime.now());
+        order.setCreatedAt(now);
+        order.setUpdatedAt(now);
     }
 
     @Test
@@ -109,7 +112,7 @@ class OrderServiceTest {
         when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         StepVerifier.create(orderService.getAllOrders())
-                .expectNextMatches(dto -> dto.getId().equals(1L))
+                .expectNextMatches(dto -> dto.id().equals(1L))
                 .verifyComplete();
 
         verify(orderRepository).findAll();
@@ -132,7 +135,7 @@ class OrderServiceTest {
         when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         StepVerifier.create(orderService.getOrderById(1L))
-                .expectNextMatches(dto -> dto.getId().equals(1L))
+                .expectNextMatches(dto -> dto.id().equals(1L))
                 .verifyComplete();
 
         verify(orderRepository).findById(1L);
@@ -158,7 +161,7 @@ class OrderServiceTest {
         when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         StepVerifier.create(orderService.getOrdersByCustomerId("CUST-001"))
-                .expectNextMatches(dto -> dto.getCustomerId().equals("CUST-001"))
+                .expectNextMatches(dto -> dto.customerId().equals("CUST-001"))
                 .verifyComplete();
 
         verify(orderRepository).findByCustomerId("CUST-001");
@@ -177,12 +180,17 @@ class OrderServiceTest {
 
     @Test
     void createOrder_shouldCreateAndReturnOrder() {
-        OrderDto inputDto = OrderDto.builder()
-                .customerId("CUST-001")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(new BigDecimal("1999.98"))
-                .items(Collections.emptyList())
-                .build();
+        OrderDto inputDto = new OrderDto(
+                null,
+                "CUST-001",
+                null,
+                OrderDto.OrderStatus.PENDING,
+                new BigDecimal("1999.98"),
+                Collections.emptyList(),
+                null,
+                null,
+                null
+        );
 
         Order newOrder = new Order();
         newOrder.setCustomerId("CUST-001");
@@ -202,7 +210,7 @@ class OrderServiceTest {
         when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         StepVerifier.create(orderService.createOrder(inputDto))
-                .expectNextMatches(dto -> dto.getId().equals(1L) && dto.getCustomerId().equals("CUST-001"))
+                .expectNextMatches(dto -> dto.id().equals(1L) && dto.customerId().equals("CUST-001"))
                 .verifyComplete();
 
         verify(orderMapper).toEntity(inputDto);
@@ -212,12 +220,17 @@ class OrderServiceTest {
 
     @Test
     void createOrder_shouldSetDefaultTotalAmount_whenNull() {
-        OrderDto inputDto = OrderDto.builder()
-                .customerId("CUST-001")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(null)
-                .items(Collections.emptyList())
-                .build();
+        OrderDto inputDto = new OrderDto(
+                null,
+                "CUST-001",
+                null,
+                OrderDto.OrderStatus.PENDING,
+                null,
+                Collections.emptyList(),
+                null,
+                null,
+                null
+        );
 
         Order newOrder = new Order();
         newOrder.setCustomerId("CUST-001");
@@ -232,23 +245,24 @@ class OrderServiceTest {
         savedOrder.setCreatedAt(LocalDateTime.now());
         savedOrder.setUpdatedAt(LocalDateTime.now());
 
-        OrderDto savedOrderDto = OrderDto.builder()
-                .id(1L)
-                .customerId("CUST-001")
-                .customerEmail("customer@example.com")
-                .status(OrderDto.OrderStatus.PENDING)
-                .totalAmount(BigDecimal.ZERO)
-                .items(Collections.emptyList())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+        OrderDto savedOrderDto = new OrderDto(
+                1L,
+                "CUST-001",
+                "customer@example.com",
+                OrderDto.OrderStatus.PENDING,
+                BigDecimal.ZERO,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
 
         when(orderMapper.toEntity(any(OrderDto.class))).thenReturn(newOrder);
         when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(savedOrder));
         when(orderMapper.toDto(any(Order.class))).thenReturn(savedOrderDto);
 
         StepVerifier.create(orderService.createOrder(inputDto))
-                .expectNextMatches(dto -> dto.getTotalAmount().equals(BigDecimal.ZERO))
+                .expectNextMatches(dto -> dto.totalAmount().equals(BigDecimal.ZERO))
                 .verifyComplete();
 
         verify(orderRepository).save(argThat(o -> o.getTotalAmount().equals(BigDecimal.ZERO)));
@@ -256,13 +270,17 @@ class OrderServiceTest {
 
     @Test
     void updateOrder_shouldUpdateAndReturnOrder() {
-        OrderDto updateDto = OrderDto.builder()
-                .id(1L)
-                .customerId("CUST-001")
-                .status(OrderDto.OrderStatus.CONFIRMED)
-                .totalAmount(new BigDecimal("2999.98"))
-                .items(Collections.emptyList())
-                .build();
+        OrderDto updateDto = new OrderDto(
+                1L,
+                "CUST-001",
+                null,
+                OrderDto.OrderStatus.CONFIRMED,
+                new BigDecimal("2999.98"),
+                Collections.emptyList(),
+                null,
+                null,
+                null
+        );
 
         Order updatedOrder = new Order();
         updatedOrder.setId(1L);
@@ -277,7 +295,7 @@ class OrderServiceTest {
         when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         StepVerifier.create(orderService.updateOrder(1L, updateDto))
-                .expectNextMatches(dto -> dto.getId().equals(1L))
+                .expectNextMatches(dto -> dto.id().equals(1L))
                 .verifyComplete();
 
         verify(orderRepository).findById(1L);
@@ -289,12 +307,17 @@ class OrderServiceTest {
     void updateOrder_shouldThrowException_whenNotFound() {
         when(orderRepository.findById(999L)).thenReturn(Mono.empty());
 
-        OrderDto updateDto = OrderDto.builder()
-                .customerId("CUST-001")
-                .status(OrderDto.OrderStatus.CONFIRMED)
-                .totalAmount(new BigDecimal("2999.98"))
-                .items(Collections.emptyList())
-                .build();
+        OrderDto updateDto = new OrderDto(
+                null,
+                "CUST-001",
+                null,
+                OrderDto.OrderStatus.CONFIRMED,
+                new BigDecimal("2999.98"),
+                Collections.emptyList(),
+                null,
+                null,
+                null
+        );
 
         StepVerifier.create(orderService.updateOrder(999L, updateDto))
                 .expectErrorMatches(e -> e instanceof ResourceNotFoundException &&

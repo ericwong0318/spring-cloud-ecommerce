@@ -26,9 +26,9 @@ public class InventoryController {
     @PostMapping("/reserve")
     @Operation(summary = "Reserve stock", description = "Reserves stock for a product variant")
     public ResponseEntity<InventoryDto> reserveStock(@Valid @RequestBody ReserveStockRequest request) {
-        var result = inventoryService.reserveStock(request.getVariantId(), request.getQuantity(), request.getOrderItemId());
-        Inventory inventory = inventoryService.getInventory(request.getVariantId())
-                .orElseThrow(() -> new RuntimeException("Inventory not found for variant: " + request.getVariantId()));
+        var result = inventoryService.reserveStock(request.variantId(), request.quantity(), request.orderItemId());
+        Inventory inventory = inventoryService.getInventory(request.variantId())
+                .orElseThrow(() -> new RuntimeException("Inventory not found for variant: " + request.variantId()));
         return ResponseEntity.ok(toDto(inventory));
     }
 
@@ -45,9 +45,9 @@ public class InventoryController {
     @PostMapping("/confirm")
     @Operation(summary = "Confirm stock", description = "Confirms stock reduction after order fulfillment")
     public ResponseEntity<InventoryDto> confirmStock(@Valid @RequestBody ConfirmStockRequest request) {
-        inventoryService.confirmStock(request.getVariantId(), request.getQuantity());
-        Inventory inventory = inventoryService.getInventory(request.getVariantId())
-                .orElseThrow(() -> new RuntimeException("Inventory not found for variant: " + request.getVariantId()));
+        inventoryService.confirmStock(request.variantId(), request.quantity());
+        Inventory inventory = inventoryService.getInventory(request.variantId())
+                .orElseThrow(() -> new RuntimeException("Inventory not found for variant: " + request.variantId()));
         return ResponseEntity.ok(toDto(inventory));
     }
 
@@ -61,19 +61,19 @@ public class InventoryController {
     }
 
     private InventoryDto toDto(Inventory inventory) {
-        InventoryDto dto = new InventoryDto();
-        dto.setId(inventory.getId());
-        dto.setVariantId(inventory.getVariantId());
-        dto.setProductId(inventory.getProductId());
-        dto.setProductName(inventory.getProductName());
-        dto.setQuantity(inventory.getQuantity());
-        dto.setReservedQuantity(inventory.getReservedQuantity());
-        dto.setAvailableQuantity(inventory.getAvailableQuantity());
-        dto.setReorderLevel(inventory.getReorderLevel());
-        dto.setCostPrice(inventory.getCostPrice());
-        dto.setLowStock(inventory.isLowStock());
-        dto.setCreatedAt(inventory.getCreatedAt());
-        dto.setUpdatedAt(inventory.getUpdatedAt());
-        return dto;
+        return new InventoryDto(
+                inventory.getId(),
+                inventory.getVariantId(),
+                inventory.getProductId(),
+                inventory.getProductName(),
+                inventory.getQuantity(),
+                inventory.getReservedQuantity(),
+                inventory.getAvailableQuantity(),
+                inventory.getReorderLevel(),
+                inventory.getCostPrice(),
+                inventory.isLowStock(),
+                inventory.getCreatedAt(),
+                inventory.getUpdatedAt()
+        );
     }
 }

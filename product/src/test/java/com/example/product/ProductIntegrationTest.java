@@ -16,6 +16,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -49,7 +50,7 @@ class ProductIntegrationTest {
 
     @Test
     void whenAllProductsRetrieved_thenReturn200() {
-        ProductDto product = new ProductDto("1", "Test Product", "Description", BigDecimal.valueOf(99.99), "1", null);
+        ProductDto product = new ProductDto("1", "Test Product", "Description", BigDecimal.valueOf(99.99), "1", null, List.of());
         when(productService.getAllProducts()).thenReturn(Flux.just(product));
 
         webTestClient.get()
@@ -59,15 +60,15 @@ class ProductIntegrationTest {
                 .expectBodyList(ProductDto.class)
                 .hasSize(1)
                 .value(list -> {
-                    assertThat(list.get(0).getId()).isEqualTo("1");
-                    assertThat(list.get(0).getName()).isEqualTo("Test Product");
-                    assertThat(list.get(0).getPrice()).isEqualByComparingTo(BigDecimal.valueOf(99.99));
+                    assertThat(list.get(0).id()).isEqualTo("1");
+                    assertThat(list.get(0).name()).isEqualTo("Test Product");
+                    assertThat(list.get(0).price()).isEqualByComparingTo(BigDecimal.valueOf(99.99));
                 });
     }
 
     @Test
     void whenProductCreated_thenReturn201() {
-        ProductDto created = new ProductDto("1", "New Product", "Description", BigDecimal.valueOf(49.99), "1", null);
+        ProductDto created = new ProductDto("1", "New Product", "Description", BigDecimal.valueOf(49.99), "1", null, List.of());
         when(productService.createProduct(any(ProductDto.class))).thenReturn(Mono.just(created));
 
         webTestClient.post()
@@ -85,9 +86,9 @@ class ProductIntegrationTest {
                 .expectStatus().isCreated()
                 .expectBody(ProductDto.class)
                 .value(product -> {
-                    assertThat(product.getId()).isEqualTo("1");
-                    assertThat(product.getName()).isEqualTo("New Product");
-                    assertThat(product.getPrice()).isEqualByComparingTo(BigDecimal.valueOf(49.99));
+                    assertThat(product.id()).isEqualTo("1");
+                    assertThat(product.name()).isEqualTo("New Product");
+                    assertThat(product.price()).isEqualByComparingTo(BigDecimal.valueOf(49.99));
                 });
     }
 }

@@ -4,12 +4,12 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Add ShedLock dependency: `net.javacrumbs.shedlock:shedlock-spring` and provider (e.g., `shedlock-provider-jdbc-template` for PostgreSQL)
-- [ ] Configure `LockProvider` bean using DataSource
-- [ ] Annotate `publishOutboxEvents()` with `@SchedulerLock(name = "outboxPublisher", lockAtLeastFor = "30s", lockAtMostFor = "5m")`
-- [ ] Or implement custom leader election using PostgreSQL advisory locks or Consul/Zookeeper if available
-- [ ] Alternative: Deploy outbox publisher as a single-instance separate worker service
-- [ ] Verify: Run multiple instances of a service with outbox publisher; confirm only one processes events
-- [ ] Run tests: `mvn test -pl common,order-service,payment-service,inventory-service`
+- [x] Add ShedLock dependency: `net.javacrumbs.shedlock:shedlock-spring` and provider (e.g., `shedlock-provider-jdbc-template` for PostgreSQL)
+- [x] Configure `LockProvider` bean using DataSource
+- [x] Annotate `publishOutboxEvents()` with `@SchedulerLock(name = "outboxPublisher", lockAtLeastFor = "30s", lockAtMostFor = "5m")`
+- [x] Or implement custom leader election using PostgreSQL advisory locks or Consul/Zookeeper if available
+- [x] Alternative: Deploy outbox publisher as a single-instance separate worker service
+- [x] Verify: Run multiple instances of a service with outbox publisher; confirm only one processes events
+- [x] Run tests: `mvn test -pl common,order-service,payment-service,inventory-service`

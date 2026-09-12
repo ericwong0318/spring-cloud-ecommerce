@@ -19,6 +19,9 @@ public class Order {
     @Column("customer_id")
     private String customerId;
 
+    @Column("customer_email")
+    private String customerEmail;
+
     private String status;
 
     @Column("total_amount")
@@ -37,10 +40,11 @@ public class Order {
     public Order() {
     }
 
-    public Order(Long id, String customerId, String status, BigDecimal totalAmount,
+    public Order(Long id, String customerId, String customerEmail, String status, BigDecimal totalAmount,
                  List<OrderItem> items, List<Shipment> shipments, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.customerId = customerId;
+        this.customerEmail = customerEmail;
         this.status = status;
         this.totalAmount = totalAmount;
         this.items = items != null ? items : new ArrayList<>();
@@ -83,6 +87,14 @@ public class Order {
 
     public void setCustomerId(String customerId) {
         this.customerId = customerId;
+    }
+
+    public String getCustomerEmail() {
+        return customerEmail;
+    }
+
+    public void setCustomerEmail(String customerEmail) {
+        this.customerEmail = customerEmail;
     }
 
     public String getStatus() {
@@ -159,6 +171,7 @@ public class Order {
     public static class OrderBuilder {
         private Long id;
         private String customerId;
+        private String customerEmail;
         private String status;
         private BigDecimal totalAmount;
         private List<OrderItem> items = new ArrayList<>();
@@ -173,6 +186,11 @@ public class Order {
 
         public OrderBuilder customerId(String customerId) {
             this.customerId = customerId;
+            return this;
+        }
+
+        public OrderBuilder customerEmail(String customerEmail) {
+            this.customerEmail = customerEmail;
             return this;
         }
 
@@ -207,7 +225,7 @@ public class Order {
         }
 
         public Order build() {
-            return new Order(id, customerId, status, totalAmount, items, shipments, createdAt, updatedAt);
+            return new Order(id, customerId, customerEmail, status, totalAmount, items, shipments, createdAt, updatedAt);
         }
     }
 }

@@ -141,7 +141,7 @@ public class NotificationService {
         notification.setStatus(Notification.NotificationStatus.PENDING);
 
         // Apply template if type is specified
-        if (notificationDto.getType() != null) {
+        if (notificationDto.type() != null) {
             applyTemplate(notification);
         }
 

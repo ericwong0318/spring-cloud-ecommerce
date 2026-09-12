@@ -44,7 +44,7 @@ public class OrderItem {
     private OrderItemStatus status;
 
     public enum OrderItemStatus {
-        PENDING, RESERVED, SHIPPED, BACKORDERED, CANCELLED
+        PENDING, RESERVED, SHIPPED, BACKORDERED, PARTIALLY_CONFIRMED, CANCELLED
     }
 
     public OrderItem() {

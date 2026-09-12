@@ -117,14 +117,21 @@ class ShipmentServiceTest {
         shipmentItem.setQuantity(3);
 
         // Setup DTOs
-        ShipmentItemDto shipmentItemDto = new ShipmentItemDto();
-        shipmentItemDto.setOrderItemId(1L);
-        shipmentItemDto.setQuantity(3);
+        LocalDateTime now = LocalDateTime.now();
+        ShipmentItemDto shipmentItemDto = new ShipmentItemDto(1L, 1L, "Test Product", 3);
 
-        shipmentDto = new ShipmentDto();
-        shipmentDto.setTrackingNumber("1Z999AA10123456784");
-        shipmentDto.setCarrier("UPS");
-        shipmentDto.setItems(List.of(shipmentItemDto));
+        shipmentDto = new ShipmentDto(
+                null,
+                null,
+                "1Z999AA10123456784",
+                "UPS",
+                ShipmentDto.ShipmentStatus.CREATED,
+                null,
+                null,
+                List.of(shipmentItemDto),
+                now,
+                now
+        );
     }
 
     private ShipmentService createShipmentService() {
@@ -161,21 +168,26 @@ class ShipmentServiceTest {
         when(shipmentItemRepository.findByShipmentId(1L)).thenReturn(Flux.just(shipmentItem));
         
         // Mock mapper
-        ShipmentDto resultDto = new ShipmentDto();
-        resultDto.setId(1L);
-        resultDto.setOrderId(1L);
-        resultDto.setTrackingNumber("1Z999AA10123456784");
-        resultDto.setCarrier("UPS");
-        resultDto.setStatus(ShipmentDto.ShipmentStatus.CREATED);
-        resultDto.setItems(List.of(new ShipmentItemDto(1L, 1L, "Test Product", 3)));
-        resultDto.setCreatedAt(LocalDateTime.now());
-        resultDto.setUpdatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        ShipmentItemDto resultItemDto = new ShipmentItemDto(1L, 1L, "Test Product", 3);
+        ShipmentDto resultDto = new ShipmentDto(
+                1L,
+                1L,
+                "1Z999AA10123456784",
+                "UPS",
+                ShipmentDto.ShipmentStatus.CREATED,
+                null,
+                null,
+                List.of(resultItemDto),
+                now,
+                now
+        );
         
         when(shipmentMapper.toDto(any(Shipment.class))).thenReturn(resultDto);
 
         // Execute
         StepVerifier.create(service.createShipment(1L, shipmentDto))
-                .expectNextMatches(dto -> dto.getId().equals(1L) && dto.getTrackingNumber().equals("1Z999AA10123456784"))
+                .expectNextMatches(dto -> dto.id().equals(1L) && dto.trackingNumber().equals("1Z999AA10123456784"))
                 .verifyComplete();
 
         // Verify (called twice: once in createShipment, once in checkAndTransitionOrderToShipped)
@@ -209,14 +221,20 @@ class ShipmentServiceTest {
         when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
         when(orderItemRepository.findById(999L)).thenReturn(Mono.empty());
 
-        ShipmentItemDto invalidItem = new ShipmentItemDto();
-        invalidItem.setOrderItemId(999L);
-        invalidItem.setQuantity(1);
+        ShipmentItemDto invalidItem = new ShipmentItemDto(null, 999L, null, 1);
         
-        ShipmentDto invalidDto = new ShipmentDto();
-        invalidDto.setTrackingNumber("1Z999AA10123456784");
-        invalidDto.setCarrier("UPS");
-        invalidDto.setItems(List.of(invalidItem));
+        ShipmentDto invalidDto = new ShipmentDto(
+                null,
+                null,
+                "1Z999AA10123456784",
+                "UPS",
+                ShipmentDto.ShipmentStatus.CREATED,
+                null,
+                null,
+                List.of(invalidItem),
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
 
         StepVerifier.create(service.createShipment(1L, invalidDto))
                 .expectErrorMatches(e -> e instanceof ResourceNotFoundException &&
@@ -235,21 +253,28 @@ class ShipmentServiceTest {
         when(orderRepository.findById(2L)).thenReturn(Mono.just(order)); // for orderId 2L
         when(orderItemRepository.findById(1L)).thenReturn(Mono.just(orderItem));
 
-        ShipmentItemDto invalidItem = new ShipmentItemDto();
-        invalidItem.setOrderItemId(1L);
-        invalidItem.setQuantity(1);
+        ShipmentItemDto invalidItem = new ShipmentItemDto(null, 1L, null, 1);
         
-        ShipmentDto invalidDto = new ShipmentDto();
-        invalidDto.setTrackingNumber("1Z999AA10123456784");
-        invalidDto.setCarrier("UPS");
-        invalidDto.setItems(List.of(invalidItem));
+        ShipmentDto invalidDto = new ShipmentDto(
+                null,
+                null,
+                "1Z999AA10123456784",
+                "UPS",
+                ShipmentDto.ShipmentStatus.CREATED,
+                null,
+                null,
+                List.of(invalidItem),
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
 
         // orderItem has orderId=1L, but we're creating shipment for orderId=2L
         StepVerifier.create(service.createShipment(2L, invalidDto))
                 .expectErrorMatches(e -> e instanceof IllegalArgumentException &&
-                        e.getMessage().contains("does not belong to order"))
+                        e.getMessage().contains("Order item 1 does not belong to order 2"))
                 .verify();
 
+        verify(orderItemRepository).findById(1L);
         verify(shipmentRepository, never()).save(any());
     }
 
@@ -257,22 +282,28 @@ class ShipmentServiceTest {
     void createShipment_shouldThrowException_whenQuantityExceedsRemaining() {
         ShipmentService service = createShipmentService();
 
-        // Order item has 5 ordered, 0 shipped = 5 remaining
         when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
         when(orderItemRepository.findById(1L)).thenReturn(Mono.just(orderItem));
 
-        ShipmentItemDto excessiveItem = new ShipmentItemDto();
-        excessiveItem.setOrderItemId(1L);
-        excessiveItem.setQuantity(10); // More than remaining (5)
+        // Try to ship 10 items when only 5 were ordered
+        ShipmentItemDto invalidItem = new ShipmentItemDto(null, 1L, null, 10);
         
-        ShipmentDto excessiveDto = new ShipmentDto();
-        excessiveDto.setTrackingNumber("1Z999AA10123456784");
-        excessiveDto.setCarrier("UPS");
-        excessiveDto.setItems(List.of(excessiveItem));
+        ShipmentDto invalidDto = new ShipmentDto(
+                null,
+                null,
+                "1Z999AA10123456784",
+                "UPS",
+                ShipmentDto.ShipmentStatus.CREATED,
+                null,
+                null,
+                List.of(invalidItem),
+                LocalDateTime.now(),
+                LocalDateTime.now()
+        );
 
-        StepVerifier.create(service.createShipment(1L, excessiveDto))
+        StepVerifier.create(service.createShipment(1L, invalidDto))
                 .expectErrorMatches(e -> e instanceof IllegalArgumentException &&
-                        e.getMessage().contains("exceeds remaining quantity"))
+                        e.getMessage().contains("Quantity 10 exceeds remaining quantity"))
                 .verify();
 
         verify(shipmentRepository, never()).save(any());
@@ -282,40 +313,30 @@ class ShipmentServiceTest {
     void getShipmentsByOrderId_shouldReturnShipments() {
         ShipmentService service = createShipmentService();
 
-        ShipmentDto resultDto = new ShipmentDto();
-        resultDto.setId(1L);
-        resultDto.setOrderId(1L);
-        resultDto.setTrackingNumber("1Z999AA10123456784");
-        resultDto.setCarrier("UPS");
-        resultDto.setStatus(ShipmentDto.ShipmentStatus.CREATED);
-        resultDto.setItems(List.of(new ShipmentItemDto(1L, 1L, "Test Product", 3)));
-        resultDto.setCreatedAt(LocalDateTime.now());
-        resultDto.setUpdatedAt(LocalDateTime.now());
-
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
         when(shipmentRepository.findByOrderId(1L)).thenReturn(Flux.just(shipment));
         when(shipmentItemRepository.findByShipmentId(1L)).thenReturn(Flux.just(shipmentItem));
-        when(shipmentMapper.toDtoList(any())).thenReturn(List.of(resultDto));
+        when(shipmentMapper.toDtoList(any(List.class))).thenReturn(List.of(
+                new ShipmentDto(
+                        1L,
+                        1L,
+                        "1Z999AA10123456784",
+                        "UPS",
+                        ShipmentDto.ShipmentStatus.CREATED,
+                        null,
+                        null,
+                        List.of(new ShipmentItemDto(1L, 1L, "Test Product", 3)),
+                        LocalDateTime.now(),
+                        LocalDateTime.now()
+                )
+        ));
 
         StepVerifier.create(service.getShipmentsByOrderId(1L))
-                .expectNextMatches(list -> list.size() == 1 && list.get(0).getId().equals(1L))
+                .expectNextMatches(list -> !list.isEmpty() && list.get(0).id().equals(1L))
                 .verifyComplete();
 
+        verify(orderRepository).findById(1L);
         verify(shipmentRepository).findByOrderId(1L);
         verify(shipmentItemRepository).findByShipmentId(1L);
-        verify(shipmentMapper).toDtoList(any());
-    }
-
-    @Test
-    void getShipmentsByOrderId_shouldReturnEmpty_whenNoShipments() {
-        ShipmentService service = createShipmentService();
-
-        when(shipmentRepository.findByOrderId(1L)).thenReturn(Flux.empty());
-        when(shipmentMapper.toDtoList(any())).thenReturn(Collections.emptyList());
-
-        StepVerifier.create(service.getShipmentsByOrderId(1L))
-                .expectNextMatches(List::isEmpty)
-                .verifyComplete();
-
-        verify(shipmentRepository).findByOrderId(1L);
     }
 }

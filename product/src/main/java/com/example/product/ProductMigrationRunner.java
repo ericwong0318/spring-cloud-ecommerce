@@ -69,23 +69,26 @@ public class ProductMigrationRunner implements CommandLineRunner {
 
                 List<ProductVariantDto> variants = new ArrayList<>();
                 for (Map<String, Object> vrow : variantRows) {
-                    ProductVariantDto variant = new ProductVariantDto();
-                    variant.setId(vrow.get("id") != null ? String.valueOf(((Number) vrow.get("id")).longValue()) : null);
-                    variant.setSkuCode((String) vrow.get("sku_code"));
-                    variant.setAttributes((Map<String, String>) vrow.get("attributes"));
-                    variant.setPrice((BigDecimal) vrow.get("price"));
-                    variant.setInventoryId(vrow.get("inventory_id") != null ? String.valueOf(((Number) vrow.get("inventory_id")).longValue()) : null);
+                    ProductVariantDto variant = new ProductVariantDto(
+                            vrow.get("id") != null ? String.valueOf(((Number) vrow.get("id")).longValue()) : null,
+                            String.valueOf(productId),
+                            (String) vrow.get("sku_code"),
+                            (Map<String, String>) vrow.get("attributes"),
+                            (BigDecimal) vrow.get("price"),
+                            vrow.get("inventory_id") != null ? String.valueOf(((Number) vrow.get("inventory_id")).longValue()) : null
+                    );
                     variants.add(variant);
                 }
 
-                ProductDto productDto = new ProductDto();
-                productDto.setId(String.valueOf(productId));
-                productDto.setName(name);
-                productDto.setDescription(description);
-                productDto.setPrice(price);
-                productDto.setCategoryId(categoryId != null ? String.valueOf(categoryId) : null);
-                productDto.setCategoryName(categoryName);
-                productDto.setVariants(variants);
+                ProductDto productDto = new ProductDto(
+                        String.valueOf(productId),
+                        name,
+                        description,
+                        price,
+                        categoryId != null ? String.valueOf(categoryId) : null,
+                        categoryName,
+                        variants
+                );
 
                 Product product = productMapper.toEntity(productDto);
                 product.setVariants(variants.stream()

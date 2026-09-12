@@ -48,14 +48,18 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
         receivedEvents.add(event);
     }
 
+    private ProductDto createTestProduct(String name, BigDecimal price, String categoryId) {
+        return new ProductDto(null, name, "Test Description", price, categoryId, null, List.of());
+    }
+
+    private ProductVariantDto createTestVariant(String skuCode, BigDecimal price, Map<String, String> attributes) {
+        return new ProductVariantDto(null, null, skuCode, attributes, price, null);
+    }
+
     @Test
     void whenCreateVariant_thenReturn201AndPublishEvent() throws Exception {
         // First create a product
-        ProductDto productDto = new ProductDto();
-        productDto.setName("Test Product");
-        productDto.setDescription("Test Description");
-        productDto.setPrice(new BigDecimal("999.99"));
-        productDto.setCategoryId("1");
+        ProductDto productDto = createTestProduct("Test Product", new BigDecimal("999.99"), "1");
 
         ProductDto createdProduct = webTestClient.post()
                 .uri("/products")
@@ -68,13 +72,10 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertThat(createdProduct).isNotNull();
-        String productId = createdProduct.getId();
+        String productId = createdProduct.id();
 
         // Create variant
-        ProductVariantDto variantDto = new ProductVariantDto();
-        variantDto.setSkuCode("TEST-SKU-001");
-        variantDto.setAttributes(Map.of("color", "red", "size", "large"));
-        variantDto.setPrice(new BigDecimal("1099.99"));
+        ProductVariantDto variantDto = createTestVariant("TEST-SKU-001", new BigDecimal("1099.99"), Map.of("color", "red", "size", "large"));
 
         ProductVariantDto createdVariant = webTestClient.post()
                 .uri("/products/{productId}/variants", productId)
@@ -87,10 +88,10 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertThat(createdVariant).isNotNull();
-        assertThat(createdVariant.getSkuCode()).isEqualTo("TEST-SKU-001");
-        assertThat(createdVariant.getPrice()).isEqualByComparingTo(new BigDecimal("1099.99"));
-        assertThat(createdVariant.getAttributes()).containsEntry("color", "red");
-        assertThat(createdVariant.getProductId()).isEqualTo(productId);
+        assertThat(createdVariant.skuCode()).isEqualTo("TEST-SKU-001");
+        assertThat(createdVariant.price()).isEqualByComparingTo(new BigDecimal("1099.99"));
+        assertThat(createdVariant.attributes()).containsEntry("color", "red");
+        assertThat(createdVariant.productId()).isEqualTo(productId);
 
         // Verify event published to RabbitMQ
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -106,11 +107,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
     @Test
     void whenGetVariantsByProductId_thenReturnList() throws Exception {
         // Create product
-        ProductDto productDto = new ProductDto();
-        productDto.setName("Test Product 2");
-        productDto.setDescription("Test Description");
-        productDto.setPrice(new BigDecimal("499.99"));
-        productDto.setCategoryId("1");
+        ProductDto productDto = createTestProduct("Test Product 2", new BigDecimal("499.99"), "1");
 
         ProductDto createdProduct = webTestClient.post()
                 .uri("/products")
@@ -123,18 +120,12 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertThat(createdProduct).isNotNull();
-        String productId = createdProduct.getId();
+        String productId = createdProduct.id();
 
         // Create multiple variants
-        ProductVariantDto variant1 = new ProductVariantDto();
-        variant1.setSkuCode("TEST-SKU-002");
-        variant1.setPrice(new BigDecimal("549.99"));
-        variant1.setAttributes(Map.of("color", "blue"));
+        ProductVariantDto variant1 = createTestVariant("TEST-SKU-002", new BigDecimal("549.99"), Map.of("color", "blue"));
 
-        ProductVariantDto variant2 = new ProductVariantDto();
-        variant2.setSkuCode("TEST-SKU-003");
-        variant2.setPrice(new BigDecimal("599.99"));
-        variant2.setAttributes(Map.of("color", "green"));
+        ProductVariantDto variant2 = createTestVariant("TEST-SKU-003", new BigDecimal("599.99"), Map.of("color", "green"));
 
         webTestClient.post()
                 .uri("/products/{productId}/variants", productId)
@@ -160,17 +151,14 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertThat(variants).hasSize(2);
-        assertThat(variants).extracting(ProductVariantDto::getSkuCode)
+        assertThat(variants).extracting(ProductVariantDto::skuCode)
                 .containsExactlyInAnyOrder("TEST-SKU-002", "TEST-SKU-003");
     }
 
     @Test
     void whenGetVariantBySkuCode_thenReturnVariant() throws Exception {
         // Create product
-        ProductDto productDto = new ProductDto();
-        productDto.setName("Test Product 3");
-        productDto.setPrice(new BigDecimal("199.99"));
-        productDto.setCategoryId("1");
+        ProductDto productDto = createTestProduct("Test Product 3", new BigDecimal("199.99"), "1");
 
         ProductDto createdProduct = webTestClient.post()
                 .uri("/products")
@@ -182,12 +170,10 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .returnResult()
                 .getResponseBody();
 
-        String productId = createdProduct.getId();
+        String productId = createdProduct.id();
 
         // Create variant
-        ProductVariantDto variantDto = new ProductVariantDto();
-        variantDto.setSkuCode("TEST-SKU-004");
-        variantDto.setPrice(new BigDecimal("249.99"));
+        ProductVariantDto variantDto = createTestVariant("TEST-SKU-004", new BigDecimal("249.99"), null);
 
         ProductVariantDto created = webTestClient.post()
                 .uri("/products/{productId}/variants", productId)
@@ -209,17 +195,14 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertThat(retrieved).isNotNull();
-        assertThat(retrieved.getSkuCode()).isEqualTo("TEST-SKU-004");
-        assertThat(retrieved.getId()).isEqualTo(created.getId());
+        assertThat(retrieved.skuCode()).isEqualTo("TEST-SKU-004");
+        assertThat(retrieved.id()).isEqualTo(created.id());
     }
 
     @Test
     void whenUpdateVariant_thenReturnUpdatedAndPublishEvent() throws Exception {
         // Create product
-        ProductDto productDto = new ProductDto();
-        productDto.setName("Test Product 4");
-        productDto.setPrice(new BigDecimal("99.99"));
-        productDto.setCategoryId("1");
+        ProductDto productDto = createTestProduct("Test Product 4", new BigDecimal("99.99"), "1");
 
         ProductDto createdProduct = webTestClient.post()
                 .uri("/products")
@@ -231,12 +214,10 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .returnResult()
                 .getResponseBody();
 
-        String productId = createdProduct.getId();
+        String productId = createdProduct.id();
 
         // Create variant
-        ProductVariantDto variantDto = new ProductVariantDto();
-        variantDto.setSkuCode("TEST-SKU-005");
-        variantDto.setPrice(new BigDecimal("149.99"));
+        ProductVariantDto variantDto = createTestVariant("TEST-SKU-005", new BigDecimal("149.99"), null);
 
         ProductVariantDto created = webTestClient.post()
                 .uri("/products/{productId}/variants", productId)
@@ -249,10 +230,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         // Update variant by SKU code
-        ProductVariantDto updateDto = new ProductVariantDto();
-        updateDto.setSkuCode("TEST-SKU-005-UPDATED");
-        updateDto.setPrice(new BigDecimal("199.99"));
-        updateDto.setAttributes(Map.of("material", "cotton"));
+        ProductVariantDto updateDto = createTestVariant("TEST-SKU-005-UPDATED", new BigDecimal("199.99"), Map.of("material", "cotton"));
 
         ProductVariantDto updated = webTestClient.put()
                 .uri("/products/{productId}/variants/sku/{skuCode}", productId, "TEST-SKU-005")
@@ -265,9 +243,9 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertThat(updated).isNotNull();
-        assertThat(updated.getSkuCode()).isEqualTo("TEST-SKU-005-UPDATED");
-        assertThat(updated.getPrice()).isEqualByComparingTo(new BigDecimal("199.99"));
-        assertThat(updated.getAttributes()).containsEntry("material", "cotton");
+        assertThat(updated.skuCode()).isEqualTo("TEST-SKU-005-UPDATED");
+        assertThat(updated.price()).isEqualByComparingTo(new BigDecimal("199.99"));
+        assertThat(updated.attributes()).containsEntry("material", "cotton");
 
         // Verify event published
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -281,10 +259,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
     @Test
     void whenDeleteVariant_thenReturn204AndPublishEvent() throws Exception {
         // Create product
-        ProductDto productDto = new ProductDto();
-        productDto.setName("Test Product 5");
-        productDto.setPrice(new BigDecimal("299.99"));
-        productDto.setCategoryId("1");
+        ProductDto productDto = createTestProduct("Test Product 5", new BigDecimal("299.99"), "1");
 
         ProductDto createdProduct = webTestClient.post()
                 .uri("/products")
@@ -296,12 +271,10 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .returnResult()
                 .getResponseBody();
 
-        String productId = createdProduct.getId();
+        String productId = createdProduct.id();
 
         // Create variant
-        ProductVariantDto variantDto = new ProductVariantDto();
-        variantDto.setSkuCode("TEST-SKU-006");
-        variantDto.setPrice(new BigDecimal("349.99"));
+        ProductVariantDto variantDto = createTestVariant("TEST-SKU-006", new BigDecimal("349.99"), null);
 
         ProductVariantDto created = webTestClient.post()
                 .uri("/products/{productId}/variants", productId)
@@ -339,10 +312,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
     @Test
     void whenCreateVariantWithDuplicateSku_thenReturn400() {
         // Create product
-        ProductDto productDto = new ProductDto();
-        productDto.setName("Test Product 6");
-        productDto.setPrice(new BigDecimal("199.99"));
-        productDto.setCategoryId("1");
+        ProductDto productDto = createTestProduct("Test Product 6", new BigDecimal("199.99"), "1");
 
         ProductDto createdProduct = webTestClient.post()
                 .uri("/products")
@@ -354,12 +324,10 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .returnResult()
                 .getResponseBody();
 
-        String productId = createdProduct.getId();
+        String productId = createdProduct.id();
 
         // Create first variant
-        ProductVariantDto variant1 = new ProductVariantDto();
-        variant1.setSkuCode("DUPLICATE-SKU");
-        variant1.setPrice(new BigDecimal("100.00"));
+        ProductVariantDto variant1 = createTestVariant("DUPLICATE-SKU", new BigDecimal("100.00"), null);
 
         webTestClient.post()
                 .uri("/products/{productId}/variants", productId)
@@ -369,9 +337,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isCreated();
 
         // Try to create second variant with same SKU
-        ProductVariantDto variant2 = new ProductVariantDto();
-        variant2.setSkuCode("DUPLICATE-SKU");
-        variant2.setPrice(new BigDecimal("200.00"));
+        ProductVariantDto variant2 = createTestVariant("DUPLICATE-SKU", new BigDecimal("200.00"), null);
 
         webTestClient.post()
                 .uri("/products/{productId}/variants", productId)
@@ -384,10 +350,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
     @Test
     void whenGetVariantBySkuCodeNotFound_thenReturn404() {
         // Create product
-        ProductDto productDto = new ProductDto();
-        productDto.setName("Test Product 7");
-        productDto.setPrice(new BigDecimal("399.99"));
-        productDto.setCategoryId("1");
+        ProductDto productDto = createTestProduct("Test Product 7", new BigDecimal("399.99"), "1");
 
         ProductDto createdProduct = webTestClient.post()
                 .uri("/products")
@@ -399,7 +362,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
                 .returnResult()
                 .getResponseBody();
 
-        String productId = createdProduct.getId();
+        String productId = createdProduct.id();
 
         // Try to get non-existent variant
         webTestClient.get()

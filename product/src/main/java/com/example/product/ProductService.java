@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
@@ -54,7 +56,7 @@ public class ProductService {
     }
 
     public Mono<ProductDto> createProduct(ProductDto productDto) {
-        log.info("Creating product: {}", productDto.getName());
+        log.info("Creating product: {}", productDto.name());
         Product product = productMapper.toEntity(productDto);
         return productRepository.save(product)
                 .map(productMapper::toDto);
@@ -65,10 +67,12 @@ public class ProductService {
         return productRepository.findById(id)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", id)))
                 .flatMap(existing -> {
-                    existing.setName(productDto.getName());
-                    existing.setDescription(productDto.getDescription());
-                    existing.setCategoryId(productDto.getCategoryId());
-                    existing.setCategoryName(productDto.getCategoryName());
+                    // Create updated product entity - Product is mutable so we can just update it
+                    existing.setName(productDto.name());
+                    existing.setDescription(productDto.description());
+                    existing.setCategoryId(productDto.categoryId());
+                    existing.setCategoryName(productDto.categoryName());
+                    existing.setPrice(productDto.price());
                     return productRepository.save(existing);
                 })
                 .map(productMapper::toDto);
@@ -108,14 +112,14 @@ public class ProductService {
     public Flux<ProductDto> filterByAttributes(Map<String, String> attrs, Pageable pageable) {
         log.debug("Filtering products by attributes: {}", attrs);
         // For multiple attributes, chain the queries
-        Flux<ProductDto> result = getAllProducts();
+        Flux<ProductDto> result = getAllProducts(pageable);
         for (Map.Entry<String, String> entry : attrs.entrySet()) {
             final String k = entry.getKey();
             final String v = entry.getValue();
-            result = result.filterWhen(dto -> 
-                Mono.justOrEmpty(dto.getVariants())
+            result = result.filterWhen(dto ->
+                Mono.justOrEmpty(dto.variants())
                     .flatMapMany(Flux::fromIterable)
-                    .filter(variant -> v.equals(variant.getAttributes().get(k)))
+                    .filter(variant -> v.equals(variant.attributes().get(k)))
                     .hasElements()
             );
         }

@@ -28,15 +28,18 @@ public class Product {
 
     private String categoryName;
 
+    private BigDecimal price;
+
     private List<ProductVariant> variants = new ArrayList<>();
 
     public Product() {
     }
 
-    public Product(String id, String name, String description, String categoryId, String categoryName) {
+    public Product(String id, String name, String description, BigDecimal price, String categoryId, String categoryName) {
         this.id = id;
         this.name = name;
         this.description = description;
+        this.price = price;
         this.categoryId = categoryId;
         this.categoryName = categoryName;
     }
@@ -63,6 +66,14 @@ public class Product {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
     }
 
     public String getCategoryId() {

@@ -99,79 +99,77 @@ public class ShipmentService {
         return transactionalOperator.transactional(
                 orderRepository.findById(orderId)
                         .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", orderId)))
-                        .flatMap(order -> {
-                            // Validate items belong to order and quantity is available
-                            return Flux.fromIterable(shipmentDto.getItems())
-                                    .flatMap(itemDto -> orderItemRepository.findById(itemDto.getOrderItemId())
-                                            .switchIfEmpty(Mono.error(new ResourceNotFoundException("OrderItem", itemDto.getOrderItemId())))
-                                            .filter(item -> item.getOrderId().equals(orderId))
-                                            .switchIfEmpty(Mono.error(new IllegalArgumentException("Order item " + itemDto.getOrderItemId() + " does not belong to order " + orderId)))
-                                            .flatMap(item -> {
-                                                int remainingQty = item.getRemainingQuantity();
-                                                if (itemDto.getQuantity() > remainingQty) {
-                                                    return Mono.error(new IllegalArgumentException(
-                                                            "Quantity " + itemDto.getQuantity() + " exceeds remaining quantity " + remainingQty + " for order item " + itemDto.getOrderItemId()));
-                                                }
-                                                return Mono.just(item);
-                                            }))
-                                    .collectList()
-                                    .flatMap(validatedItems -> {
-                                        // Create shipment
-                                        Shipment shipment = new Shipment();
-                                        shipment.setOrderId(orderId);
-                                        shipment.setTrackingNumber(shipmentDto.getTrackingNumber());
-                                        shipment.setCarrier(shipmentDto.getCarrier());
-                                        shipment.setStatus(Shipment.ShipmentStatus.CREATED);
-                                        shipment.setCreatedAt(LocalDateTime.now());
-                                        shipment.setUpdatedAt(LocalDateTime.now());
-
-                                        return shipmentRepository.save(shipment)
-                                                .flatMap(savedShipment -> {
-                                                    // Create shipment items and update order items
-                                                    return Flux.fromIterable(shipmentDto.getItems())
-                                                            .flatMap(itemDto -> {
-                                                                OrderItem orderItem = validatedItems.stream()
-                                                                        .filter(i -> i.getId().equals(itemDto.getOrderItemId()))
-                                                                        .findFirst()
-                                                                        .orElseThrow(() -> new IllegalStateException("Order item not found after validation"));
-
-                                                                ShipmentItem shipmentItem = new ShipmentItem();
-                                                                shipmentItem.setShipmentId(savedShipment.getId());
-                                                                shipmentItem.setOrderItemId(itemDto.getOrderItemId());
-                                                                shipmentItem.setQuantity(itemDto.getQuantity());
-
-                                                                orderItem.setQuantityShipped(orderItem.getQuantityShipped() + itemDto.getQuantity());
-                                                                if (orderItem.isFullyShipped()) {
-                                                                    orderItem.setStatus(OrderItem.OrderItemStatus.SHIPPED);
-                                                                }
-
-                                                                return orderItemRepository.save(orderItem)
-                                                                        .then(shipmentItemRepository.save(shipmentItem));
-                                                            })
-                                                            .then(Mono.just(savedShipment));
-                                                })
-                                                .flatMap(savedShipment -> {
-                                                    // Reload with items
-                                                    return shipmentItemRepository.findByShipmentId(savedShipment.getId())
-                                                            .collectList()
-                                                            .map(items -> {
-                                                                savedShipment.setItems(items);
-                                                                return savedShipment;
-                                                            });
-                                                })
-                                                .flatMap(savedShipment -> {
-                                                    // Update order status if all items shipped
-                                                    return checkAndTransitionOrderToShipped(orderId)
-                                                            .then(Mono.just(savedShipment));
-                                                })
-                                                .flatMap(savedShipment -> {
-                                                    // Publish SHIPPED event
-                                                    return publishShippedEvent(order, savedShipment)
-                                                            .then(Mono.just(savedShipment));
-                                                });
-                                    });
-                        })
+                        .flatMap(order -> validateAndCreateShipment(order, shipmentDto))
                         .map(shipmentMapper::toDto));
+    }
+
+    private Mono<Shipment> validateAndCreateShipment(Order order, ShipmentDto shipmentDto) {
+        return Flux.fromIterable(shipmentDto.items())
+                .flatMap(itemDto -> orderItemRepository.findById(itemDto.orderItemId())
+                        .switchIfEmpty(Mono.error(new ResourceNotFoundException("OrderItem", itemDto.orderItemId())))
+                        .filter(item -> item.getOrderId().equals(order.getId()))
+                        .switchIfEmpty(Mono.error(new IllegalArgumentException("Order item " + itemDto.orderItemId() + " does not belong to order " + order.getId())))
+                        .flatMap(item -> {
+                            int remainingQty = item.getRemainingQuantity();
+                            if (itemDto.quantity() > remainingQty) {
+                                return Mono.error(new IllegalArgumentException(
+                                        "Quantity " + itemDto.quantity() + " exceeds remaining quantity " + remainingQty + " for order item " + itemDto.orderItemId()));
+                            }
+                            return Mono.just(item);
+                        }))
+                .collectList()
+                .flatMap(validatedItems -> createShipmentWithItems(order, shipmentDto, validatedItems));
+    }
+
+    private Mono<Shipment> createShipmentWithItems(Order order, ShipmentDto shipmentDto, List<OrderItem> validatedItems) {
+        Shipment shipment = new Shipment();
+        shipment.setOrderId(order.getId());
+        shipment.setTrackingNumber(shipmentDto.trackingNumber());
+        shipment.setCarrier(shipmentDto.carrier());
+        shipment.setStatus(Shipment.ShipmentStatus.CREATED);
+        shipment.setCreatedAt(LocalDateTime.now());
+        shipment.setUpdatedAt(LocalDateTime.now());
+
+        return shipmentRepository.save(shipment)
+                .flatMap(savedShipment -> createShipmentItems(savedShipment, shipmentDto, validatedItems))
+                .flatMap(savedShipment -> reloadShipmentWithItems(savedShipment))
+                .flatMap(savedShipment -> checkAndTransitionOrderToShipped(order.getId())
+                        .then(Mono.just(savedShipment)))
+                .flatMap(savedShipment -> publishShippedEvent(order, savedShipment)
+                        .then(Mono.just(savedShipment)));
+    }
+
+    private Mono<Shipment> createShipmentItems(Shipment shipment, ShipmentDto shipmentDto, List<OrderItem> validatedItems) {
+        return Flux.fromIterable(shipmentDto.items())
+                .flatMap(itemDto -> {
+                    OrderItem orderItem = validatedItems.stream()
+                            .filter(i -> i.getId().equals(itemDto.orderItemId()))
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalStateException("Order item not found after validation"));
+
+                    ShipmentItem shipmentItem = new ShipmentItem();
+                    shipmentItem.setShipmentId(shipment.getId());
+                    shipmentItem.setOrderItemId(itemDto.orderItemId());
+                    shipmentItem.setQuantity(itemDto.quantity());
+
+                    orderItem.setQuantityShipped(orderItem.getQuantityShipped() + itemDto.quantity());
+                    if (orderItem.isFullyShipped()) {
+                        orderItem.setStatus(OrderItem.OrderItemStatus.SHIPPED);
+                    }
+
+                    return orderItemRepository.save(orderItem)
+                            .then(shipmentItemRepository.save(shipmentItem));
+                })
+                .then(Mono.just(shipment));
+    }
+
+    private Mono<Shipment> reloadShipmentWithItems(Shipment shipment) {
+        return shipmentItemRepository.findByShipmentId(shipment.getId())
+                .collectList()
+                .map(items -> {
+                    shipment.setItems(items);
+                    return shipment;
+                });
     }
 
     public Mono<List<ShipmentDto>> getShipmentsByOrderId(Long orderId) {
@@ -240,7 +238,7 @@ public class ShipmentService {
         return Mono.empty();
     }
 
-    private void publishOrderEvent(OrderEvent event) {
+    void publishOrderEvent(OrderEvent event) {
         try {
             String jsonPayload = objectMapper.writeValueAsString(event);
             String routingKey;

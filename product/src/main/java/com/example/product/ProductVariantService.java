@@ -71,24 +71,24 @@ public class ProductVariantService {
                 .map(variantMapper::toDto);
     }
 
-public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto variantDto) {
+    public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto variantDto) {
         log.info("Creating variant for product: {}, variantDto: {}", productId, variantDto);
-        
+
         return productRepository.findById(productId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + productId)))
                 .flatMap(product -> {
                     log.debug("Found product: {}", product);
                     boolean skuExists = product.getVariants().stream()
-                            .anyMatch(v -> v.getSkuCode().equals(variantDto.getSkuCode()));
+                            .anyMatch(v -> v.getSkuCode().equals(variantDto.skuCode()));
                     if (skuExists) {
-                        log.warn("SKU code already exists: {}", variantDto.getSkuCode());
-                        return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.getSkuCode()));
+                        log.warn("SKU code already exists: {}", variantDto.skuCode());
+                        return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.skuCode()));
                     }
-                    
+
                     ProductVariant variant = variantMapper.toEntity(variantDto);
                     log.debug("Created variant entity: {}", variant);
                     product.getVariants().add(variant);
-                    
+
                     return productRepository.save(product)
                             .doOnNext(saved -> log.debug("Saved product: {}", saved))
                             .doOnError(e -> log.error("Error saving product", e))
@@ -96,8 +96,15 @@ public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto
                 })
                 .map(variantMapper::toDto)
                 .doOnNext(saved -> {
-                    saved.setProductId(productId);
-                    log.debug("Mapped to DTO: {}", saved);
+                    ProductVariantDto updated = new ProductVariantDto(
+                            saved.id(),
+                            productId,
+                            saved.skuCode(),
+                            saved.attributes(),
+                            saved.price(),
+                            saved.inventoryId()
+                    );
+                    log.debug("Mapped to DTO: {}", updated);
                     try {
                         Long eventProductId = toEventId(productId);
                         ProductEvent event = new ProductEvent(
@@ -105,52 +112,52 @@ public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto
                                 java.util.UUID.randomUUID(),
                                 eventProductId,
                                 null,
-                                saved.getPrice(),
+                                updated.price(),
                                 null,
                                 eventProductId,
-                                saved.getSkuCode(),
+                                updated.skuCode(),
                                 java.time.LocalDateTime.now()
                         );
                         rabbitTemplate.convertAndSend(productExchange, "product.variant.created", event);
-                        log.info("Published ProductEvent.VARIANT_CREATED to RabbitMQ for variant: {}", saved.getSkuCode());
+                        log.info("Published ProductEvent.VARIANT_CREATED to RabbitMQ for variant: {}", updated.skuCode());
                     } catch (Exception e) {
-                        log.error("Failed to publish ProductEvent for variant: {}", saved.getSkuCode(), e);
+                        log.error("Failed to publish ProductEvent for variant: {}", updated.skuCode(), e);
                     }
                 });
     }
 
     public Mono<ProductVariantDto> updateVariant(String productId, String skuCode, ProductVariantDto variantDto) {
         log.info("Updating variant with skuCode: {} for product: {}", skuCode, productId);
-        
+
         return productRepository.findById(productId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + productId)))
                 .flatMap(product -> {
                     Optional<ProductVariant> existingVariant = product.getVariants().stream()
                             .filter(v -> v.getSkuCode().equals(skuCode))
                             .findFirst();
-                    
+
                     if (existingVariant.isEmpty()) {
                         return Mono.error(new IllegalArgumentException("Variant not found: " + skuCode));
                     }
-                    
-                    if (!skuCode.equals(variantDto.getSkuCode())) {
+
+                    if (!skuCode.equals(variantDto.skuCode())) {
                         boolean skuExists = product.getVariants().stream()
-                                .anyMatch(v -> v.getSkuCode().equals(variantDto.getSkuCode()));
+                                .anyMatch(v -> v.getSkuCode().equals(variantDto.skuCode()));
                         if (skuExists) {
-                            return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.getSkuCode()));
+                            return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.skuCode()));
                         }
                     }
-                    
+
                     ProductVariant variant = existingVariant.get();
-                    variant.setSkuCode(variantDto.getSkuCode());
-                    variant.setAttributes(variantDto.getAttributes());
-                    variant.setPrice(variantDto.getPrice());
-                    variant.setInventoryId(variantDto.getInventoryId());
-                    
+                    variant.setSkuCode(variantDto.skuCode());
+                    variant.setAttributes(variantDto.attributes());
+                    variant.setPrice(variantDto.price());
+                    variant.setInventoryId(variantDto.inventoryId());
+
                     return productRepository.save(product)
                             .then(Mono.just(variant));
                 })
-.map(variantMapper::toDto)
+                .map(variantMapper::toDto)
                 .doOnNext(saved -> {
                     try {
                         Long eventProductId = toEventId(productId);
@@ -159,23 +166,23 @@ public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto
                                 java.util.UUID.randomUUID(),
                                 eventProductId,
                                 null,
-                                saved.getPrice(),
+                                saved.price(),
                                 null,
                                 eventProductId,
-                                saved.getSkuCode(),
+                                saved.skuCode(),
                                 java.time.LocalDateTime.now()
                         );
                         rabbitTemplate.convertAndSend(productExchange, "product.variant.updated", event);
-                        log.info("Published ProductEvent.VARIANT_UPDATED to RabbitMQ for variant: {}", saved.getSkuCode());
+                        log.info("Published ProductEvent.VARIANT_UPDATED to RabbitMQ for variant: {}", saved.skuCode());
                     } catch (Exception e) {
-                        log.error("Failed to publish ProductEvent for variant: {}", saved.getSkuCode(), e);
+                        log.error("Failed to publish ProductEvent for variant: {}", saved.skuCode(), e);
                     }
                 });
     }
 
     public Mono<Void> deleteVariant(String productId, String skuCode) {
         log.info("Deleting variant with skuCode: {} for product: {}", skuCode, productId);
-        
+
         return productRepository.findById(productId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + productId)))
                 .flatMap(product -> {
@@ -183,13 +190,13 @@ public Mono<ProductVariantDto> createVariant(String productId, ProductVariantDto
                             .filter(v -> v.getSkuCode().equals(skuCode))
                             .findFirst()
                             .orElseThrow(() -> new IllegalArgumentException("Variant not found: " + skuCode));
-                    
+
                     product.getVariants().remove(variantToRemove);
-                    
+
                     return productRepository.save(product)
                             .then(Mono.just(variantToRemove));
                 })
-.doOnNext(variant -> {
+                .doOnNext(variant -> {
                     try {
                         Long eventProductId = toEventId(productId);
                         ProductEvent event = new ProductEvent(

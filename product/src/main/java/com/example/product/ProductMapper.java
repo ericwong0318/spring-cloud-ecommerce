@@ -34,18 +34,20 @@ public interface ProductMapper {
         if (variant == null) {
             return null;
         }
-        ProductVariantDto dto = new ProductVariantDto();
-        dto.setSkuCode(variant.getSkuCode());
-        dto.setAttributes(variant.getAttributes());
-        dto.setPrice(variant.getPrice());
-        dto.setInventoryId(variant.getInventoryId());
-        return dto;
+        return new ProductVariantDto(
+                null,
+                null,
+                variant.getSkuCode(),
+                variant.getAttributes(),
+                variant.getPrice(),
+                variant.getInventoryId()
+        );
     }
 
     default ProductVariant toVariantEntity(ProductVariantDto dto) {
         if (dto == null) {
             return null;
         }
-        return new ProductVariant(dto.getSkuCode(), dto.getAttributes(), dto.getPrice(), dto.getInventoryId());
+        return new ProductVariant(dto.skuCode(), dto.attributes(), dto.price(), dto.inventoryId());
     }
 }
