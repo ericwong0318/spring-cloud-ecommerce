@@ -34,7 +34,7 @@ public class NotificationEventListener {
         this.idempotentEventProcessor = idempotentEventProcessor;
     }
 
-    @RabbitListener(queues = "${rabbitmq.queue.notification-events}")
+    @RabbitListener(queues = "${rabbitmq.queue.notification-order-events}", concurrency = "1")
     @Transactional
     public void handleOrderEvent(OrderEvent event) {
         idempotentEventProcessor.process(event, this::handleOrderEventInternal);
@@ -50,7 +50,7 @@ public class NotificationEventListener {
         }
     }
 
-    @RabbitListener(queues = "${rabbitmq.queue.notification-events}")
+    @RabbitListener(queues = "${rabbitmq.queue.notification-payment-events}", concurrency = "1")
     @Transactional
     public void handlePaymentEvent(PaymentEvent event) {
         idempotentEventProcessor.process(event, this::handlePaymentEventInternal);

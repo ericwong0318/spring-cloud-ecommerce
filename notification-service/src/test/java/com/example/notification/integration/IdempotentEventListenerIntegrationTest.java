@@ -71,8 +71,11 @@ class IdempotentEventListenerIntegrationTest {
     @Autowired
     private IdempotentEventProcessor idempotentEventProcessor;
 
-    @Value("${rabbitmq.queue.notification-events}")
-    private String notificationQueue;
+    @Value("${rabbitmq.queue.notification-order-events}")
+    private String notificationOrderQueue;
+
+    @Value("${rabbitmq.queue.notification-payment-events}")
+    private String notificationPaymentQueue;
 
     private final Long testOrderId = 1000L;
 
@@ -102,9 +105,9 @@ class IdempotentEventListenerIntegrationTest {
                 new BigDecimal("499.95"), List.of(item));
         event.setEventId(eventId);
 
-        // When: Send the same event twice
-        rabbitTemplate.convertAndSend(notificationQueue, event);
-        rabbitTemplate.convertAndSend(notificationQueue, event);
+        // When: Send the same order event twice
+        rabbitTemplate.convertAndSend(notificationOrderQueue, event);
+        rabbitTemplate.convertAndSend(notificationOrderQueue, event);
 
         // Then: Wait for processing and verify notification was created only once
         await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -127,9 +130,9 @@ class IdempotentEventListenerIntegrationTest {
                 new BigDecimal("499.95"), "USD", "txn-123");
         event.setEventId(eventId);
 
-        // When: Send the same event twice
-        rabbitTemplate.convertAndSend(notificationQueue, event);
-        rabbitTemplate.convertAndSend(notificationQueue, event);
+        // When: Send the same payment event twice
+        rabbitTemplate.convertAndSend(notificationPaymentQueue, event);
+        rabbitTemplate.convertAndSend(notificationPaymentQueue, event);
 
         // Then: Wait for processing and verify notification was created only once
         await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -138,7 +141,7 @@ class IdempotentEventListenerIntegrationTest {
             Notification notification = notifications.get(0);
             assertThat(notification.getRecipient()).isEqualTo("test@example.com");
             assertThat(notification.getReferenceId()).isEqualTo(testOrderId.toString());
-            assertThat(notification.getType()).isEqualTo(Notification.NotificationType.PAYMENT_SUCCESS);
+            assertThat(notification.getType()).isEqualTo(Notification.NotificationType.PAYMENT_AUTHORIZED);
         });
     }
 
@@ -162,9 +165,9 @@ class IdempotentEventListenerIntegrationTest {
                 new BigDecimal("449.97"), List.of(item));
         event.setEventId(null); // No eventId - should process every time
 
-        // When: Send the same event twice (without eventId)
-        rabbitTemplate.convertAndSend(notificationQueue, event);
-        rabbitTemplate.convertAndSend(notificationQueue, event);
+        // When: Send the same order event twice (without eventId)
+        rabbitTemplate.convertAndSend(notificationOrderQueue, event);
+        rabbitTemplate.convertAndSend(notificationOrderQueue, event);
 
         // Then: Both should be processed (no deduplication without eventId)
         // Since it's order creation, second one will create another notification

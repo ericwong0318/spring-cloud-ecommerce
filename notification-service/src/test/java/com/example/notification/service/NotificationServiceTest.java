@@ -9,6 +9,7 @@ import com.example.notification.repository.NotificationTemplateRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -105,5 +106,41 @@ class NotificationServiceTest {
         verify(notificationRepository).findByStatus(Notification.NotificationStatus.PENDING);
         verify(notificationRepository, never()).save(any());
         verify(emailService, never()).sendEmail(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void createNotificationFromTemplate_shouldApplyDefaultSubjectAndContent_whenTemplateMissing() {
+        when(templateRepository.findByTypeAndChannel(anyString(), anyString()))
+                .thenReturn(Optional.empty());
+        when(notificationRepository.save(any(Notification.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(notificationMapper.toDto(any(Notification.class))).thenReturn(notificationDto);
+
+        notificationService.createNotificationFromTemplate(
+                "ORDER_CONFIRMATION", "EMAIL", "customer@example.com", "100", "ORDER");
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+        assertThat(saved.getSubject()).isEqualTo("ORDER_CONFIRMATION notification");
+        assertThat(saved.getContent()).contains("ORDER").contains("100").contains("customer@example.com");
+    }
+
+    @Test
+    void createNotification_shouldNotOverrideCallerProvidedSubjectAndContent_whenTemplateMissing() {
+        when(templateRepository.findByTypeAndChannel(anyString(), anyString()))
+                .thenReturn(Optional.empty());
+        when(notificationMapper.toEntity(notificationDto)).thenReturn(notification);
+        when(notificationRepository.save(any(Notification.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(notificationMapper.toDto(any(Notification.class))).thenReturn(notificationDto);
+
+        notificationService.createNotification(notificationDto);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+        assertThat(saved.getSubject()).isEqualTo("Test Subject");
+        assertThat(saved.getContent()).isEqualTo("Test Content");
     }
 }

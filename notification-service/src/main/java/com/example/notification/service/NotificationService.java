@@ -161,6 +161,27 @@ public class NotificationService {
             notification.setSubject(subject);
             notification.setContent(body);
         }
+
+        applyDefaultSubjectAndContent(notification);
+    }
+
+    /**
+     * Fallback when no template is configured: subject and content are
+     * NOT NULL columns, so provide sensible defaults without overriding
+     * values already supplied by the caller.
+     */
+    private void applyDefaultSubjectAndContent(Notification notification) {
+        if (notification.getSubject() == null) {
+            notification.setSubject(notification.getType().name() + " notification");
+        }
+        if (notification.getContent() == null) {
+            notification.setContent(String.format(
+                    "Notification %s for reference %s/%s to %s",
+                    notification.getType().name(),
+                    notification.getReferenceType(),
+                    notification.getReferenceId(),
+                    notification.getRecipient()));
+        }
     }
 
     private String replaceVariables(String template, Notification notification) {

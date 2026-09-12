@@ -18,8 +18,11 @@ public class RabbitMQConfig {
     @Value("${rabbitmq.exchange.payment}")
     private String paymentExchange;
 
-    @Value("${rabbitmq.queue.notification-events}")
-    private String notificationEventsQueue;
+    @Value("${rabbitmq.queue.notification-order-events}")
+    private String notificationOrderEventsQueue;
+
+    @Value("${rabbitmq.queue.notification-payment-events}")
+    private String notificationPaymentEventsQueue;
 
     @Value("${rabbitmq.routing-key.order-created}")
     private String orderCreatedRoutingKey;
@@ -27,8 +30,14 @@ public class RabbitMQConfig {
     @Value("${rabbitmq.routing-key.order-cancelled}")
     private String orderCancelledRoutingKey;
 
-    @Value("${rabbitmq.routing-key.payment-success}")
-    private String paymentSuccessRoutingKey;
+    @Value("${rabbitmq.routing-key.payment-authorized}")
+    private String paymentAuthorizedRoutingKey;
+
+    @Value("${rabbitmq.routing-key.payment-captured}")
+    private String paymentCapturedRoutingKey;
+
+    @Value("${rabbitmq.routing-key.payment-refunded}")
+    private String paymentRefundedRoutingKey;
 
     @Value("${rabbitmq.routing-key.payment-failed}")
     private String paymentFailedRoutingKey;
@@ -44,34 +53,53 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue notificationEventsQueue() {
-        return new Queue(notificationEventsQueue, true);
+    public Queue notificationOrderEventsQueue() {
+        return new Queue(notificationOrderEventsQueue, true);
+    }
+
+    @Bean
+    public Queue notificationPaymentEventsQueue() {
+        return new Queue(notificationPaymentEventsQueue, true);
     }
 
     @Bean
     public Binding orderCreatedBinding() {
-        return BindingBuilder.bind(notificationEventsQueue())
+        return BindingBuilder.bind(notificationOrderEventsQueue())
                 .to(orderExchange())
                 .with(orderCreatedRoutingKey);
     }
 
     @Bean
     public Binding orderCancelledBinding() {
-        return BindingBuilder.bind(notificationEventsQueue())
+        return BindingBuilder.bind(notificationOrderEventsQueue())
                 .to(orderExchange())
                 .with(orderCancelledRoutingKey);
     }
 
     @Bean
-    public Binding paymentSuccessBinding() {
-        return BindingBuilder.bind(notificationEventsQueue())
+    public Binding paymentAuthorizedBinding() {
+        return BindingBuilder.bind(notificationPaymentEventsQueue())
                 .to(paymentExchange())
-                .with(paymentSuccessRoutingKey);
+                .with(paymentAuthorizedRoutingKey);
+    }
+
+    @Bean
+    public Binding paymentCapturedBinding() {
+        return BindingBuilder.bind(notificationPaymentEventsQueue())
+                .to(paymentExchange())
+                .with(paymentCapturedRoutingKey);
+    }
+
+    @Bean
+    public Binding paymentRefundedBinding() {
+        return BindingBuilder.bind(notificationPaymentEventsQueue())
+                .to(paymentExchange())
+                .with(paymentRefundedRoutingKey);
     }
 
     @Bean
     public Binding paymentFailedBinding() {
-        return BindingBuilder.bind(notificationEventsQueue())
+        return BindingBuilder.bind(notificationPaymentEventsQueue())
                 .to(paymentExchange())
                 .with(paymentFailedRoutingKey);
     }

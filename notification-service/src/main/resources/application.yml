@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: notification-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${AUTH_SERVER_URL:http://localhost:9000}/oauth2/jwks
   datasource:
     url: jdbc:postgresql://localhost:5432/notification_db
     username: postgres
@@ -36,7 +41,7 @@ spring:
     publisher-returns: true
     listener:
       simple:
-        acknowledge-mode: manual
+        acknowledge-mode: auto
         concurrency: 3
         max-concurrency: 10
         prefetch: 10
@@ -78,9 +83,12 @@ rabbitmq:
     order: order.exchange
     payment: payment.exchange
   queue:
-    notification-events: notification.events.queue
+    notification-order-events: notification.order.events.queue
+    notification-payment-events: notification.payment.events.queue
   routing-key:
     order-created: order.created
     order-cancelled: order.cancelled
-    payment-success: payment.success
+    payment-authorized: payment.authorized
+    payment-captured: payment.captured
+    payment-refunded: payment.refunded
     payment-failed: payment.failed
