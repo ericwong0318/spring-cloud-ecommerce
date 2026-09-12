@@ -131,6 +131,23 @@
             <artifactId>jackson-datatype-jdk8</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- JQF Fuzz Testing -->
+        <dependency>
+            <groupId>edu.berkeley.cs.jqf</groupId>
+            <artifactId>jqf-fuzz</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>edu.berkeley.cs.jqf</groupId>
+            <artifactId>jqf-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>edu.berkeley.cs.jqf</groupId>
+            <artifactId>jqf-generator-quickcheck</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -144,6 +161,35 @@
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>edu.berkeley.cs.jqf</groupId>
+                <artifactId>jqf-maven-plugin</artifactId>
+                <configuration>
+                    <includes>com.example.system.fuzz.*</includes>
+                    <excludes>com.example.system.fuzz.FuzzCorpusSeeder</excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>fuzz</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>edu.berkeley.cs.jqf</groupId>
+                        <artifactId>jqf-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>fuzz</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

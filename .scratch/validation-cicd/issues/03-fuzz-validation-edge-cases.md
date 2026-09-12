@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] Add `jqf-spring` and `jqf-zest` to `dependencyManagement`
-- [ ] Create `ValidationFuzzTest` base class in `system-test` module
-- [ ] Per service: generate fuzz drivers for each controller endpoint
-- [ ] Seed corpus from existing integration test payloads (`CategoryIntegrationTest`, `ProductIntegrationTest`, etc.)
-- [ ] Run with `-Djqf.duration=600` (10 min per service) in `mvn verify -pl system-test -Pfuzz`
-- [ ] CI: run fuzz profile nightly; fail build on any non-400 response or 5xx
-- [ ] Document found edge cases in `VALIDATION.md` (see ticket 05)
+- [x] Add `jqf-spring` and `jqf-zest` to `dependencyManagement`
+- [x] Create `ValidationFuzzTest` base class in `system-test` module
+- [x] Per service: generate fuzz drivers for each controller endpoint
+- [x] Seed corpus from existing integration test payloads (`CategoryIntegrationTest`, `ProductIntegrationTest`, etc.)
+- [x] Run with `-Djqf.duration=600` (10 min per service) in `mvn verify -pl system-test -Pfuzz`
+- [x] CI: run fuzz profile nightly; fail build on any non-400 response or 5xx
+- [x] Document found edge cases in `VALIDATION.md` (see ticket 05)

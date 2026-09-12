@@ -285,6 +285,32 @@
                 <version>${archunit.version}</version>
                 <scope>test</scope>
             </dependency>
+
+            <!-- JQF Fuzz Testing -->
+            <dependency>
+                <groupId>edu.berkeley.cs.jqf</groupId>
+                <artifactId>jqf-fuzz</artifactId>
+                <version>3.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>edu.berkeley.cs.jqf</groupId>
+                <artifactId>jqf-zest</artifactId>
+                <version>3.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>edu.berkeley.cs.jqf</groupId>
+                <artifactId>jqf-junit5</artifactId>
+                <version>3.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>edu.berkeley.cs.jqf</groupId>
+                <artifactId>jqf-generator-quickcheck</artifactId>
+                <version>3.0</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -361,6 +387,11 @@
                     <groupId>org.sonarsource.scanner.maven</groupId>
                     <artifactId>sonar-maven-plugin</artifactId>
                     <version>3.11.0.3922</version>
+                </plugin>
+                <plugin>
+                    <groupId>edu.berkeley.cs.jqf</groupId>
+                    <artifactId>jqf-maven-plugin</artifactId>
+                    <version>3.0</version>
                 </plugin>
             </plugins>
         </pluginManagement>
