@@ -6,6 +6,9 @@ import com.example.inventory.model.Inventory;
 import com.example.inventory.model.Reservation;
 import com.example.inventory.repository.InventoryRepository;
 import com.example.inventory.repository.ReservationRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -41,6 +44,8 @@ public class InventoryService {
         this.rabbitTemplate = rabbitTemplate;
     }
 
+    @CircuitBreaker(name = "inventory-service", fallbackMethod = "reserveStockFallback")
+    @Retry(name = "inventory-service")
     @Transactional
     public ReservationResult reserveStock(Long variantId, Integer quantity, Long orderItemId) {
         Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantIdWithLock(variantId);
@@ -84,6 +89,13 @@ public class InventoryService {
         }
     }
 
+    private ReservationResult reserveStockFallback(Long variantId, Integer quantity, Long orderItemId, Exception ex) {
+        log.error("Circuit breaker fallback for reserveStock: variantId={}, error={}", variantId, ex.getMessage());
+        return new ReservationResult(0, quantity);
+    }
+
+    @CircuitBreaker(name = "inventory-service", fallbackMethod = "releaseReservationFallback")
+    @Retry(name = "inventory-service")
     @Transactional
     public void releaseReservation(Long variantId, Integer quantity, Long orderItemId) {
         Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantIdWithLock(variantId);
@@ -100,6 +112,12 @@ public class InventoryService {
         }
     }
 
+    private void releaseReservationFallback(Long variantId, Integer quantity, Long orderItemId, Exception ex) {
+        log.error("Circuit breaker fallback for releaseReservation: variantId={}, error={}", variantId, ex.getMessage());
+    }
+
+    @CircuitBreaker(name = "inventory-service", fallbackMethod = "confirmStockFallback")
+    @Retry(name = "inventory-service")
     @Transactional
     public void confirmStock(Long variantId, Integer quantity) {
         Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantIdWithLock(variantId);
@@ -112,6 +130,10 @@ public class InventoryService {
             publishInventoryEvent(InventoryEvent.confirmed(variantId, inventory.getProductId(), quantity, inventory.getQuantity() - inventory.getReservedQuantity()));
             checkAndPublishLowStock(inventory);
         }
+    }
+
+    private void confirmStockFallback(Long variantId, Integer quantity, Exception ex) {
+        log.error("Circuit breaker fallback for confirmStock: variantId={}, error={}", variantId, ex.getMessage());
     }
 
     private void createOrUpdateReservation(Long orderItemId, Long variantId, Integer quantity) {
