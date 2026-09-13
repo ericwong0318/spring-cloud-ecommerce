@@ -175,6 +175,9 @@ spec:
             - name: metrics
               containerPort: 8888
               protocol: TCP
+            - name: health-check
+              containerPort: 13133
+              protocol: TCP
           envFrom:
             - secretRef:
                 name: {{ .Chart.Name }}-secrets
@@ -184,13 +187,13 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: metrics
+              port: health-check
             initialDelaySeconds: 10
             periodSeconds: 30
           readinessProbe:
             httpGet:
               path: /
-              port: metrics
+              port: health-check
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:

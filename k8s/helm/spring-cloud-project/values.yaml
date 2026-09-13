@@ -188,7 +188,7 @@ rabbitmq:
 
 otelCollector:
   enabled: true
-  image: ghcr.io/open-telemetry/opentelemetry-collector-releases/otel-collector-contrib:0.110.0
+  image: otel/opentelemetry-collector-contrib:0.110.0
   splunk:
     enabled: true
     accessToken: "t-Q3TUhxLjKpF7uPBkKxeA"

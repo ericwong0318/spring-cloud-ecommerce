@@ -12,41 +12,66 @@ data:
         protocols:
           grpc:
           http:
-    
+
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: 'spring-boot-apps'
+              scrape_interval: 15s
+              metrics_path: '/actuator/prometheus'
+              static_configs:
+                - targets:
+                  - 'config-server:8888'
+                  - 'eureka-server:8761'
+                  - 'gateway:8080'
+                  - 'product:8081'
+                  - 'category:8082'
+                  - 'auth-server:9000'
+                  - 'order-service:8083'
+                  - 'inventory-service:8084'
+                  - 'notification-service:8085'
+
     processors:
       batch:
-      memory_limiter:
-        limit_mib: 400
-        spike_limit_size_mib: 100
-      attributes:
-        - key: service.name
-          value: "{{`{{`}}service.name{{`}}`}}"
-          action: upsert
-        - key: deployment.environment
-          value: "{{`{{`}}deployment.environment{{`}}`}}"
-          action: insert
-    
+        send_batch_size: 1024
+        timeout: 5s
+
+      resource:
+        attributes:
+          - action: upsert
+            key: deployment.environment
+            value: local
+          - action: upsert
+            key: service.namespace
+            value: spring-cloud-microservices
+
     exporters:
-      splunk:
-        endpoint: {{`{{`}}SPLUNK_INGEST_URL{{`}}`}}
-        token: {{`{{`}}SPLUNK_ACCESS_TOKEN{{`}}`}}
+      signalfx:
+        endpoint: "${env:SPLUNK_INGEST_URL}"
+        access_token: "${env:SPLUNK_ACCESS_TOKEN}"
+        realm: "${env:SPLUNK_REALM}"
         timeout: 10s
         tls:
           insecure: false
       logging:
         loglevel: debug
-    
+
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
+
     service:
+      extensions: [health_check]
       pipelines:
         traces:
           receivers: [otlp]
-          processors: [batch, memory_limiter]
-          exporters: [splunk, logging]
+          processors: [batch, resource]
+          exporters: [signalfx, logging]
         metrics:
-          receivers: [otlp]
-          processors: [batch, memory_limiter]
-          exporters: [splunk, logging]
+          receivers: [otlp, prometheus]
+          processors: [batch, resource]
+          exporters: [signalfx, logging]
         logs:
           receivers: [otlp]
-          processors: [batch, memory_limiter]
-          exporters: [splunk, logging]
+          processors: [batch, resource]
+          exporters: [signalfx, logging]
