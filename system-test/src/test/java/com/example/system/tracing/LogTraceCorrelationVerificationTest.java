@@ -34,7 +34,7 @@ class LogTraceCorrelationVerificationTest {
     @Order(1)
     @DisplayName("Verify OpenTelemetry logs exporter configuration in docker-compose")
     void testDockerComposeOtelLogsConfiguration() throws Exception {
-        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/docker-compose.yml";
+        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/docker-compose.yml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(dockerComposePath));
 
         List<String> services = List.of(
@@ -57,7 +57,7 @@ class LogTraceCorrelationVerificationTest {
     @Order(2)
     @DisplayName("Verify OTel Java Agent logs instrumentation extension is configured")
     void testOtelJavaAgentLogsExtension() throws Exception {
-        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/docker-compose.yml";
+        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/docker-compose.yml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(dockerComposePath));
 
         // Verify the Splunk OTel Java agent extension for logs is configured
@@ -68,7 +68,7 @@ class LogTraceCorrelationVerificationTest {
     @Order(3)
     @DisplayName("Verify OTel collector has logs pipeline configured for Splunk")
     void testOtelCollectorLogsPipeline() throws Exception {
-        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/otel-collector/otel-collector-config.yaml";
+        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/otel-collector/otel-collector-config.yaml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(otelConfigPath));
 
         // Verify logs pipeline exists
@@ -82,7 +82,7 @@ class LogTraceCorrelationVerificationTest {
     @Order(4)
     @DisplayName("Verify k8sattributes processor adds deployment.name for log service correlation")
     void testK8sAttributesForLogs() throws Exception {
-        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/otel-collector/otel-collector-config.yaml";
+        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/otel-collector/otel-collector-config.yaml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(otelConfigPath));
 
         // Verify k8sattributes processor adds deployment.name
@@ -94,7 +94,7 @@ class LogTraceCorrelationVerificationTest {
     @Order(5)
     @DisplayName("Verify resource processor adds service.namespace for log correlation")
     void testResourceProcessorForLogs() throws Exception {
-        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/otel-collector/otel-collector-config.yaml";
+        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/otel-collector/otel-collector-config.yaml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(otelConfigPath));
 
         // Verify resource processor adds service.namespace
@@ -107,7 +107,7 @@ class LogTraceCorrelationVerificationTest {
     @Order(6)
     @DisplayName("Verify batch processor configured to prevent log drops")
     void testBatchProcessorForLogs() throws Exception {
-        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/otel-collector/otel-collector-config.yaml";
+        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/otel-collector/otel-collector-config.yaml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(otelConfigPath));
 
         // Verify batch processor is configured with reasonable limits
@@ -120,7 +120,7 @@ class LogTraceCorrelationVerificationTest {
     @Order(7)
     @DisplayName("Verify OTLP exporter to Splunk configured for logs")
     void testOtlpExporterForLogs() throws Exception {
-        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/otel-collector/otel-collector-config.yaml";
+        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/otel-collector/otel-collector-config.yaml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(otelConfigPath));
 
         // Verify OTLP exporter configuration for Splunk
@@ -134,7 +134,7 @@ class LogTraceCorrelationVerificationTest {
     @Order(8)
     @DisplayName("Verify Kubernetes deployment has logs instrumentation")
     void testKubernetesDeploymentLogsConfig() throws Exception {
-        String k8sDeploymentPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/k8s/deployments.yaml";
+        String k8sDeploymentPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/k8s/deployments.yaml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(k8sDeploymentPath));
 
         // Verify OTEL_LOGS_EXPORTER is set in K8s ConfigMap
@@ -147,7 +147,7 @@ class LogTraceCorrelationVerificationTest {
     @Order(9)
     @DisplayName("Verify Helm values configure logs export")
     void testHelmValuesLogsConfig() throws Exception {
-        String helmValuesPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/k8s/helm/spring-cloud-project/values.yaml";
+        String helmValuesPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/k8s/helm/spring-cloud-project/values.yaml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(helmValuesPath));
 
         // Verify Helm values include Splunk OTel Java Agent extension configuration
@@ -227,7 +227,7 @@ class LogTraceCorrelationVerificationTest {
     @Order(13)
     @DisplayName("Verify service name consistency between logs and traces")
     void testServiceNameConsistency() throws Exception {
-        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/docker-compose.yml";
+        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/docker-compose.yml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(dockerComposePath));
 
         List<String> services = List.of(
@@ -244,7 +244,7 @@ class LogTraceCorrelationVerificationTest {
         }
 
         // Verify k8sattributes processor will add k8s.deployment.name matching service name
-        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/otel-collector/otel-collector-config.yaml";
+        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/otel-collector/otel-collector-config.yaml";
         String otelContent = java.nio.file.Files.readString(java.nio.file.Paths.get(otelConfigPath));
         assertThat(otelContent).contains("k8s.deployment.name");
     }

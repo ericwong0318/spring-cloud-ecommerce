@@ -35,7 +35,7 @@ class DistributedTracingVerificationTest {
     @DisplayName("Verify OpenTelemetry configuration in docker-compose")
     void testDockerComposeOtelConfiguration() throws Exception {
         // Read docker-compose.yml and verify OTel configuration
-        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/docker-compose.yml";
+        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/docker-compose.yml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(dockerComposePath));
 
         // Verify all services have OTel configuration
@@ -66,7 +66,7 @@ class DistributedTracingVerificationTest {
     @Order(2)
     @DisplayName("Verify OpenTelemetry configuration in Kubernetes deployment")
     void testKubernetesOtelConfiguration() throws Exception {
-        String k8sConfigMapPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/k8s/deployments.yaml";
+        String k8sConfigMapPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/k8s/deployments.yaml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(k8sConfigMapPath));
 
         // Verify W3C propagators in ConfigMap (tracecontext is the W3C propagator)
@@ -78,7 +78,7 @@ class DistributedTracingVerificationTest {
     @Order(3)
     @DisplayName("Verify otel-collector has k8sattributes processor for Kubernetes attributes")
     void testOtelCollectorK8sAttributes() throws Exception {
-        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/otel-collector/otel-collector-config.yaml";
+        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/otel-collector/otel-collector-config.yaml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(otelConfigPath));
 
         // Verify k8sattributes processor is configured
@@ -151,7 +151,7 @@ class DistributedTracingVerificationTest {
     @DisplayName("Verify trace context propagation is configured with W3C tracecontext propagator")
     void testW3CTraceContextPropagationConfigured() throws Exception {
         // Verify docker-compose has W3C propagators
-        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/docker-compose.yml";
+        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/docker-compose.yml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(dockerComposePath));
 
         // All services should use W3C tracecontext propagator
@@ -195,7 +195,7 @@ class DistributedTracingVerificationTest {
     @DisplayName("Verify complete trace hierarchy: gateway → order-service → inventory-service → payment-service")
     void testCompleteTraceHierarchy() throws Exception {
         // Verify the services that should appear in the trace hierarchy are configured
-        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/docker-compose.yml";
+        String dockerComposePath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/docker-compose.yml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(dockerComposePath));
 
         // Core services in the trace path
@@ -209,7 +209,7 @@ class DistributedTracingVerificationTest {
     @Order(10)
     @DisplayName("Verify Splunk APM exporter configuration in otel-collector")
     void testSplunkApmExporterConfiguration() throws Exception {
-        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/test-verify-log-trace-correlation/otel-collector/otel-collector-config.yaml";
+        String otelConfigPath = "/Users/ericw/spring-cloud-ecommerce-worktrees/main/otel-collector/otel-collector-config.yaml";
         String content = java.nio.file.Files.readString(java.nio.file.Paths.get(otelConfigPath));
 
         // Verify Splunk-specific exporter configuration
