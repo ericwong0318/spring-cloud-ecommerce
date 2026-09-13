@@ -121,6 +121,9 @@ services:
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
       interval: 10s
@@ -148,6 +151,9 @@ services:
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     depends_on:
       config-server:
         condition: service_healthy
@@ -179,6 +185,9 @@ services:
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     depends_on:
       config-server:
         condition: service_healthy
@@ -212,6 +221,9 @@ services:
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     depends_on:
       config-server:
         condition: service_healthy
@@ -249,6 +261,9 @@ services:
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     depends_on:
       config-server:
         condition: service_healthy
@@ -284,6 +299,9 @@ services:
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     depends_on:
       config-server:
         condition: service_healthy
@@ -317,6 +335,9 @@ services:
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     depends_on:
       config-server:
         condition: service_healthy
@@ -497,6 +518,9 @@ services:
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     depends_on:
       config-server:
         condition: service_healthy
@@ -536,6 +560,9 @@ services:
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     depends_on:
       config-server:
         condition: service_healthy
@@ -575,6 +602,9 @@ services:
       - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     depends_on:
       config-server:
         condition: service_healthy

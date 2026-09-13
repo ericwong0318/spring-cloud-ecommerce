@@ -18,6 +18,9 @@ data:
   OTEL_LOGS_EXPORTER: "otlp"
   OTEL_PROPAGATORS: "w3c,tracecontext"
   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=prod,service.namespace=ecommerce"
+  OTEL_JAVAAGENT_CONFIG: "otel.javaagent.extensions=splunk-otel-profiler"
+  profiler.enabled: "true"
+  profiler.interval: "60s"
 ---
 apiVersion: apps/v1
 kind: Deployment

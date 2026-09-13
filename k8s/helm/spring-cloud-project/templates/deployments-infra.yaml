@@ -53,6 +53,12 @@ spec:
               value: {{ .Values.global.otel.metricsExporter | default "otlp" }}
             - name: OTEL_LOGS_EXPORTER
               value: {{ .Values.global.otel.logsExporter | default "otlp" }}
+            - name: OTEL_JAVAAGENT_CONFIG
+              value: {{ .Values.global.otel.javaagentConfig | default "otel.javaagent.extensions=splunk-otel-profiler" }}
+            - name: profiler.enabled
+              value: {{ .Values.global.otel.profilerEnabled | default "true" }}
+            - name: profiler.interval
+              value: {{ .Values.global.otel.profilerInterval | default "60s" }}
           livenessProbe:
             httpGet:
               path: /actuator/health
@@ -124,6 +130,12 @@ spec:
               value: {{ .Values.global.otel.metricsExporter | default "otlp" }}
             - name: OTEL_LOGS_EXPORTER
               value: {{ .Values.global.otel.logsExporter | default "otlp" }}
+            - name: OTEL_JAVAAGENT_CONFIG
+              value: {{ .Values.global.otel.javaagentConfig | default "otel.javaagent.extensions=splunk-otel-profiler" }}
+            - name: profiler.enabled
+              value: {{ .Values.global.otel.profilerEnabled | default "true" }}
+            - name: profiler.interval
+              value: {{ .Values.global.otel.profilerInterval | default "60s" }}
           livenessProbe:
             httpGet:
               path: /actuator/health

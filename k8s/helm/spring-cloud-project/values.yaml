@@ -19,6 +19,9 @@ global:
   otel:
     endpoint: http://otel-collector:4317
     protocol: grpc
+    profilerEnabled: "true"
+    profilerInterval: "60s"
+    javaagentConfig: "otel.javaagent.extensions=splunk-otel-profiler"
   splunk:
     accessToken: "t-Q3TUhxLjKpF7uPBkKxeA"
     ingestUrl: "https://ingest.sg0.splunkcloud.com"

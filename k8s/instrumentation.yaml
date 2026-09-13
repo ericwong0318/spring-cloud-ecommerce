@@ -1,0 +1,38 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: ecommerce-instrumentation
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/name: spring-cloud-project
+    app.kubernetes.io/part-of: spring-cloud-ecommerce
+spec:
+  exporter:
+    endpoint: http://spring-cloud-ecommerce-otel-collector:4317
+  propagators:
+    - tracecontext
+    - baggage
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1.0"
+  java:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.8.0
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: http://spring-cloud-ecommerce-otel-collector:4317
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: grpc
+      - name: OTEL_PROPAGATORS
+        value: tracecontext,baggage
+      - name: OTEL_METRICS_EXPORTER
+        value: otlp
+      - name: OTEL_LOGS_EXPORTER
+        value: otlp
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: deployment.environment=prod,service.namespace=ecommerce
+      - name: OTEL_JAVAAGENT_CONFIG
+        value: otel.javaagent.extensions=splunk-otel-profiler
+      - name: profiler.enabled
+        value: "true"
+      - name: profiler.interval
+        value: "60s"
