@@ -64,5 +64,7 @@ images:
     newTag: dev
   - name: inventory-service
     newTag: dev
+  - name: payment-service
+    newTag: dev
   - name: notification-service
     newTag: dev

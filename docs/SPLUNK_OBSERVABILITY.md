@@ -8,7 +8,7 @@ This guide covers the observability stack for the Spring Cloud Microservices pla
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Spring Boot Apps                          │
 │  (config-server, eureka-server, gateway, product, category,       │
-│   auth-server, order-service)                                    │
+│   auth-server, order-service, payment-service, notification-service)│
 │                                                                  │
 │  Each app runs with -javaagent:opentelemetry-javaagent.jar      │
 │  Auto-instrumentation: Spring, JDBC, HTTP, JVM                   │
@@ -76,9 +76,15 @@ Each service is tagged with:
 |-----------|-------|
 | `deployment.environment` | `prod` |
 | `service.namespace` | `ecommerce` |
-| `service.name` | Per service (e.g., `gateway`, `product`) |
+| `service.name` | Derived from K8s deployment name via `k8sattributes` processor |
 | `service.version` | App version |
 | `host.name` | Pod hostname |
+
+### `k8sattributes` Processor
+
+The `k8sattributes` processor enriches telemetry with Kubernetes metadata, extracting `service.name` from the K8s deployment name and other attributes. This is configured in `otel-collector/otel-collector-config.yaml`.
+
+The processor is used for all pipelines (traces, metrics, logs) and is responsible for deriving `service.name` from K8s deployment names, ensuring the Splunk APM Service Map correctly identifies each service by its deployment name rather than a generic identifier.
 
 ## Key Metrics Available
 
@@ -103,7 +109,7 @@ Each service is tagged with:
 
 ## Environment Variables
 
-These are set in `k8s/deployments.yaml` via the `otel-config` ConfigMap:
+These are set in `k8s/deployments.yaml` via the `otel-config` ConfigMap (payment-service also included):
 
 ```yaml
 OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"

@@ -97,6 +97,16 @@ patches:
     target:
       kind: Deployment
       labelSelector: app=notification-service
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: payment-service
+      spec:
+        replicas: 3
+    target:
+      kind: Deployment
+      labelSelector: app=payment-service
 
 configMapGenerator:
   - name: spring-cloud-config
@@ -120,6 +130,8 @@ images:
   - name: order-service
     newTag: latest
   - name: inventory-service
+    newTag: latest
+  - name: payment-service
     newTag: latest
   - name: notification-service
     newTag: latest

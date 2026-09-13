@@ -13,6 +13,7 @@ resources:
   - category.yaml
   - order-service.yaml
   - inventory-service.yaml
+  - payment-service.yaml
   - notification-service.yaml
   - ingress.yaml
 

@@ -22,8 +22,8 @@ receivers:
               - 'auth-server:9000'
               - 'order-service:8083'
               - 'inventory-service:8084'
+              - 'payment-service:8085'
               - 'notification-service:8085'
-              - 'payment-service:8086'
 
 processors:
   batch:
@@ -90,7 +90,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch, resource]
+      processors: [batch, k8sattributes, resource]
       exporters: [otlphttp, logging]
     metrics:
       receivers: [otlp, prometheus]
@@ -98,5 +98,5 @@ service:
       exporters: [otlphttp/metrics, prometheusremotewrite, prometheus, logging]
     logs:
       receivers: [otlp]
-      processors: [batch, resource]
+      processors: [batch, k8sattributes, resource]
       exporters: [otlphttp, logging]
