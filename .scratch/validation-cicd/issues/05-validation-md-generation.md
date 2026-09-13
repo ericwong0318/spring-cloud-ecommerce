@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] Extend script from ticket 04 to also generate Markdown
-- [ ] Output format:
+- [x] Extend script from ticket 04 to also generate Markdown
+- [x] Output format:
   ```markdown
   ## product-service
   | Field | Annotation | Parameters | Schema Path | Valid Example | Invalid Example |
@@ -15,6 +15,6 @@
   | name | @NotBlank | message="Product name is required" | ProductDto.name | "Laptop" | "" |
   | name | @Size | max=255 | ProductDto.name | "Laptop" | "x".repeat(256) |
   ```
-- [ ] Commit generated file to repo (or publish as CI artifact)
-- [ ] Add pre-commit hook to regenerate locally (optional)
-- [ ] Link from `README.md` and each service's `docs/`
+- [x] Commit generated file to repo (or publish as CI artifact)
+- [x] Add pre-commit hook to regenerate locally (optional)
+- [x] Link from `README.md` and each service's `docs/`

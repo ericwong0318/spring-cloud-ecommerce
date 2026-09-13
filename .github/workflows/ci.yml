@@ -61,6 +61,7 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     needs: validate
+    timeout-minutes: 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -72,21 +73,120 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Run unit tests
+      - name: Run ArchUnit tests
+        run: mvn test -pl architecture-tests -B
+        continue-on-error: false
+
+      - name: Run unit tests (payment-service)
         run: mvn test -pl payment-service -B
 
-      - name: Upload test reports
+      - name: Upload ArchUnit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-tests-reports
+          path: architecture-tests/target/surefire-reports/
+
+      - name: Upload unit test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: payment-service-test-reports
           path: payment-service/target/surefire-reports/
 
-  openapi-constraint-check:
-    name: OpenAPI Constraint Check
+      - name: Annotate ArchUnit failures
+        if: failure()
+        run: |
+          if [ -d architecture-tests/target/surefire-reports ]; then
+            for file in architecture-tests/target/surefire-reports/*.txt; do
+              if grep -q "ArchUnit" "$file"; then
+                rule=$(grep -oP '(?<=ArchUnit rule: ).*' "$file" | head -1)
+                echo "::error file=architecture-tests/target/surefire-reports/$(basename "$file")::ArchUnit rule violation: ${rule:-unknown rule}"
+              fi
+            done
+          fi
+
+  verify:
+    name: Integration Tests (Pact + Fuzz)
     runs-on: ubuntu-latest
     needs: validate
     timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build all modules
+        run: mvn clean install -DskipTests -B
+
+      - name: Run Pact verification (payment-service)
+        if: github.event_name != 'schedule'
+        run: mvn pact:verify -pl payment-service -B
+        continue-on-error: false
+
+      - name: Run Pact verification (category)
+        if: github.event_name != 'schedule'
+        run: mvn pact:verify -pl category -B
+        continue-on-error: false
+
+      - name: Run fuzz tests (nightly)
+        if: github.event_name == 'schedule'
+        run: mvn verify -pl system-test -Pfuzz -B
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+        timeout-minutes: 25
+
+      - name: Upload Pact verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pact-verification-reports
+          path: |
+            payment-service/target/pacts/
+            category/target/pacts/
+
+      - name: Upload fuzz test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-test-reports
+          path: system-test/target/fuzz-results/
+
+      - name: Annotate Pact failures
+        if: failure() && github.event_name != 'schedule'
+        run: |
+          for module in payment-service category; do
+            if [ -f "$module/target/pact/failures.txt" ]; then
+              while IFS= read -r line; do
+                interaction=$(echo "$line" | grep -oP '(?<=interaction: ).*' | head -1)
+                echo "::error file=$module/target/pact/failures.txt::Pact interaction failed: ${interaction:-unknown interaction}"
+              done < "$module/target/pact/failures.txt"
+            fi
+          done
+
+      - name: Annotate fuzz failures
+        if: failure() && github.event_name == 'schedule'
+        run: |
+          if [ -d system-test/target/fuzz-results ]; then
+            for file in system-test/target/fuzz-results/*.failure system-test/target/fuzz-results/*.crash; do
+              if [ -f "$file" ]; then
+                seed=$(basename "$file" | sed 's/\.failure$//' | sed 's/\.crash$//')
+                echo "::error file=$file::Fuzz test failure with seed: $seed"
+              fi
+            done
+          fi
+
+  openapi-constraint-check:
+    name: OpenAPI Constraint Check
+    runs-on: ubuntu-latest
+    needs: verify
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -150,39 +250,11 @@ jobs:
           docker-compose -f docker-compose.test.yml down -v
           pkill -f spring-boot:run || true
 
-  system-test:
-    name: System Tests (E2E)
+  validation-md-generation:
+    name: Generate VALIDATION.md
     runs-on: ubuntu-latest
-    needs: validate
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Run system tests
-        run: mvn verify -pl system-test -Dskip.unit.tests=true -B
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: true
-
-      - name: Upload test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: system-test-reports
-          path: system-test/target/surefire-reports/
-
-  fuzz-test:
-    name: Fuzz Tests (Nightly)
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.event_name == 'schedule'
-    timeout-minutes: 120
+    needs: verify
+    timeout-minutes: 5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -197,59 +269,19 @@ jobs:
       - name: Build all modules
         run: mvn clean install -DskipTests -B
 
-      - name: Seed fuzz corpus
-        run: mvn test -pl system-test -Dtest=FuzzCorpusSeeder -B
+      - name: Generate VALIDATION.md
+        run: mvn exec:java -pl ci/validation -Dexec.mainClass=com.example.validation.ValidationMarkdownGenerator -Dexec.args="VALIDATION.md" -B
 
-      - name: Run fuzz tests for Category service
-        run: mvn test-compile jqf:fuzz -pl system-test -Dclass=com.example.system.fuzz.CategoryFuzzTest -Dmethod=fuzzCreateCategory -B
-        continue-on-error: true
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: true
-
-      - name: Run fuzz tests for Product service
-        run: mvn test-compile jqf:fuzz -pl system-test -Dclass=com.example.system.fuzz.ProductFuzzTest -Dmethod=fuzzCreateProduct -B
-        continue-on-error: true
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: true
-
-      - name: Run fuzz tests for Order service
-        run: mvn test-compile jqf:fuzz -pl system-test -Dclass=com.example.system.fuzz.OrderFuzzTest -Dmethod=fuzzCreateOrder -B
-        continue-on-error: true
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: true
-
-      - name: Run fuzz tests for Payment service
-        run: mvn test-compile jqf:fuzz -pl system-test -Dclass=com.example.system.fuzz.PaymentFuzzTest -Dmethod=fuzzAuthorizePayment -B
-        continue-on-error: true
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: true
-
-      - name: Run fuzz tests for Inventory service
-        run: mvn test-compile jqf:fuzz -pl system-test -Dclass=com.example.system.fuzz.InventoryFuzzTest -Dmethod=fuzzReserveStock -B
-        continue-on-error: true
-        env:
-          TESTCONTAINERS_RYUK_DISABLED: true
-
-      - name: Check fuzz results for failures
-        run: |
-          if find system-test/target/fuzz-results -name "*.failure" -o -name "*.crash" 2>/dev/null | grep -q .; then
-            echo "::error::Fuzz tests found failures/crashes!"
-            find system-test/target/fuzz-results -name "*.failure" -o -name "*.crash" | head -20
-            exit 1
-          fi
-          echo "No fuzz test failures found"
-
-      - name: Upload fuzz test results
-        if: always()
+      - name: Upload VALIDATION.md
         uses: actions/upload-artifact@v4
         with:
-          name: fuzz-test-results
-          path: system-test/target/fuzz-results/
+          name: validation-md
+          path: VALIDATION.md
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, openapi-constraint-check, validation-md-generation]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

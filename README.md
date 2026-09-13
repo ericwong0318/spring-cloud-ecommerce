@@ -334,6 +334,11 @@ Each service exposes OpenAPI/Swagger documentation:
 | Notification | http://localhost:8086/swagger-ui.html | http://localhost:8086/v3/api-docs |
 | Auth | http://localhost:9000/swagger-ui.html | http://localhost:9000/v3/api-docs |
 
+### Validation Rules Reference
+
+Auto-generated from Jakarta Validation annotations on DTO fields:
+- **[VALIDATION.md](VALIDATION.md)** — Per-module Markdown tables with Field | Annotation | Parameters | Schema Path | Valid Example | Invalid Example
+
 ### Sample Product API
 ```bash
 # Get all products (via Gateway)
@@ -557,8 +562,21 @@ GitHub Actions (`.github/workflows/ci.yml`):
 1. **validate** — Maven compile + syntax check
 2. **test** — Unit tests + integration tests (Testcontainers)
 3. **build** — Full Maven build
-4. **docker** — Build & push Docker images
-5. **security-scan** — OWASP dependency check + Trivy
+4. **validation-md-generation** — Generate VALIDATION.md from Jakarta Validation annotations
+5. **docker** — Build & push Docker images
+6. **security-scan** — OWASP dependency check + Trivy
+
+### Pre-commit Hook
+
+To regenerate `VALIDATION.md` locally before committing:
+
+```bash
+# Install the pre-commit hook
+ln -sf ../../ci/validation/pre-commit-hook.sh .git/hooks/pre-commit
+
+# Or run manually
+mvn exec:java -pl ci/validation -Dexec.mainClass=com.example.validation.ValidationMarkdownGenerator -Dexec.args="VALIDATION.md"
+```
 
 ---
 
