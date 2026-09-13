@@ -186,6 +186,23 @@
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Pact Provider Verification -->
+        <dependency>
+            <groupId>au.com.dius.pact</groupId>
+            <artifactId>pact-junit-provider-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>au.com.dius.pact</groupId>
+            <artifactId>pact-junit-provider-spring</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>au.com.dius.pact</groupId>
+            <artifactId>pact-jvm-provider-springboot</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

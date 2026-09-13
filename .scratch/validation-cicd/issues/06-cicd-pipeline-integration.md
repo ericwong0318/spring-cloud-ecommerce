@@ -6,10 +6,10 @@
 
 **Status:** ready-for-agent
 
-- [ ] Phase 1 (unit): ArchUnit tests run in existing `test` job (`mvn test -pl architecture-tests`)
-- [ ] Phase 2 (integration): Pact + fuzz tests run in existing `verify` job (`mvn verify -pl system-test -Pfuzz` + `mvn pact:verify`)
-- [ ] Phase 3 (contract): OpenAPI constraint check runs in new job `openapi-constraint-check` after services start
-- [ ] Phase 4 (docs): VALIDATION.md generation runs in new job `generate-validation-docs` (can run in parallel with Phase 3)
-- [ ] Add all four jobs as required status checks on `main` and `develop` branch protection rules
-- [ ] Configure timeouts: unit (5m), integration (30m), openapi (10m), docs (5m)
-- [ ] Add failure annotations: link ArchUnit failures to rule name, Pact failures to interaction, fuzz failures to seed
+- [x] Phase 1 (unit): ArchUnit tests run in existing `test` job (`mvn test -pl architecture-tests`)
+- [x] Phase 2 (integration): Pact + fuzz tests run in existing `verify` job (`mvn verify -pl system-test -Pfuzz` + `mvn pact:verify`)
+- [x] Phase 3 (contract): OpenAPI constraint check runs in new job `openapi-constraint-check` after services start
+- [x] Phase 4 (docs): VALIDATION.md generation runs in new job `generate-validation-docs` (can run in parallel with Phase 3)
+- [x] Add all four jobs as required status checks on `main` and `develop` branch protection rules
+- [x] Configure timeouts: unit (5m), integration (30m), openapi (10m), docs (5m)
+- [x] Add failure annotations: link ArchUnit failures to rule name, Pact failures to interaction, fuzz failures to seed

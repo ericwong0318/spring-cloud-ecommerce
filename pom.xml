@@ -311,6 +311,32 @@
                 <version>3.0</version>
                 <scope>test</scope>
             </dependency>
+
+            <!-- Pact v4+ for contract testing -->
+            <dependency>
+                <groupId>au.com.dius.pact</groupId>
+                <artifactId>pact-junit-provider-junit5</artifactId>
+                <version>4.5.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>au.com.dius.pact</groupId>
+                <artifactId>pact-junit-provider-spring</artifactId>
+                <version>4.5.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>au.com.dius.pact</groupId>
+                <artifactId>pact-jvm-consumer-junit5</artifactId>
+                <version>4.5.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>au.com.dius.pact</groupId>
+                <artifactId>pact-jvm-provider-springboot</artifactId>
+                <version>4.5.0</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -392,6 +418,11 @@
                     <groupId>edu.berkeley.cs.jqf</groupId>
                     <artifactId>jqf-maven-plugin</artifactId>
                     <version>3.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>au.com.dius.pact</groupId>
+                    <artifactId>pact-maven-plugin</artifactId>
+                    <version>4.5.0</version>
                 </plugin>
             </plugins>
         </pluginManagement>
