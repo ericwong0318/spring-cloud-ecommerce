@@ -20,16 +20,16 @@ data:
         spike_limit_size_mib: 100
       attributes:
         - key: service.name
-          value: "{{"value"}}"
+          value: "{{`{{`}}service.name{{`}}`}}"
           action: upsert
         - key: deployment.environment
-          value: {{ .Values.global.profile | default "prod" }}
+          value: "{{`{{`}}deployment.environment{{`}}`}}"
           action: insert
     
     exporters:
       splunk:
-        endpoint: {{ .Values.global.splunk.ingestUrl | default "" }}
-        token: {{ .Values.global.splunk.accessToken | default "" }}
+        endpoint: {{`{{`}}SPLUNK_INGEST_URL{{`}}`}}
+        token: {{`{{`}}SPLUNK_ACCESS_TOKEN{{`}}`}}
         timeout: 10s
         tls:
           insecure: false

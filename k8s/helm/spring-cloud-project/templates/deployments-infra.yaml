@@ -139,3 +139,72 @@ spec:
           resources:
             {{- toYaml .Values.eurekaServer.resources | nindent 12 }}
 {{- end }}
+---
+{{- if .Values.otelCollector.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}-otel-collector
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "spring-cloud-project.selectorLabels" . | nindent 6 }}
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        {{- include "spring-cloud-project.selectorLabels" . | nindent 8 }}
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: "{{ .Values.otelCollector.image }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+              protocol: TCP
+            - name: otlp-http
+              containerPort: 4318
+              protocol: TCP
+            - name: metrics
+              containerPort: 8888
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: {{ .Chart.Name }}-secrets
+          volumeMounts:
+            - name: otel-config
+              mountPath: /etc/otelcol-contrib
+          livenessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            limits:
+              memory: 512Mi
+              cpu: 500m
+            requests:
+              memory: 256Mi
+              cpu: 250m
+      volumes:
+        - name: otel-config
+          configMap:
+            name: {{ .Chart.Name }}-otel-config
+            items:
+              - key: otel-collector-config.yaml
+                path: config.yaml
+{{- end }}

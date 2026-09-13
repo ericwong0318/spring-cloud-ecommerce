@@ -186,3 +186,32 @@ spec:
     {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
     app: notification-service
 {{- end }}
+---
+{{- if .Values.otelCollector.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-otel-collector
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+    app: otel-collector
+spec:
+  type: ClusterIP
+  ports:
+    - port: 4317
+      targetPort: otlp-grpc
+      protocol: TCP
+      name: otlp-grpc
+    - port: 4318
+      targetPort: otlp-http
+      protocol: TCP
+      name: otlp-http
+    - port: 8888
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "spring-cloud-project.selectorLabels" . | nindent 4 }}
+    app: otel-collector
+{{- end }}

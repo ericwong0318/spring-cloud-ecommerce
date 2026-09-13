@@ -20,9 +20,16 @@ global:
     endpoint: http://otel-collector:4317
     protocol: grpc
   splunk:
-    accessToken: ""
-    ingestUrl: ""
-    realm: sg0
+    accessToken: "t-Q3TUhxLjKpF7uPBkKxeA"
+    ingestUrl: "https://ingest.sg0.splunkcloud.com"
+    realm: "sg0"
+  mail:
+    username: ""
+    password: ""
+  externalSecrets:
+    enabled: false
+    secretStore: "aws-secretsmanager"
+    prefix: "ecommerce/prod"
 
 configServer:
   enabled: true
@@ -183,10 +190,10 @@ otelCollector:
   enabled: true
   image: ghcr.io/open-telemetry/opentelemetry-collector-releases/otel-collector-contrib:0.110.0
   splunk:
-    enabled: false
-    accessToken: ""
-    ingestUrl: ""
-    realm: sg0
+    enabled: true
+    accessToken: "t-Q3TUhxLjKpF7uPBkKxeA"
+    ingestUrl: "https://ingest.sg0.splunkcloud.com"
+    realm: "sg0"
 
 ingress:
   enabled: true
