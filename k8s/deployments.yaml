@@ -11,12 +11,12 @@ metadata:
   name: otel-config
   namespace: ecommerce
 data:
-  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://spring-cloud-ecommerce-otel-collector:4317"
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
   OTEL_TRACES_EXPORTER: "otlp"
   OTEL_METRICS_EXPORTER: "otlp"
   OTEL_LOGS_EXPORTER: "otlp"
-  OTEL_PROPAGATORS: "w3c,tracecontext"
+  OTEL_PROPAGATORS: "tracecontext,baggage"
   OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=prod,service.namespace=ecommerce"
   OTEL_JAVAAGENT_CONFIG: "otel.javaagent.extensions=splunk-otel-profiler"
   profiler.enabled: "true"
