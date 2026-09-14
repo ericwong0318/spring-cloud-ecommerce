@@ -13,13 +13,11 @@ echo ""
 
 # Check 1: Operator deployment status
 echo "--- Check 1: OpenTelemetry Operator Deployment ---"
-OPERATOR_DEPLOY=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" -l app.kubernetes.io/name=opentelemetry-operator -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-if [[ -n "$OPERATOR_DEPLOY" ]]; then
-    OPERATOR_READY=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" "$OPERATOR_DEPLOY" -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || echo "Unknown")
-    OPERATOR_REPLICAS=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" "$OPERATOR_DEPLOY" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
-    OPERATOR_DESIRED=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" "$OPERATOR_DEPLOY" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
+if kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator 2>/dev/null; then
+    OPERATOR_READY=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || echo "Unknown")
+    OPERATOR_REPLICAS=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+    OPERATOR_DESIRED=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
     
-    echo "Operator: $OPERATOR_DEPLOY"
     echo "Operator Ready: $OPERATOR_READY"
     echo "Ready Replicas: $OPERATOR_REPLICAS / $OPERATOR_DESIRED"
     
@@ -73,16 +71,16 @@ if [[ "$INSTRUMENTATION" != "NOT_FOUND" ]]; then
         echo "  Status: $INST_STATUS"
         
         # Check spec
-        INST_VERSION=$(kubectl get instrumentation "$INST" -n "$NAMESPACE" -o jsonpath='{.spec.java.image}' 2>/dev/null || echo "not set")
-        echo "  Java Agent Image: $INST_VERSION"
+        INST_VERSION=$(kubectl get instrumentation "$INST" -n "$NAMESPACE" -o jsonpath='{.spec.java.version}' 2>/dev/null || echo "not set")
+        echo "  Java Agent Version: $INST_VERSION"
         
-        if [[ "$INST_STATUS" != "True" && "$INST_STATUS" != "Unknown" ]]; then
+        if [[ "$INST_STATUS" != "True" ]]; then
             INSTR_OK=1
         fi
     done
     
     if [[ $INSTR_OK -eq 0 ]]; then
-        echo "✓ All Instrumentation resources are Ready (or no status yet)"
+        echo "✓ All Instrumentation resources are Ready"
     else
         echo "✗ Some Instrumentation resources are NOT Ready"
     fi
@@ -95,13 +93,13 @@ echo ""
 
 # Check 4: Mutating webhook (required for injection)
 echo "--- Check 4: Mutating Webhook Configuration ---"
-WEBHOOK_NAME="opentelemetry-operator-mutating-webhook-configuration"
-WEBHOOK=$(kubectl get mutatingwebhookconfiguration "$WEBHOOK_NAME" 2>/dev/null || echo "NOT_FOUND")
+WEBHOOK=$(kubectl get mutatingwebhookconfiguration opentelemetry-operator 2>/dev/null || echo "NOT_FOUND")
 if [[ "$WEBHOOK" != "NOT_FOUND" ]]; then
-    echo "MutatingWebhookConfiguration found: $WEBHOOK_NAME"
+    echo "MutatingWebhookConfiguration found:"
+    kubectl get mutatingwebhookconfiguration opentelemetry-operator -o yaml | grep -A 2 "clientConfig:" | head -10
     
     # Check if webhook has valid caBundle
-    CA_BUNDLE=$(kubectl get mutatingwebhookconfiguration "$WEBHOOK_NAME" -o jsonpath='{.webhooks[0].clientConfig.caBundle}' 2>/dev/null || echo "")
+    CA_BUNDLE=$(kubectl get mutatingwebhookconfiguration opentelemetry-operator -o jsonpath='{.webhooks[0].clientConfig.caBundle}' 2>/dev/null || echo "")
     if [[ -n "$CA_BUNDLE" && "$CA_BUNDLE" != "null" ]]; then
         echo "✓ Webhook has CA bundle"
         WEBHOOK_OK=0
@@ -125,18 +123,18 @@ if [[ -n "$PODS" ]]; then
         # Check if pod has the annotation
         ANNOTATION=$(kubectl get pod "$POD" -n "$NAMESPACE" -o jsonpath='{.metadata.annotations.instrumentation\.opentelemetry\.io/inject-java}' 2>/dev/null || echo "not-set")
         
-        # Check for javaagent in container args (handle multi-line output)
-        JAVA_AGENT_COUNT=$(kubectl get pod "$POD" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].args}' 2>/dev/null | tr ' ' '\n' | grep -c "javaagent" || echo "0")
+        # Check for javaagent in container args
+        JAVA_AGENT=$(kubectl get pod "$POD" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].args}' 2>/dev/null | grep -c "javaagent" || echo "0")
         
         # Check for OTEL_JAVAAGENT env var or volume mount
-        AGENT_VOLUME_COUNT=$(kubectl get pod "$POD" -n "$NAMESPACE" -o jsonpath='{.spec.volumes[*].name}' 2>/dev/null | tr ' ' '\n' | grep -c "opentelemetry" || echo "0")
-        AGENT_MOUNT_COUNT=$(kubectl get pod "$POD" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].volumeMounts[*].name}' 2>/dev/null | tr ' ' '\n' | grep -c "opentelemetry" || echo "0")
+        AGENT_VOLUME=$(kubectl get pod "$POD" -n "$NAMESPACE" -o jsonpath='{.spec.volumes[*].name}' 2>/dev/null | grep -c "opentelemetry" || echo "0")
+        AGENT_MOUNT=$(kubectl get pod "$POD" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].volumeMounts[*].name}' 2>/dev/null | grep -c "opentelemetry" || echo "0")
         
         echo "Pod: $POD"
         echo "  inject-java annotation: $ANNOTATION"
-        echo "  javaagent in args: $JAVA_AGENT_COUNT"
-        echo "  agent volume: $AGENT_VOLUME_COUNT"
-        echo "  agent mount: $AGENT_MOUNT_COUNT"
+        echo "  javaagent in args: $JAVA_AGENT"
+        echo "  agent volume: $AGENT_VOLUME"
+        echo "  agent mount: $AGENT_MOUNT"
         
         # Check logs for agent startup
         AGENT_LOG=$(kubectl logs "$POD" -n "$NAMESPACE" --tail=50 2>/dev/null | grep -i "opentelemetry.javaagent" | head -1 || echo "NOT_FOUND")
@@ -146,7 +144,7 @@ if [[ -n "$PODS" ]]; then
             echo "  Agent log: NOT FOUND in recent logs"
         fi
         
-        if [[ "$ANNOTATION" == "true" && ( "$JAVA_AGENT_COUNT" -gt 0 || "$AGENT_VOLUME_COUNT" -gt 0 || "$AGENT_MOUNT_COUNT" -gt 0 ) ]]; then
+        if [[ "$ANNOTATION" == "true" && ( "$JAVA_AGENT" -gt 0 || "$AGENT_VOLUME" -gt 0 || "$AGENT_MOUNT" -gt 0 ) ]]; then
             echo "  ✓ Agent appears to be injected"
         else
             echo "  ✗ Agent NOT injected"

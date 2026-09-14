@@ -1,0 +1,37 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: Instrumentation
+metadata:
+  name: ecommerce-instrumentation
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "spring-cloud-project.labels" . | nindent 4 }}
+spec:
+  envConfig:
+    exporter:
+      endpoint: {{ .Values.global.otel.endpoint }}
+      protocol: grpc
+    propagators:
+      - tracecontext
+      - baggage
+    sampler:
+      type: parentbased_traceidratio
+      argument: "1.0"
+  resource:
+    attributes:
+      deployment.environment: {{ .Values.global.profile | default "prod" }}
+      service.namespace: {{ .Values.global.namespace }}
+  java:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.8.0
+    env:
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: {{ .Values.global.otel.endpoint }}
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: {{ .Values.global.otel.protocol }}
+      - name: OTEL_PROPAGATORS
+        value: {{ .Values.global.otel.propagators | default "w3c,tracecontext" }}
+      - name: OTEL_METRICS_EXPORTER
+        value: {{ .Values.global.otel.metricsExporter | default "otlp" }}
+      - name: OTEL_LOGS_EXPORTER
+        value: {{ .Values.global.otel.logsExporter | default "otlp" }}
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: "deployment.environment={{ .Values.global.profile | default \"prod\" }},service.namespace={{ .Values.global.namespace }}"

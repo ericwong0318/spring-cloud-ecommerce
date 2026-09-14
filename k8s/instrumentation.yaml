@@ -23,16 +23,10 @@ spec:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: grpc
       - name: OTEL_PROPAGATORS
-        value: tracecontext,baggage
+        value: w3c,tracecontext
       - name: OTEL_METRICS_EXPORTER
         value: otlp
       - name: OTEL_LOGS_EXPORTER
         value: otlp
       - name: OTEL_RESOURCE_ATTRIBUTES
         value: deployment.environment=prod,service.namespace=ecommerce
-      - name: OTEL_JAVAAGENT_CONFIG
-        value: otel.javaagent.extensions=splunk-otel-profiler
-      - name: profiler.enabled
-        value: "true"
-      - name: profiler.interval
-        value: "60s"
