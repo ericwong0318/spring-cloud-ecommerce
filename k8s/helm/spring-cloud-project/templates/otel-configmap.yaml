@@ -40,10 +40,10 @@ data:
         attributes:
           - action: upsert
             key: deployment.environment
-            value: local
+            value: {{ .Values.global.profile | default "prod" }}
           - action: upsert
             key: service.namespace
-            value: spring-cloud-microservices
+            value: {{ .Values.global.namespace }}
 
     exporters:
       signalfx:

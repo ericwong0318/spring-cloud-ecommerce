@@ -38,6 +38,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ .Chart.Name }}-config
+            - configMapRef:
+                name: otel-config
             - secretRef:
                 name: {{ .Chart.Name }}-secrets
           env:
