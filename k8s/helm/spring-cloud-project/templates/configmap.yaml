@@ -9,8 +9,3 @@ data:
   SPRING_PROFILES_ACTIVE: {{ .Values.global.profile | default "prod" | quote }}
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: {{ .Values.global.eureka.serviceUrl | quote }}
   SPRING_CLOUD_CONFIG_URI: {{ .Values.global.configServer.uri | quote }}
-  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.global.otel.endpoint | quote }}
-  OTEL_EXPORTER_OTLP_PROTOCOL: {{ .Values.global.otel.protocol | quote }}
-  OTEL_PROPAGATORS: {{ .Values.global.otel.propagators | default "w3c,tracecontext" | quote }}
-  OTEL_METRICS_EXPORTER: {{ .Values.global.otel.metricsExporter | default "otlp" | quote }}
-  OTEL_LOGS_EXPORTER: {{ .Values.global.otel.logsExporter | default "otlp" | quote }}
