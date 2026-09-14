@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/part-of: spring-cloud-ecommerce
 spec:
   exporter:
-    # Service endpoint pointing to your agent in splunk-otel namespace
+    # Service endpoint pointing to your agent in splunk-otel namespace over gRPC (port 4317)
     endpoint: http://splunk-otel-collector-agent.splunk-otel.svc.cluster.local:4317
   propagators:
     - tracecontext
@@ -18,7 +18,8 @@ spec:
     type: parentbased_traceidratio
     argument: "1.0"
   java:
-    image: ghcr.io/signalfx/splunk-otel-java/autoinstrumentation-java:latest
+    # Valid Splunk OpenTelemetry Java agent image tag (replaces the broken /autoinstrumentation-java:latest)
+    image: ghcr.io/signalfx/splunk-otel-java/splunk-otel-java:v2.30.0
     env:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: http://splunk-otel-collector-agent.splunk-otel.svc.cluster.local:4317
