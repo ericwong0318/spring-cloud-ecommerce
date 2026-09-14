@@ -51,3 +51,6 @@ Thumbs.db
 
 # Kubernetes/Otel Collector secrets
 otel-collector/otel-collector-config.yaml
+
+# scratch
+.scratch/
