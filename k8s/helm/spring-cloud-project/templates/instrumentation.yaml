@@ -13,6 +13,7 @@ spec:
     propagators:
       - tracecontext
       - baggage
+      - b3multi
     sampler:
       type: parentbased_traceidratio
       argument: "1.0"
@@ -21,17 +22,23 @@ spec:
       deployment.environment: {{ .Values.global.profile | default "prod" }}
       service.namespace: {{ .Values.global.namespace }}
   java:
-    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.8.0
+    image: ghcr.io/signalfx/splunk-otel-java/splunk-otel-java:v2.30.0
     env:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
         value: {{ .Values.global.otel.endpoint }}
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: {{ .Values.global.otel.protocol }}
       - name: OTEL_PROPAGATORS
-        value: {{ .Values.global.otel.propagators | default "w3c,tracecontext" }}
+        value: {{ .Values.global.otel.propagators | default "w3c,tracecontext,b3multi" }}
       - name: OTEL_METRICS_EXPORTER
         value: {{ .Values.global.otel.metricsExporter | default "otlp" }}
       - name: OTEL_LOGS_EXPORTER
         value: {{ .Values.global.otel.logsExporter | default "otlp" }}
       - name: OTEL_RESOURCE_ATTRIBUTES
-        value: "deployment.environment={{ .Values.global.profile | default \"prod\" }},service.namespace={{ .Values.global.namespace }}"
+        value: 'deployment.environment={{ .Values.global.profile | default "prod" }},service.namespace={{ .Values.global.namespace }}'
+      - name: SPLUNK_PROFILER_ENABLED
+        value: "true"
+      - name: SPLUNK_PROFILER_MEMORY_ENABLED
+        value: "true"
+      - name: OTEL_JAVAAGENT_CONFIG
+        value: "otel.javaagent.extensions=splunk-otel-profiler"

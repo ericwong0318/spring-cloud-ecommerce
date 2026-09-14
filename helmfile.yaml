@@ -1,0 +1,17 @@
+environments:
+  dev:
+    values:
+      - environments/dev/values.yaml
+  prod:
+    values:
+      - environments/prod/values.yaml
+---
+releases:
+  - name: spring-cloud-ecommerce
+    namespace: ecommerce
+    chart: ./k8s/helm/spring-cloud-project
+    version: "1.0.0"
+    values:
+      - environments/{{ .Environment.Name }}/values.yaml
+    labels:
+      app: spring-cloud-ecommerce
