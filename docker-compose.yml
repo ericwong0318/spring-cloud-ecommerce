@@ -5,7 +5,7 @@ services:
     ports:
       - "27017:27017"
     environment:
-      - MONGO_INITDB_DATABASE=product_db
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
     volumes:
       - mongodb-data:/data/db
     networks:
@@ -361,8 +361,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
@@ -381,7 +381,7 @@ services:
     environment:
       - POSTGRES_DB=product_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PRODUCT_PASSWORD}
     ports:
       - "5435:5432"
     volumes:
@@ -402,7 +402,7 @@ services:
     environment:
       - POSTGRES_DB=category_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_CATEGORY_PASSWORD}
     ports:
       - "5436:5432"
     volumes:
@@ -423,7 +423,7 @@ services:
     environment:
       - POSTGRES_DB=order_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_ORDER_PASSWORD}
     ports:
       - "5437:5432"
     volumes:
@@ -444,7 +444,7 @@ services:
     environment:
       - POSTGRES_DB=payment_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PAYMENT_PASSWORD}
     ports:
       - "5438:5432"
     volumes:
@@ -464,7 +464,7 @@ services:
     environment:
       - POSTGRES_DB=inventory_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_INVENTORY_PASSWORD}
     ports:
       - "5433:5432"
     volumes:
@@ -484,7 +484,7 @@ services:
     environment:
       - POSTGRES_DB=notification_db
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_NOTIFICATION_PASSWORD}
     ports:
       - "5434:5432"
     volumes:
@@ -510,7 +510,7 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-inventory:5432/inventory_db
       - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_INVENTORY_PASSWORD}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=inventory-service
@@ -551,8 +551,10 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-notification:5432/notification_db
       - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_NOTIFICATION_PASSWORD}
       - AUTH_SERVER_URL=http://auth-server:9000
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=notification-service
@@ -593,7 +595,7 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - SPRING_R2DBC_URL=r2dbc:postgresql://postgres-payment:5432/payment_db
       - SPRING_R2DBC_USERNAME=postgres
-      - SPRING_R2DBC_PASSWORD=postgres
+      - SPRING_R2DBC_PASSWORD=${POSTGRES_PAYMENT_PASSWORD}
       - SPRING_RABBITMQ_HOST=rabbitmq
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
