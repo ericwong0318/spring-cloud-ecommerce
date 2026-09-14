@@ -6,29 +6,34 @@ global:
     host: rabbitmq
     port: 5672
     username: guest
-    password: guest
+    password: "${RABBITMQ_PASSWORD}"
   postgres:
     host: postgres
     port: 5432
     username: postgres
-    password: postgres
+    productPassword: "${POSTGRES_PRODUCT_PASSWORD}"
+    categoryPassword: "${POSTGRES_CATEGORY_PASSWORD}"
+    orderPassword: "${POSTGRES_ORDER_PASSWORD}"
+    inventoryPassword: "${POSTGRES_INVENTORY_PASSWORD}"
+    paymentPassword: "${POSTGRES_PAYMENT_PASSWORD}"
+    notificationPassword: "${POSTGRES_NOTIFICATION_PASSWORD}"
   eureka:
     serviceUrl: http://eureka-server:8761/eureka/
   configServer:
     uri: http://config-server:8888
   otel:
-    endpoint: http://otel-collector:4317
+    endpoint: http://splunk-otel-collector-agent.splunk-otel.svc.cluster.local:4317
     protocol: grpc
     profilerEnabled: "true"
     profilerInterval: "60s"
     javaagentConfig: "otel.javaagent.extensions=splunk-otel-profiler"
   splunk:
-    accessToken: "t-Q3TUhxLjKpF7uPBkKxeA"
-    ingestUrl: "https://ingest.sg0.splunkcloud.com"
-    realm: "sg0"
+    accessToken: "${SPLUNK_ACCESS_TOKEN}"
+    ingestUrl: "${SPLUNK_INGEST_URL}"
+    realm: "${SPLUNK_REALM}"
   mail:
     username: ""
-    password: ""
+    password: "${MAIL_PASSWORD}"
   externalSecrets:
     enabled: false
     secretStore: "aws-secretsmanager"
@@ -191,12 +196,20 @@ rabbitmq:
 
 otelCollector:
   enabled: true
+  replicaCount: 1
   image: otel/opentelemetry-collector-contrib:0.110.0
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
   splunk:
     enabled: true
-    accessToken: "t-Q3TUhxLjKpF7uPBkKxeA"
-    ingestUrl: "https://ingest.sg0.splunkcloud.com"
-    realm: "sg0"
+    accessToken: "${SPLUNK_ACCESS_TOKEN}"
+    ingestUrl: "${SPLUNK_INGEST_URL}"
+    realm: "${SPLUNK_REALM}"
 
 ingress:
   enabled: true
