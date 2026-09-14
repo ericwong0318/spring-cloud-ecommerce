@@ -1,4 +1,4 @@
-apiVersion: apps/v1
+apiVersion: v1
 kind: Namespace
 metadata:
   name: ecommerce
@@ -11,7 +11,8 @@ metadata:
   name: otel-config
   namespace: ecommerce
 data:
-  OTEL_EXPORTER_OTLP_ENDPOINT: "http://spring-cloud-ecommerce-otel-collector:4317"
+  # Using gRPC to the Splunk Collector agent service in splunk-otel namespace (or update to your cluster's collector service name)
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://splunk-otel-collector-agent.splunk-otel.svc.cluster.local:4317"
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
   OTEL_TRACES_EXPORTER: "otlp"
   OTEL_METRICS_EXPORTER: "otlp"
@@ -44,6 +45,7 @@ spec:
       containers:
         - name: config-server
           image: config-server:1.0.0
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8888
           envFrom:
@@ -83,6 +85,7 @@ spec:
       containers:
         - name: eureka-server
           image: eureka-server:1.0.0
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8761
           envFrom:
@@ -122,6 +125,7 @@ spec:
       containers:
         - name: auth-server
           image: auth-server:1.0.0
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9000
           envFrom:
@@ -161,6 +165,7 @@ spec:
       containers:
         - name: gateway
           image: gateway:1.0.0
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           envFrom:
@@ -200,6 +205,7 @@ spec:
       containers:
         - name: product
           image: product:1.0.0
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8081
           envFrom:
@@ -239,6 +245,7 @@ spec:
       containers:
         - name: category
           image: category:1.0.0
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8082
           envFrom:
@@ -278,6 +285,7 @@ spec:
       containers:
         - name: order-service
           image: order-service:1.0.0
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8083
           envFrom:

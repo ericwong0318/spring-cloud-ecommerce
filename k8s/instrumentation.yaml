@@ -8,25 +8,31 @@ metadata:
     app.kubernetes.io/part-of: spring-cloud-ecommerce
 spec:
   exporter:
-    endpoint: http://spring-cloud-ecommerce-otel-collector:4317
+    # Service endpoint pointing to your agent in splunk-otel namespace
+    endpoint: http://splunk-otel-collector-agent.splunk-otel.svc.cluster.local:4317
   propagators:
     - tracecontext
     - baggage
+    - b3multi
   sampler:
     type: parentbased_traceidratio
     argument: "1.0"
   java:
-    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-java:2.8.0
+    image: ghcr.io/signalfx/splunk-otel-java/autoinstrumentation-java:latest
     env:
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
-        value: http://spring-cloud-ecommerce-otel-collector:4317
+        value: http://splunk-otel-collector-agent.splunk-otel.svc.cluster.local:4317
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: grpc
       - name: OTEL_PROPAGATORS
-        value: w3c,tracecontext
+        value: tracecontext,baggage,b3multi
       - name: OTEL_METRICS_EXPORTER
         value: otlp
       - name: OTEL_LOGS_EXPORTER
         value: otlp
       - name: OTEL_RESOURCE_ATTRIBUTES
         value: deployment.environment=prod,service.namespace=ecommerce
+      - name: SPLUNK_PROFILER_ENABLED
+        value: "true"
+      - name: SPLUNK_PROFILER_MEMORY_ENABLED
+        value: "true"

@@ -13,10 +13,10 @@ echo ""
 
 # Check 1: Operator deployment status
 echo "--- Check 1: OpenTelemetry Operator Deployment ---"
-if kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator 2>/dev/null; then
-    OPERATOR_READY=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || echo "Unknown")
-    OPERATOR_REPLICAS=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
-    OPERATOR_DESIRED=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
+if kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator-controller-manager 2>/dev/null; then
+    OPERATOR_READY=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator-controller-manager -o jsonpath='{.status.conditions[?(@.type=="Available")].status}' 2>/dev/null || echo "Unknown")
+    OPERATOR_REPLICAS=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator-controller-manager -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+    OPERATOR_DESIRED=$(kubectl get deployment -n "$OPERATOR_NAMESPACE" opentelemetry-operator-controller-manager -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
     
     echo "Operator Ready: $OPERATOR_READY"
     echo "Ready Replicas: $OPERATOR_REPLICAS / $OPERATOR_DESIRED"
@@ -93,13 +93,13 @@ echo ""
 
 # Check 4: Mutating webhook (required for injection)
 echo "--- Check 4: Mutating Webhook Configuration ---"
-WEBHOOK=$(kubectl get mutatingwebhookconfiguration opentelemetry-operator 2>/dev/null || echo "NOT_FOUND")
+WEBHOOK=$(kubectl get mutatingwebhookconfiguration opentelemetry-operator-mutating-webhook-configuration 2>/dev/null || echo "NOT_FOUND")
 if [[ "$WEBHOOK" != "NOT_FOUND" ]]; then
     echo "MutatingWebhookConfiguration found:"
-    kubectl get mutatingwebhookconfiguration opentelemetry-operator -o yaml | grep -A 2 "clientConfig:" | head -10
+    kubectl get mutatingwebhookconfiguration opentelemetry-operator-mutating-webhook-configuration -o yaml | grep -A 2 "clientConfig:" | head -10
     
     # Check if webhook has valid caBundle
-    CA_BUNDLE=$(kubectl get mutatingwebhookconfiguration opentelemetry-operator -o jsonpath='{.webhooks[0].clientConfig.caBundle}' 2>/dev/null || echo "")
+    CA_BUNDLE=$(kubectl get mutatingwebhookconfiguration opentelemetry-operator-mutating-webhook-configuration -o jsonpath='{.webhooks[0].clientConfig.caBundle}' 2>/dev/null || echo "")
     if [[ -n "$CA_BUNDLE" && "$CA_BUNDLE" != "null" ]]; then
         echo "✓ Webhook has CA bundle"
         WEBHOOK_OK=0
@@ -125,10 +125,13 @@ if [[ -n "$PODS" ]]; then
         
         # Check for javaagent in container args
         JAVA_AGENT=$(kubectl get pod "$POD" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].args}' 2>/dev/null | grep -c "javaagent" || echo "0")
+        JAVA_AGENT=$(echo "$JAVA_AGENT" | tr -d '\n' | xargs)
         
         # Check for OTEL_JAVAAGENT env var or volume mount
         AGENT_VOLUME=$(kubectl get pod "$POD" -n "$NAMESPACE" -o jsonpath='{.spec.volumes[*].name}' 2>/dev/null | grep -c "opentelemetry" || echo "0")
+        AGENT_VOLUME=$(echo "$AGENT_VOLUME" | tr -d '\n' | xargs)
         AGENT_MOUNT=$(kubectl get pod "$POD" -n "$NAMESPACE" -o jsonpath='{.spec.containers[0].volumeMounts[*].name}' 2>/dev/null | grep -c "opentelemetry" || echo "0")
+        AGENT_MOUNT=$(echo "$AGENT_MOUNT" | tr -d '\n' | xargs)
         
         echo "Pod: $POD"
         echo "  inject-java annotation: $ANNOTATION"
