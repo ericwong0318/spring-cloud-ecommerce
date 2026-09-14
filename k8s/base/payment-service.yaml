@@ -26,6 +26,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: spring-cloud-config
+            - configMapRef:
+                name: otel-config
             - secretRef:
                 name: spring-cloud-secrets
           env:

@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - configmap.yaml
+  - otel-config.yaml
   - secret.yaml
   - config-server.yaml
   - eureka-server.yaml
