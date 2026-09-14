@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: otel-config
 data:
-  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://splunk-otel-collector-agent.splunk-otel.svc.cluster.local:4317"
   OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
   OTEL_PROPAGATORS: "w3c,tracecontext"
   OTEL_METRICS_EXPORTER: "otlp"

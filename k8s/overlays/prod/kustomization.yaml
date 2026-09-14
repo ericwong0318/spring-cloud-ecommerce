@@ -139,3 +139,7 @@ images:
 commonAnnotations:
   environment: production
   managed-by: kustomize
+
+commonLabels:
+  managed-by: kustomize
+  project: spring-cloud-ecommerce

@@ -14,6 +14,8 @@ spec:
     metadata:
       labels:
         app: inventory-service
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "true"
     spec:
       containers:
         - name: inventory-service

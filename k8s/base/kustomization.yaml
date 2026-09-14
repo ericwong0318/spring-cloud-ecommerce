@@ -17,7 +17,3 @@ resources:
   - payment-service.yaml
   - notification-service.yaml
   - ingress.yaml
-
-commonLabels:
-  managed-by: kustomize
-  project: spring-cloud-ecommerce

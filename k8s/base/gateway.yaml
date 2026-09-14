@@ -14,6 +14,8 @@ spec:
     metadata:
       labels:
         app: gateway
+      annotations:
+        instrumentation.opentelemetry.io/inject-java: "true"
     spec:
       containers:
         - name: gateway
