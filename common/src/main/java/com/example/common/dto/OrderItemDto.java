@@ -53,36 +53,4 @@ public record OrderItemDto(
     public OrderItemDto withStatus(OrderItemStatus status) {
         return new OrderItemDto(id, productId, variantId, skuCode, productName, quantity, quantityShipped, price, status, reservedAt);
     }
-
-    public static OrderItemDtoBuilder builder() {
-        return new OrderItemDtoBuilder();
-    }
-
-    public static class OrderItemDtoBuilder {
-        private Long id;
-        private Long productId;
-        private Long variantId;
-        private String skuCode;
-        private String productName;
-        private Integer quantity;
-        private Integer quantityShipped;
-        private BigDecimal price;
-        private OrderItemStatus status;
-        private LocalDateTime reservedAt;
-
-        public OrderItemDtoBuilder id(Long id) { this.id = id; return this; }
-        public OrderItemDtoBuilder productId(Long productId) { this.productId = productId; return this; }
-        public OrderItemDtoBuilder variantId(Long variantId) { this.variantId = variantId; return this; }
-        public OrderItemDtoBuilder skuCode(String skuCode) { this.skuCode = skuCode; return this; }
-        public OrderItemDtoBuilder productName(String productName) { this.productName = productName; return this; }
-        public OrderItemDtoBuilder quantity(Integer quantity) { this.quantity = quantity; return this; }
-        public OrderItemDtoBuilder quantityShipped(Integer quantityShipped) { this.quantityShipped = quantityShipped; return this; }
-        public OrderItemDtoBuilder price(BigDecimal price) { this.price = price; return this; }
-        public OrderItemDtoBuilder status(OrderItemStatus status) { this.status = status; return this; }
-        public OrderItemDtoBuilder reservedAt(LocalDateTime reservedAt) { this.reservedAt = reservedAt; return this; }
-
-        public OrderItemDto build() {
-            return new OrderItemDto(id, productId, variantId, skuCode, productName, quantity, quantityShipped, price, status, reservedAt);
-        }
-    }
 }
