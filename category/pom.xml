@@ -92,23 +92,27 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Pact Provider Verification - temporarily commented out
+        <!-- Pact Provider Verification -->
         <dependency>
-            <groupId>au.com.dius.pact</groupId>
-            <artifactId>pact-junit-provider-junit5</artifactId>
+            <groupId>au.com.dius</groupId>
+            <artifactId>pact-jvm-provider-junit5</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>au.com.dius.pact</groupId>
-            <artifactId>pact-junit-provider-spring</artifactId>
+            <groupId>au.com.dius</groupId>
+            <artifactId>pact-jvm-provider-junit5-spring</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>au.com.dius.pact</groupId>
-            <artifactId>pact-jvm-provider-springboot</artifactId>
+            <groupId>au.com.dius</groupId>
+            <artifactId>pact-jvm-provider</artifactId>
             <scope>test</scope>
         </dependency>
--->
+        <dependency>
+            <groupId>au.com.dius</groupId>
+            <artifactId>pact-jvm-consumer</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-otlp</artifactId>

@@ -314,27 +314,33 @@
 
             <!-- Pact v4+ for contract testing -->
             <dependency>
-                <groupId>au.com.dius.pact</groupId>
-                <artifactId>pact-junit-provider-junit5</artifactId>
-                <version>4.5.0</version>
+                <groupId>au.com.dius</groupId>
+                <artifactId>pact-jvm-provider-junit5</artifactId>
+                <version>4.0.10</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>au.com.dius.pact</groupId>
-                <artifactId>pact-junit-provider-spring</artifactId>
-                <version>4.5.0</version>
+                <groupId>au.com.dius</groupId>
+                <artifactId>pact-jvm-provider-junit5-spring</artifactId>
+                <version>4.0.10</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>au.com.dius.pact</groupId>
+                <groupId>au.com.dius</groupId>
                 <artifactId>pact-jvm-consumer-junit5</artifactId>
-                <version>4.5.0</version>
+                <version>4.0.10</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
-                <groupId>au.com.dius.pact</groupId>
-                <artifactId>pact-jvm-provider-springboot</artifactId>
-                <version>4.5.0</version>
+                <groupId>au.com.dius</groupId>
+                <artifactId>pact-jvm-provider</artifactId>
+                <version>4.0.10</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>au.com.dius</groupId>
+                <artifactId>pact-jvm-consumer</artifactId>
+                <version>4.0.10</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
@@ -420,9 +426,9 @@
                     <version>3.0</version>
                 </plugin>
                 <plugin>
-                    <groupId>au.com.dius.pact</groupId>
-                    <artifactId>pact-maven-plugin</artifactId>
-                    <version>4.5.0</version>
+                    <groupId>au.com.dius</groupId>
+                    <artifactId>pact-jvm-provider-maven</artifactId>
+                    <version>4.0.10</version>
                 </plugin>
             </plugins>
         </pluginManagement>

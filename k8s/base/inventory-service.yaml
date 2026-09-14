@@ -5,15 +5,21 @@ metadata:
   namespace: ecommerce
   labels:
     app: inventory-service
+    managed-by: kustomize
+    project: spring-cloud-ecommerce
 spec:
   replicas: 2
   selector:
     matchLabels:
       app: inventory-service
+      managed-by: kustomize
+      project: spring-cloud-ecommerce
   template:
     metadata:
       labels:
         app: inventory-service
+        managed-by: kustomize
+        project: spring-cloud-ecommerce
       annotations:
         instrumentation.opentelemetry.io/inject-java: "true"
     spec:
