@@ -3,6 +3,7 @@ package com.example.order.listener;
 import com.example.common.event.BaseEvent;
 import com.example.common.event.OrderEvent;
 import com.example.common.event.PaymentEvent;
+import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
@@ -42,7 +43,7 @@ class PaymentEventListenerTest {
     private OrderItemRepository orderItemRepository;
 
     @Mock
-    private com.example.order.event.ReactiveIdempotentEventProcessor idempotentEventProcessor;
+    private ReactiveIdempotentEventProcessor idempotentEventProcessor;
 
     @Mock
     private OrderService orderService;

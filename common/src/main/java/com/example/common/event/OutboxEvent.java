@@ -1,42 +1,17 @@
 package com.example.common.event;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity
-@Table(name = "event_outbox")
 public class OutboxEvent {
 
-    @Id
     private UUID id;
-
-    @Column(name = "aggregate_type", nullable = false, length = 100)
     private String aggregateType;
-
-    @Column(name = "aggregate_id", nullable = false, length = 100)
     private String aggregateId;
-
-    @Column(name = "event_type", nullable = false, length = 100)
     private String eventType;
-
-    @Column(name = "payload", columnDefinition = "JSONB", nullable = false)
-    @JdbcTypeCode(SqlTypes.JSON)
     private String payload;
-
-    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-
-    @Column(name = "published_at")
     private LocalDateTime publishedAt;
-
-    @Column(name = "retry_count", nullable = false)
     private int retryCount;
 
     public OutboxEvent() {}

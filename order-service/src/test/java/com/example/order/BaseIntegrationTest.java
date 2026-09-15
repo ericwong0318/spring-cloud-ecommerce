@@ -1,7 +1,7 @@
 package com.example.order;
 
 import com.example.common.event.BaseEvent;
-import com.example.order.event.ReactiveIdempotentEventProcessor;
+import com.example.common.event.ReactiveIdempotentEventProcessor;
 import io.r2dbc.spi.ConnectionFactory;
 import org.junit.jupiter.api.TestInstance;
 import org.mockito.Mockito;
@@ -31,6 +31,7 @@ import java.util.function.Function;
         "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration," +
         "org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration," +
         "org.springframework.boot.autoconfigure.orm.jpa.JpaRepositoriesAutoConfiguration," +
+        "org.springframework.boot.autoconfigure.data.r2dbc.R2dbcRepositoriesAutoConfiguration," +
         "spring.main.allow-bean-definition-overriding=true"
     }
 )

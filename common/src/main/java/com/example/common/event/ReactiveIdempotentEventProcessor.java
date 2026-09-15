@@ -30,7 +30,7 @@ public class ReactiveIdempotentEventProcessor {
             return handler.apply(event);
         }
 
-        return processedEventRepository.existsByEventId(eventId)
+        return Mono.fromCallable(() -> processedEventRepository.existsByEventId(eventId))
                 .flatMap(exists -> {
                     if (exists) {
                         log.info("Duplicate event detected, skipping: eventId={}, eventType={}", eventId, event.getEventType());

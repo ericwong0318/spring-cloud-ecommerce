@@ -68,6 +68,7 @@ public class ReactiveOutboxEventPublisher {
                         outboxEventRepository.save(event);
                     }
                 })
+                .then()
                 .as(transactionalOperator::transactional);
     }
 
@@ -88,6 +89,7 @@ public class ReactiveOutboxEventPublisher {
                         throw new RuntimeException("Failed to serialize outbox event payload", e);
                     }
                 })
+                .then()
                 .as(transactionalOperator::transactional);
     }
 }

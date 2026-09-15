@@ -2,7 +2,7 @@ package com.example.order.listener;
 
 import com.example.common.event.BaseEvent;
 import com.example.common.event.PaymentEvent;
-import com.example.order.event.ReactiveIdempotentEventProcessor;
+import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.order.service.OrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
