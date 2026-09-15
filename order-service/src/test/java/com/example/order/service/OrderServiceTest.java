@@ -328,13 +328,13 @@ class OrderServiceTest {
     @Test
     void deleteOrder_shouldDeleteOrder_whenExists() {
         when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-        when(orderRepository.deleteById(1L)).thenReturn(Mono.empty());
+        when(orderRepository.delete(order)).thenReturn(Mono.empty());
 
         StepVerifier.create(orderService.deleteOrder(1L))
                 .verifyComplete();
 
         verify(orderRepository).findById(1L);
-        verify(orderRepository).deleteById(1L);
+        verify(orderRepository).delete(order);
     }
 
     @Test

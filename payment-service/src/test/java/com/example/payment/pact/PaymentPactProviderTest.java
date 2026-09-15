@@ -15,6 +15,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.math.BigDecimal;
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
@@ -52,7 +54,7 @@ class PaymentPactProviderTest {
     @State("valid authorize request")
     void validAuthorizeRequest(PactDslJsonBody body) {
         body.integerType("orderId", 1L)
-            .decimalType("amount", "99.99")
+            .decimalType("amount", new BigDecimal("99.99"))
             .stringType("currency", "USD")
             .stringType("customerId", "cust-123")
             .stringType("customerEmail", "customer@example.com")
@@ -66,14 +68,14 @@ class PaymentPactProviderTest {
 
     @State("valid refund request")
     void validRefundRequest(PactDslJsonBody body) {
-        body.decimalType("amount", "50.00")
+        body.decimalType("amount", new BigDecimal("50.00"))
             .stringType("reason", "Customer requested refund");
     }
 
     @State("authorize request - orderId null")
     void authorizeRequestOrderIdNull(PactDslJsonBody body) {
         body.stringType("orderId", null)
-            .decimalType("amount", "99.99")
+            .decimalType("amount", new BigDecimal("99.99"))
             .stringType("currency", "USD")
             .stringType("customerId", "cust-123")
             .stringType("customerEmail", "customer@example.com")
@@ -93,7 +95,7 @@ class PaymentPactProviderTest {
     @State("authorize request - currency blank")
     void authorizeRequestCurrencyBlank(PactDslJsonBody body) {
         body.integerType("orderId", 1L)
-            .decimalType("amount", "99.99")
+            .decimalType("amount", new BigDecimal("99.99"))
             .stringValue("currency", "")
             .stringType("customerId", "cust-123")
             .stringType("customerEmail", "customer@example.com")
@@ -103,7 +105,7 @@ class PaymentPactProviderTest {
     @State("authorize request - currency invalid length")
     void authorizeRequestCurrencyInvalidLength(PactDslJsonBody body) {
         body.integerType("orderId", 1L)
-            .decimalType("amount", "99.99")
+            .decimalType("amount", new BigDecimal("99.99"))
             .stringValue("currency", "US")
             .stringType("customerId", "cust-123")
             .stringType("customerEmail", "customer@example.com")
@@ -113,7 +115,7 @@ class PaymentPactProviderTest {
     @State("authorize request - customerId blank")
     void authorizeRequestCustomerIdBlank(PactDslJsonBody body) {
         body.integerType("orderId", 1L)
-            .decimalType("amount", "99.99")
+            .decimalType("amount", new BigDecimal("99.99"))
             .stringType("currency", "USD")
             .stringValue("customerId", "")
             .stringType("customerEmail", "customer@example.com")
@@ -123,7 +125,7 @@ class PaymentPactProviderTest {
     @State("authorize request - customerId too long")
     void authorizeRequestCustomerIdTooLong(PactDslJsonBody body) {
         body.integerType("orderId", 1L)
-            .decimalType("amount", "99.99")
+            .decimalType("amount", new BigDecimal("99.99"))
             .stringType("currency", "USD")
             .stringValue("customerId", "A".repeat(256))
             .stringType("customerEmail", "customer@example.com")
@@ -133,7 +135,7 @@ class PaymentPactProviderTest {
     @State("authorize request - customerEmail blank")
     void authorizeRequestCustomerEmailBlank(PactDslJsonBody body) {
         body.integerType("orderId", 1L)
-            .decimalType("amount", "99.99")
+            .decimalType("amount", new BigDecimal("99.99"))
             .stringType("currency", "USD")
             .stringType("customerId", "cust-123")
             .stringValue("customerEmail", "")
@@ -143,7 +145,7 @@ class PaymentPactProviderTest {
     @State("authorize request - customerEmail too long")
     void authorizeRequestCustomerEmailTooLong(PactDslJsonBody body) {
         body.integerType("orderId", 1L)
-            .decimalType("amount", "99.99")
+            .decimalType("amount", new BigDecimal("99.99"))
             .stringType("currency", "USD")
             .stringType("customerId", "cust-123")
             .stringValue("customerEmail", "A".repeat(256))
@@ -153,7 +155,7 @@ class PaymentPactProviderTest {
     @State("authorize request - idempotencyKey blank")
     void authorizeRequestIdempotencyKeyBlank(PactDslJsonBody body) {
         body.integerType("orderId", 1L)
-            .decimalType("amount", "99.99")
+            .decimalType("amount", new BigDecimal("99.99"))
             .stringType("currency", "USD")
             .stringType("customerId", "cust-123")
             .stringType("customerEmail", "customer@example.com")
@@ -163,7 +165,7 @@ class PaymentPactProviderTest {
     @State("authorize request - idempotencyKey too long")
     void authorizeRequestIdempotencyKeyTooLong(PactDslJsonBody body) {
         body.integerType("orderId", 1L)
-            .decimalType("amount", "99.99")
+            .decimalType("amount", new BigDecimal("99.99"))
             .stringType("currency", "USD")
             .stringType("customerId", "cust-123")
             .stringType("customerEmail", "customer@example.com")
@@ -188,7 +190,7 @@ class PaymentPactProviderTest {
 
     @State("refund request - reason too long")
     void refundRequestReasonTooLong(PactDslJsonBody body) {
-        body.decimalType("amount", "50.00")
+        body.decimalType("amount", new BigDecimal("50.00"))
             .stringValue("reason", "A".repeat(501));
     }
 }
