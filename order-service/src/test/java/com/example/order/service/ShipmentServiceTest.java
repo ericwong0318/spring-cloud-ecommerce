@@ -26,7 +26,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 
 import reactor.core.publisher.Flux;
@@ -77,6 +76,9 @@ class ShipmentServiceTest {
         // Mock TransactionalOperator to pass through the publisher (no actual transaction in tests)
         doAnswer(inv -> inv.getArgument(0)).when(transactionalOperator).transactional(any(Mono.class));
         doAnswer(inv -> inv.getArgument(0)).when(transactionalOperator).transactional(any(Flux.class));
+
+        // Mock outbox publisher
+        when(outboxPublisher.saveEvent(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
 
         // Setup order
         order = new Order();
@@ -138,7 +140,7 @@ class ShipmentServiceTest {
         );
     }
 
-    private ShipmentService createShipmentService() {
+private ShipmentService createShipmentService() {
         return new ShipmentService(
                 shipmentRepository,
                 shipmentItemRepository,
@@ -251,12 +253,22 @@ class ShipmentServiceTest {
     void createShipment_shouldThrowException_whenOrderItemDoesNotBelongToOrder() {
         ShipmentService service = createShipmentService();
 
+        // Create a separate order for orderId=2L
+        Order order2 = new Order();
+        order2.setId(2L);
+        order2.setCustomerId("CUST-002");
+        order2.setStatus("CONFIRMED");
+        order2.setTotalAmount(new BigDecimal("999.99"));
+        order2.setCreatedAt(LocalDateTime.now());
+        order2.setUpdatedAt(LocalDateTime.now());
+        order2.setItems(List.of());
+
         when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-        when(orderRepository.findById(2L)).thenReturn(Mono.just(order)); // for orderId 2L
+        when(orderRepository.findById(2L)).thenReturn(Mono.just(order2));
         when(orderItemRepository.findById(1L)).thenReturn(Mono.just(orderItem));
 
         ShipmentItemDto invalidItem = new ShipmentItemDto(null, 1L, null, 1);
-        
+
         ShipmentDto invalidDto = new ShipmentDto(
                 null,
                 null,
@@ -315,7 +327,6 @@ class ShipmentServiceTest {
     void getShipmentsByOrderId_shouldReturnShipments() {
         ShipmentService service = createShipmentService();
 
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
         when(shipmentRepository.findByOrderId(1L)).thenReturn(Flux.just(shipment));
         when(shipmentItemRepository.findByShipmentId(1L)).thenReturn(Flux.just(shipmentItem));
         when(shipmentMapper.toDtoList(any(List.class))).thenReturn(List.of(
@@ -337,7 +348,6 @@ class ShipmentServiceTest {
                 .expectNextMatches(list -> !list.isEmpty() && list.get(0).id().equals(1L))
                 .verifyComplete();
 
-        verify(orderRepository).findById(1L);
         verify(shipmentRepository).findByOrderId(1L);
         verify(shipmentItemRepository).findByShipmentId(1L);
     }
