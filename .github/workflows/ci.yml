@@ -161,7 +161,7 @@ jobs:
       - name: Annotate Pact failures
         if: failure() && github.event_name != 'schedule'
         run: |
-          for module in payment-service category; do
+          for module in payment-service category product inventory-service; do
             if [ -f "$module/target/pact/failures.txt" ]; then
               while IFS= read -r line; do
                 interaction=$(echo "$line" | grep -oP '(?<=interaction: ).*' | head -1)
