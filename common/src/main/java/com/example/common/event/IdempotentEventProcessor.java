@@ -3,7 +3,6 @@ package com.example.common.event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -19,7 +18,6 @@ public class IdempotentEventProcessor {
         this.processedEventRepository = processedEventRepository;
     }
 
-    @Transactional
     public <T extends BaseEvent> void process(T event, Consumer<T> handler) {
         UUID eventId = event.getEventId();
         if (eventId == null) {

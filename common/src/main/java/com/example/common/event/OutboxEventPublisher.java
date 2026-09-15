@@ -7,16 +7,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
-@EnableScheduling
 public class OutboxEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxEventPublisher.class);
@@ -40,9 +36,6 @@ public class OutboxEventPublisher {
         this.objectMapper = objectMapper;
     }
 
-    @Scheduled(fixedDelayString = "${outbox.publisher.poll-interval-ms:5000}")
-    @Transactional
-    @SchedulerLock(name = "outboxPublisher", lockAtLeastFor = "30s", lockAtMostFor = "5m")
     public void publishOutboxEvents() {
         List<OutboxEvent> events = outboxEventRepository.findUnpublishedEventsWithRetryLimit(maxRetries);
         if (events.isEmpty()) {
@@ -70,7 +63,6 @@ public class OutboxEventPublisher {
         rabbitTemplate.convertAndSend(exchange, routingKey, event.getPayload());
     }
 
-    @Transactional
     public void saveEvent(String aggregateType, String aggregateId, String eventType, Object payload) {
         try {
             String jsonPayload = objectMapper.writeValueAsString(payload);
