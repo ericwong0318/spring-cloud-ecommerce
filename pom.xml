@@ -415,7 +415,7 @@
                 </plugin>
                 <plugin>
                     <groupId>au.com.dius.pact.provider</groupId>
-                    <artifactId>pact-jvm-provider-maven</artifactId>
+                    <artifactId>maven</artifactId>
                     <version>4.7.5</version>
                 </plugin>
             </plugins>
