@@ -9,20 +9,17 @@ import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.model.Shipment;
 import com.example.order.model.ShipmentItem;
+import com.example.order.outbox.R2dbcOutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentItemRepository;
 import com.example.order.repository.ShipmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.r2dbc.connection.R2dbcTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
@@ -42,10 +39,8 @@ public class ShipmentService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ShipmentMapper shipmentMapper;
-    private final RabbitTemplate rabbitTemplate;
+    private final R2dbcOutboxEventPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
-    private final String orderExchange;
-    private final String ecommerceExchange;
     private final TransactionalOperator transactionalOperator;
 
     public ShipmentService(ShipmentRepository shipmentRepository,
@@ -53,44 +48,35 @@ public class ShipmentService {
                            OrderRepository orderRepository,
                            OrderItemRepository orderItemRepository,
                            ShipmentMapper shipmentMapper,
-                           RabbitTemplate rabbitTemplate,
+                           R2dbcOutboxEventPublisher outboxPublisher,
                            ObjectMapper objectMapper,
-                           R2dbcTransactionManager transactionManager,
-                           @Value("${rabbitmq.exchange.order}") String orderExchange,
-                           @Value("${rabbitmq.exchange.ecommerce}") String ecommerceExchange) {
+                           R2dbcTransactionManager transactionManager) {
         this.shipmentRepository = shipmentRepository;
         this.shipmentItemRepository = shipmentItemRepository;
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.shipmentMapper = shipmentMapper;
-        this.rabbitTemplate = rabbitTemplate;
+        this.outboxPublisher = outboxPublisher;
         this.objectMapper = objectMapper;
-        this.orderExchange = orderExchange;
-        this.ecommerceExchange = ecommerceExchange;
         this.transactionalOperator = TransactionalOperator.create(transactionManager);
     }
 
     // Test-only constructor
-    @Autowired
     ShipmentService(ShipmentRepository shipmentRepository,
                     ShipmentItemRepository shipmentItemRepository,
                     OrderRepository orderRepository,
                     OrderItemRepository orderItemRepository,
                     ShipmentMapper shipmentMapper,
-                    RabbitTemplate rabbitTemplate,
+                    R2dbcOutboxEventPublisher outboxPublisher,
                     ObjectMapper objectMapper,
-                    TransactionalOperator transactionalOperator,
-                    @Value("${rabbitmq.exchange.order}") String orderExchange,
-                    @Value("${rabbitmq.exchange.ecommerce}") String ecommerceExchange) {
+                    TransactionalOperator transactionalOperator) {
         this.shipmentRepository = shipmentRepository;
         this.shipmentItemRepository = shipmentItemRepository;
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.shipmentMapper = shipmentMapper;
-        this.rabbitTemplate = rabbitTemplate;
+        this.outboxPublisher = outboxPublisher;
         this.objectMapper = objectMapper;
-        this.orderExchange = orderExchange;
-        this.ecommerceExchange = ecommerceExchange;
         this.transactionalOperator = transactionalOperator;
     }
 
@@ -197,8 +183,7 @@ public class ShipmentService {
                                 return orderRepository.save(order)
                                         .flatMap(saved -> {
                                             OrderEvent updatedEvent = OrderEvent.statusChanged(saved.getId(), OrderEvent.OrderStatus.SHIPPED);
-                                            publishOrderEvent(updatedEvent);
-                                            return Mono.empty();
+                                            return saveOrderEventToOutbox("Order", saved.getId().toString(), "ORDER_UPDATED", updatedEvent);
                                         });
                             }
                             return Mono.empty();
@@ -234,43 +219,11 @@ public class ShipmentService {
                 shipment.getCarrier(),
                 LocalDateTime.now()
         );
-        publishOrderEvent(shippedEvent);
-        return Mono.empty();
+        return saveOrderEventToOutbox("Order", order.getId().toString(), "ORDER_SHIPPED", shippedEvent);
     }
 
-    void publishOrderEvent(OrderEvent event) {
-        try {
-            String jsonPayload = objectMapper.writeValueAsString(event);
-            String routingKey;
-            switch (event.getEventType()) {
-                case "CREATED":
-                    routingKey = "order.created";
-                    break;
-                case "UPDATED":
-                    routingKey = "order.updated";
-                    break;
-                case "CANCELLED":
-                    routingKey = "order.cancelled";
-                    break;
-                case "CONFIRMED":
-                    routingKey = "order.confirmed";
-                    break;
-                case "SHIPPED":
-                    routingKey = "order.shipped";
-                    break;
-                case "DELIVERED":
-                    routingKey = "order.delivered";
-                    break;
-                default:
-                    routingKey = "order.updated";
-            }
-            rabbitTemplate.convertAndSend(orderExchange, routingKey, jsonPayload);
-            rabbitTemplate.convertAndSend(ecommerceExchange, routingKey, jsonPayload);
-            log.info("Published OrderEvent {} to RabbitMQ for order: {}", event.getEventType(), event.getOrderId());
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize OrderEvent for order: {}", event.getOrderId(), e);
-            throw new RuntimeException("Failed to serialize OrderEvent", e);
-        }
+    private Mono<Void> saveOrderEventToOutbox(String aggregateType, String aggregateId, String eventType, Object payload) {
+        return outboxPublisher.saveEvent(aggregateType, aggregateId, eventType, payload);
     }
 
     private OrderEvent.OrderItemStatus mapToEventItemStatus(OrderItem.OrderItemStatus status) {

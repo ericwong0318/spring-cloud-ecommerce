@@ -57,6 +57,9 @@ class OrderServiceTest {
     @Mock(lenient = true)
     private R2dbcTransactionManager transactionManager;
 
+    @Mock(lenient = true)
+    private TransactionalOperator transactionalOperator;
+
     private ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private OrderService orderService;
@@ -66,21 +69,17 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Create a TransactionalOperator that passes through without actual transactions
-        TransactionalOperator transactionalOperator = TransactionalOperator.create(transactionManager);
-        
         orderService = new OrderService(orderRepository, orderItemRepository, orderMapper,
                 objectMapper,
-                transactionManager,
+                transactionalOperator,
                 outboxPublisher);
+
+        // Mock TransactionalOperator to pass through the publisher (no actual transaction in tests)
+        doAnswer(inv -> inv.getArgument(0)).when(transactionalOperator).transactional(any(Mono.class));
+        doAnswer(inv -> inv.getArgument(0)).when(transactionalOperator).transactional(any(Flux.class));
 
         // Mock outboxPublisher to return empty Mono
         when(outboxPublisher.saveEvent(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
-
-        // Mock TransactionalOperator to pass through the publisher (no actual transaction in tests)
-        // Use lenient to allow unused stubbings
-        lenient().when(transactionalOperator.transactional(any(Mono.class))).thenAnswer(inv -> inv.getArgument(0));
-        lenient().when(transactionalOperator.transactional(any(Flux.class))).thenAnswer(inv -> inv.getArgument(0));
 
         LocalDateTime now = LocalDateTime.now();
         orderDto = new OrderDto(

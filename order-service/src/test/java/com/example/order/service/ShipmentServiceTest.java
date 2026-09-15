@@ -8,6 +8,7 @@ import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.model.Shipment;
 import com.example.order.model.ShipmentItem;
+import com.example.order.outbox.R2dbcOutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentItemRepository;
@@ -17,7 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.r2dbc.connection.R2dbcTransactionManager;
 import org.springframework.transaction.reactive.TransactionalOperator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -57,7 +58,10 @@ class ShipmentServiceTest {
     private ShipmentMapper shipmentMapper;
 
     @Mock(lenient = true)
-    private RabbitTemplate rabbitTemplate;
+    private R2dbcOutboxEventPublisher outboxPublisher;
+
+    @Mock(lenient = true)
+    private R2dbcTransactionManager transactionManager;
 
     @Mock(lenient = true)
     private TransactionalOperator transactionalOperator;
@@ -71,8 +75,8 @@ class ShipmentServiceTest {
     @BeforeEach
     void setUp() {
         // Mock TransactionalOperator to pass through the publisher (no actual transaction in tests)
-        when(transactionalOperator.transactional(any(Mono.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(transactionalOperator.transactional(any(Flux.class))).thenAnswer(inv -> inv.getArgument(0));
+        doAnswer(inv -> inv.getArgument(0)).when(transactionalOperator).transactional(any(Mono.class));
+        doAnswer(inv -> inv.getArgument(0)).when(transactionalOperator).transactional(any(Flux.class));
 
         // Setup order
         order = new Order();
@@ -141,11 +145,9 @@ class ShipmentServiceTest {
                 orderRepository,
                 orderItemRepository,
                 shipmentMapper,
-                rabbitTemplate,
+                outboxPublisher,
                 new ObjectMapper().registerModule(new JavaTimeModule()),
-                transactionalOperator,
-                "order.exchange",
-                "ecommerce.events"
+                transactionalOperator
         );
     }
 

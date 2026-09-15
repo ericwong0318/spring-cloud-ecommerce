@@ -58,6 +58,21 @@ public class OrderService {
         this.outboxPublisher = outboxPublisher;
     }
 
+    // Test-only constructor
+    OrderService(OrderRepository orderRepository,
+                 OrderItemRepository orderItemRepository,
+                 OrderMapper orderMapper,
+                 ObjectMapper objectMapper,
+                 TransactionalOperator transactionalOperator,
+                 R2dbcOutboxEventPublisher outboxPublisher) {
+        this.orderRepository = orderRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.orderMapper = orderMapper;
+        this.objectMapper = objectMapper;
+        this.transactionalOperator = transactionalOperator;
+        this.outboxPublisher = outboxPublisher;
+    }
+
     private OrderEvent.OrderStatus mapToEventOrderStatus(OrderEvent.OrderStatus status) {
         return status;
     }
