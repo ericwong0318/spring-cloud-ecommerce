@@ -1,10 +1,10 @@
 package com.example.order.listener;
 
 import com.example.common.event.BaseEvent;
-import com.example.common.event.IdempotentEventProcessor;
 import com.example.common.event.InventoryEvent;
 import com.example.common.event.OrderEvent;
 import com.example.common.exception.ResourceNotFoundException;
+import com.example.order.event.ReactiveIdempotentEventProcessor;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.outbox.R2dbcOutboxEventPublisher;
@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import reactor.core.publisher.Mono;
 
@@ -28,12 +27,12 @@ public class InventoryEventListener {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final IdempotentEventProcessor idempotentEventProcessor;
+    private final ReactiveIdempotentEventProcessor idempotentEventProcessor;
     private final R2dbcOutboxEventPublisher outboxPublisher;
 
     public InventoryEventListener(OrderRepository orderRepository,
                                   OrderItemRepository orderItemRepository,
-                                  IdempotentEventProcessor idempotentEventProcessor,
+                                  ReactiveIdempotentEventProcessor idempotentEventProcessor,
                                   R2dbcOutboxEventPublisher outboxPublisher) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -42,18 +41,22 @@ public class InventoryEventListener {
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.inventory-events}")
-    @Transactional
     public void handleInventoryEvent(InventoryEvent event) {
-        idempotentEventProcessor.process(event, this::handleInventoryEventInternal);
+        idempotentEventProcessor.process(event, this::handleInventoryEventInternal)
+                .subscribe(
+                        unused -> log.debug("Successfully processed inventory event: eventId={}", event.getEventId()),
+                        error -> log.error("Failed to process inventory event: eventId={}, error={}",
+                                event.getEventId(), error.getMessage())
+                );
     }
 
-    private void handleInventoryEventInternal(InventoryEvent event) {
+    private Mono<Void> handleInventoryEventInternal(InventoryEvent event) {
         log.info("Received inventory event: eventType={}, eventId={}, variantId={}, reserved={}, backordered={}",
                 event.getEventType(), event.getEventId(), event.getVariantId(), event.getReserved(), event.getBackordered());
 
         if (event.getVariantId() == null) {
             log.warn("Inventory event missing variantId, skipping: eventId={}", event.getEventId());
-            return;
+            return Mono.empty();
         }
 
         switch (InventoryEvent.EventType.valueOf(event.getEventType())) {
@@ -62,6 +65,7 @@ public class InventoryEventListener {
             case CONFIRMED -> handleStockConfirmed(event);
             default -> log.debug("Unhandled inventory event type: {}", event.getEventType());
         }
+        return Mono.empty();
     }
 
     private void handleStockReserved(InventoryEvent event) {
@@ -79,93 +83,94 @@ public class InventoryEventListener {
 
     private void updateOrderItemStatusForReserved(Long variantId, int reserved, int backordered) {
         // Find the order item by variantId that is in PENDING status
-        OrderItem orderItem = orderItemRepository.findByVariantIdAndStatus(variantId, OrderItem.OrderItemStatus.PENDING)
-                .block();
+        orderItemRepository.findByVariantIdAndStatus(variantId, OrderItem.OrderItemStatus.PENDING)
+                .flatMap(orderItem -> {
+                    if (orderItem == null) {
+                        log.warn("No PENDING OrderItem found for variantId: {}", variantId);
+                        return Mono.empty();
+                    }
 
-        if (orderItem == null) {
-            log.warn("No PENDING OrderItem found for variantId: {}", variantId);
-            return;
-        }
+                    // Update the order item status
+                    if (backordered > 0) {
+                        orderItem.setStatus(OrderItem.OrderItemStatus.BACKORDERED);
+                        log.info("OrderItem {} set to BACKORDERED (reserved={}, backordered={})", orderItem.getId(), reserved, backordered);
+                    } else {
+                        orderItem.setStatus(OrderItem.OrderItemStatus.RESERVED);
+                        orderItem.setReservedAt(LocalDateTime.now());
+                        log.info("OrderItem {} set to RESERVED", orderItem.getId());
+                    }
+                    return orderItemRepository.save(orderItem)
+                            .flatMap(savedItem -> {
+                                // Check if all order items are RESERVED or BACKORDERED
+                                Long orderId = savedItem.getOrderId();
+                                return orderRepository.findById(orderId)
+                                        .flatMap(order -> {
+                                            // Fetch all items for this order
+                                            return orderItemRepository.findByOrderId(orderId).collectList()
+                                                    .flatMap(items -> {
+                                                        boolean allItemsReservedOrBackordered = items.stream()
+                                                                .allMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
+                                                                        item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED ||
+                                                                        item.getStatus() == OrderItem.OrderItemStatus.SHIPPED);
 
-        // Update the order item status
-        if (backordered > 0) {
-            orderItem.setStatus(OrderItem.OrderItemStatus.BACKORDERED);
-            log.info("OrderItem {} set to BACKORDERED (reserved={}, backordered={})", orderItem.getId(), reserved, backordered);
-        } else {
-            orderItem.setStatus(OrderItem.OrderItemStatus.RESERVED);
-            orderItem.setReservedAt(java.time.LocalDateTime.now());
-            log.info("OrderItem {} set to RESERVED", orderItem.getId());
-        }
-        orderItemRepository.save(orderItem).block();
+                                                        if (allItemsReservedOrBackordered) {
+                                                            order.setStatus("RESERVED");
+                                                            return orderRepository.save(order)
+                                                                    .doOnNext(saved -> {
+                                                                        log.info("Order {} transitioned to RESERVED", saved.getId());
 
-        // Check if all order items are RESERVED or BACKORDERED
-        Long orderId = orderItem.getOrderId();
-        orderRepository.findById(orderId)
-                .flatMap(order -> {
-                    // Fetch all items for this order
-                    return orderItemRepository.findByOrderId(orderId).collectList()
-                            .flatMap(items -> {
-                                boolean allItemsReservedOrBackordered = items.stream()
-                                        .allMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
-                                                item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED ||
-                                                item.getStatus() == OrderItem.OrderItemStatus.SHIPPED);
-
-                                if (allItemsReservedOrBackordered) {
-                                    order.setStatus("RESERVED");
-                                    return orderRepository.save(order)
-                                            .doOnNext(saved -> {
-                                                log.info("Order {} transitioned to RESERVED", saved.getId());
-
-                                                // Publish OrderEvent.UPDATED to outbox
-                                                OrderEvent updatedEvent = OrderEvent.statusChanged(saved.getId(), OrderEvent.OrderStatus.valueOf("RESERVED"));
-                                                outboxPublisher.saveEvent("Order", saved.getId().toString(),
-                                                        "ORDER_UPDATED", updatedEvent).block();
-                                            })
-                                            .then();
-                                }
-                                return Mono.empty();
-                            });
+                                                                        // Publish OrderEvent.UPDATED to outbox
+                                                                        OrderEvent updatedEvent = OrderEvent.statusChanged(saved.getId(), OrderEvent.OrderStatus.valueOf("RESERVED"));
+                                                                        outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                                                                "ORDER_UPDATED", updatedEvent).subscribe();
+                                                                    })
+                                                                    .then();
+                                                        }
+                                                        return Mono.empty();
+                                                    });
+                                        });
+                            })
+                            .then();
                 })
                 .subscribe();
     }
 
     private void handleStockReservationFailed(Long variantId, int backordered) {
         // Find the order item by variantId that is in PENDING status
-        OrderItem orderItem = orderItemRepository.findByVariantIdAndStatus(variantId, OrderItem.OrderItemStatus.PENDING)
-                .block();
+        orderItemRepository.findByVariantIdAndStatus(variantId, OrderItem.OrderItemStatus.PENDING)
+                .flatMap(orderItem -> {
+                    if (orderItem == null) {
+                        log.warn("No PENDING OrderItem found for variantId: {}", variantId);
+                        return Mono.empty();
+                    }
 
-        if (orderItem == null) {
-            log.warn("No PENDING OrderItem found for variantId: {}", variantId);
-            return;
-        }
+                    Long orderId = orderItem.getOrderId();
 
-        Long orderId = orderItem.getOrderId();
+                    // Cancel the order item
+                    orderItem.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                    return orderItemRepository.save(orderItem)
+                            .doOnNext(saved -> log.info("OrderItem {} cancelled due to stock reservation failure", saved.getId()))
+                            .flatMap(savedItem -> {
+                                // Check if all items are now CANCELLED or BACKORDERED - if so, cancel the order
+                                return orderRepository.findById(orderId)
+                                        .flatMap(order -> orderItemRepository.findByOrderId(orderId).collectList()
+                                                .flatMap(orderItems -> {
+                                                    boolean allItemsCancelledOrBackordered = orderItems.stream()
+                                                            .allMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.CANCELLED ||
+                                                                    item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED);
 
-        // Cancel the order item
-        orderItem.setStatus(OrderItem.OrderItemStatus.CANCELLED);
-        orderItemRepository.save(orderItem).block();
-        log.info("OrderItem {} cancelled due to stock reservation failure", orderItem.getId());
+                                                    if (allItemsCancelledOrBackordered) {
+                                                        order.setStatus("CANCELLED");
+                                                        return orderRepository.save(order)
+                                                                .doOnNext(saved -> {
+                                                                    log.info("Order {} cancelled due to stock reservation failure", saved.getId());
 
-        // Check if all items are now CANCELLED or BACKORDERED - if so, cancel the order
-        orderRepository.findById(orderId)
-                .flatMap(order -> orderItemRepository.findByOrderId(orderId).collectList()
-                        .flatMap(orderItems -> {
-                            boolean allItemsCancelledOrBackordered = orderItems.stream()
-                                    .allMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.CANCELLED ||
-                                            item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED);
-
-                            if (allItemsCancelledOrBackordered) {
-                                order.setStatus("CANCELLED");
-                                return orderRepository.save(order)
-                                        .doOnNext(saved -> {
-                                            log.info("Order {} cancelled due to stock reservation failure", saved.getId());
-
-                                            // Publish OrderEvent.CANCELLED to outbox
-                                            orderItemRepository.findByOrderId(orderId).collectList()
-                                                    .subscribe(cancelledItems -> {
-                                                        OrderEvent cancelledEvent = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
-                                                                null, cancelledItems.stream()
-                                                                        .map(item -> new OrderEvent.OrderItem(
+                                                                    // Publish OrderEvent.CANCELLED to outbox
+                                                                    orderItemRepository.findByOrderId(orderId).collectList()
+                                                                            .subscribe(cancelledItems -> {
+                                                                                OrderEvent cancelledEvent = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
+                                                                                        null, cancelledItems.stream()
+                                                                                .map(item -> new OrderEvent.OrderItem(
                                                                                 item.getId(),
                                                                                 item.getProductId(),
                                                                                 item.getVariantId(),
@@ -176,15 +181,18 @@ public class InventoryEventListener {
                                                                                 item.getUnitPrice(),
                                                                                 OrderEvent.OrderItemStatus.valueOf(item.getStatus().name()),
                                                                                 item.getReservedAt()))
-                                                                        .collect(Collectors.toList()));
-                                                        outboxPublisher.saveEvent("Order", saved.getId().toString(),
-                                                                "ORDER_CANCELLED", cancelledEvent).block();
-                                                    });
-                                        })
+                                                                                .collect(Collectors.toList()));
+                                                                                outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                                                                        "ORDER_CANCELLED", cancelledEvent).subscribe();
+                                                                            });
+                                                                })
+                                                                .then();
+                                                    }
+                                                    return Mono.empty();
+                                                }))
                                         .then();
-                            }
-                            return Mono.empty();
-                        }))
+                            });
+                })
                 .subscribe();
     }
 

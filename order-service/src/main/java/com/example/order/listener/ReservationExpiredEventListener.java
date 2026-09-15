@@ -1,10 +1,10 @@
 package com.example.order.listener;
 
 import com.example.common.event.BaseEvent;
-import com.example.common.event.IdempotentEventProcessor;
 import com.example.common.event.OrderEvent;
 import com.example.common.event.ReservationExpiredEvent;
 import com.example.common.exception.ResourceNotFoundException;
+import com.example.order.event.ReactiveIdempotentEventProcessor;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.outbox.R2dbcOutboxEventPublisher;
@@ -26,12 +26,12 @@ public class ReservationExpiredEventListener {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final IdempotentEventProcessor idempotentEventProcessor;
+    private final ReactiveIdempotentEventProcessor idempotentEventProcessor;
     private final R2dbcOutboxEventPublisher outboxPublisher;
 
     public ReservationExpiredEventListener(OrderRepository orderRepository,
                                            OrderItemRepository orderItemRepository,
-                                           IdempotentEventProcessor idempotentEventProcessor,
+                                           ReactiveIdempotentEventProcessor idempotentEventProcessor,
                                            R2dbcOutboxEventPublisher outboxPublisher) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -41,19 +41,24 @@ public class ReservationExpiredEventListener {
 
     @RabbitListener(queues = "${rabbitmq.queue.reservation-expired}")
     public void handleReservationExpiredEvent(ReservationExpiredEvent event) {
-        idempotentEventProcessor.process(event, this::handleReservationExpiredEventInternal);
+        idempotentEventProcessor.process(event, this::handleReservationExpiredEventInternal)
+                .subscribe(
+                        unused -> log.debug("Successfully processed reservation expired event: eventId={}", event.getEventId()),
+                        error -> log.error("Failed to process reservation expired event: eventId={}, error={}",
+                                event.getEventId(), error.getMessage())
+                );
     }
 
-    private void handleReservationExpiredEventInternal(ReservationExpiredEvent event) {
+    private Mono<Void> handleReservationExpiredEventInternal(ReservationExpiredEvent event) {
         log.info("Received ReservationExpiredEvent: eventId={}, orderItemId={}, variantId={}, quantityReleased={}",
                 event.getEventId(), event.getOrderItemId(), event.getVariantId(), event.getQuantityReleased());
 
         if (event.getOrderItemId() == null) {
             log.warn("ReservationExpiredEvent missing orderItemId, skipping: eventId={}", event.getEventId());
-            return;
+            return Mono.empty();
         }
 
-        orderItemRepository.findById(event.getOrderItemId())
+        return orderItemRepository.findById(event.getOrderItemId())
                 .switchIfEmpty(Mono.empty())
                 .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.RESERVED)
                 .flatMap(item -> {
@@ -63,7 +68,7 @@ public class ReservationExpiredEventListener {
                 .flatMap(savedItem -> checkAndCancelOrderIfAllItemsCancelledOrBackordered(savedItem.getOrderId())
                         .thenReturn(savedItem))
                 .doOnNext(item -> log.info("OrderItem {} cancelled due to reservation expiry", item.getId()))
-                .subscribe();
+                .then();
     }
 
     private Mono<Void> checkAndCancelOrderIfAllItemsCancelledOrBackordered(Long orderId) {
@@ -98,7 +103,7 @@ public class ReservationExpiredEventListener {
                                                                                 item.getReservedAt()))
                                                                         .collect(Collectors.toList()));
                                                         outboxPublisher.saveEvent("Order", saved.getId().toString(),
-                                                                "ORDER_CANCELLED", cancelledEvent).block();
+                                                                "ORDER_CANCELLED", cancelledEvent).subscribe();
                                                     });
                                         })
                                         .then();

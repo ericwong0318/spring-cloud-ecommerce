@@ -1,6 +1,5 @@
 package com.example.order;
 
-import com.zaxxer.hikari.HikariDataSource;
 import com.example.common.event.BaseEvent;
 import com.example.common.event.IdempotentEventProcessor;
 import io.r2dbc.spi.ConnectionFactory;
@@ -19,11 +18,10 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 
 import java.util.function.Consumer;
-import javax.sql.DataSource;
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = {OrderServiceApplication.class, BaseIntegrationTest.TestDataSourceConfig.class, BaseIntegrationTest.TestTransactionalOperatorConfig.class, BaseIntegrationTest.TestIdempotentEventProcessorConfig.class},
+    classes = {OrderServiceApplication.class, BaseIntegrationTest.TestTransactionalOperatorConfig.class, BaseIntegrationTest.TestIdempotentEventProcessorConfig.class},
     properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration," +
         "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration," +
@@ -59,7 +57,6 @@ public abstract class BaseIntegrationTest {
                 postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName()));
         registry.add("spring.r2dbc.username", postgres::getUsername);
         registry.add("spring.r2dbc.password", postgres::getPassword);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("spring.rabbitmq.host", rabbitmq::getHost);
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
         registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);
@@ -68,24 +65,6 @@ public abstract class BaseIntegrationTest {
         registry.add("spring.rabbitmq.publisher-returns", () -> "true");
         registry.add("eureka.client.enabled", () -> "false");
         registry.add("spring.flyway.enabled", () -> "false");
-    }
-
-    /**
-     * Provides a JDBC DataSource for JPA repositories (common module's ProcessedEventRepository).
-     * The order service uses R2DBC for its own repositories, but the common module uses JPA.
-     */
-    @Configuration
-    public static class TestDataSourceConfig {
-
-        @Bean
-        public DataSource dataSource() {
-            HikariDataSource ds = new HikariDataSource();
-            ds.setJdbcUrl(postgres.getJdbcUrl());
-            ds.setUsername(postgres.getUsername());
-            ds.setPassword(postgres.getPassword());
-            ds.setDriverClassName("org.postgresql.Driver");
-            return ds;
-        }
     }
 
     /**

@@ -1,10 +1,10 @@
 package com.example.order.listener;
 
 import com.example.common.event.BaseEvent;
-import com.example.common.event.IdempotentEventProcessor;
 import com.example.common.event.InventoryEvent;
 import com.example.common.event.OrderEvent;
 import com.example.common.exception.ResourceNotFoundException;
+import com.example.order.event.ReactiveIdempotentEventProcessor;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.outbox.R2dbcOutboxEventPublisher;
@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -43,7 +43,7 @@ class InventoryEventListenerTest {
     private OrderItemRepository orderItemRepository;
 
     @Mock
-    private IdempotentEventProcessor idempotentEventProcessor;
+    private ReactiveIdempotentEventProcessor idempotentEventProcessor;
 
     @Mock(lenient = true)
     private R2dbcOutboxEventPublisher outboxPublisher;
@@ -110,10 +110,9 @@ class InventoryEventListenerTest {
     private void mockIdempotentProcessor(InventoryEvent event) {
         doAnswer(invocation -> {
             @SuppressWarnings("unchecked")
-            Consumer<InventoryEvent> handler = invocation.getArgument(1);
-            handler.accept(event);
-            return null;
-        }).when(idempotentEventProcessor).process(any(BaseEvent.class), any(Consumer.class));
+            Function<InventoryEvent, Mono<Void>> handler = invocation.getArgument(1);
+            return handler.apply(event);
+        }).when(idempotentEventProcessor).process(any(BaseEvent.class), any(Function.class));
     }
 
     @Test
@@ -238,8 +237,8 @@ class InventoryEventListenerTest {
 
         doAnswer(invocation -> {
             // Don't call handler - simulates duplicate detection
-            return null;
-        }).when(idempotentEventProcessor).process(any(BaseEvent.class), any(Consumer.class));
+            return Mono.empty();
+        }).when(idempotentEventProcessor).process(any(BaseEvent.class), any(Function.class));
 
         listener.handleInventoryEvent(event);
 
