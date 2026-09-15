@@ -1,9 +1,8 @@
 package com.example.order;
 
 import com.example.common.event.BaseEvent;
-import com.example.common.event.IdempotentEventProcessor;
+import com.example.order.event.ReactiveIdempotentEventProcessor;
 import io.r2dbc.spi.ConnectionFactory;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,17 +15,22 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
+import reactor.core.publisher.Mono;
 
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = {OrderServiceApplication.class, BaseIntegrationTest.TestTransactionalOperatorConfig.class, BaseIntegrationTest.TestIdempotentEventProcessorConfig.class},
+    classes = {MinimalTestConfig.class, BaseIntegrationTest.TestTransactionalOperatorConfig.class, BaseIntegrationTest.TestIdempotentEventProcessorConfig.class},
     properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration," +
         "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration," +
         "org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration," +
         "org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration," +
+        "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration," +
+        "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration," +
+        "org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration," +
+        "org.springframework.boot.autoconfigure.orm.jpa.JpaRepositoriesAutoConfiguration," +
         "spring.main.allow-bean-definition-overriding=true"
     }
 )
@@ -42,17 +46,13 @@ public abstract class BaseIntegrationTest {
     static final RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
             .withExposedPorts(5672, 15672);
 
-    @BeforeAll
-    static void startContainers() {
+    static {
         postgres.start();
         rabbitmq.start();
     }
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.r2dbc.url", () -> String.format("r2dbc:postgresql://%s:%d/%s",
                 postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName()));
         registry.add("spring.r2dbc.username", postgres::getUsername);
@@ -86,7 +86,7 @@ public abstract class BaseIntegrationTest {
     }
 
     /**
-     * Mock IdempotentEventProcessor for integration tests to avoid JPA repository dependency.
+     * Mock ReactiveIdempotentEventProcessor for integration tests to avoid JPA repository dependency.
      * Delegates to the actual handler to test the business logic.
      */
     @Configuration
@@ -94,13 +94,12 @@ public abstract class BaseIntegrationTest {
 
         @Bean
         @Primary
-        public IdempotentEventProcessor idempotentEventProcessor() {
-            IdempotentEventProcessor mock = Mockito.mock(IdempotentEventProcessor.class);
+        public ReactiveIdempotentEventProcessor reactiveIdempotentEventProcessor() {
+            ReactiveIdempotentEventProcessor mock = Mockito.mock(ReactiveIdempotentEventProcessor.class);
             Mockito.doAnswer(invocation -> {
-                Consumer<BaseEvent> handler = invocation.getArgument(1);
-                handler.accept(invocation.getArgument(0));
-                return null;
-            }).when(mock).process(Mockito.any(BaseEvent.class), Mockito.any(Consumer.class));
+                Function<BaseEvent, Mono<Void>> handler = invocation.getArgument(1);
+                return handler.apply(invocation.getArgument(0));
+            }).when(mock).process(Mockito.any(BaseEvent.class), Mockito.any(Function.class));
             return mock;
         }
     }
