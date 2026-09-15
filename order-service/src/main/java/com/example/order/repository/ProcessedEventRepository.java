@@ -19,4 +19,7 @@ public interface ProcessedEventRepository extends R2dbcRepository<ProcessedEvent
 
     @Query("SELECT EXISTS(SELECT 1 FROM processed_events WHERE event_id = :eventId)")
     Mono<Boolean> existsByEventId(UUID eventId);
+
+    @Query("SELECT COUNT(*) FROM processed_events")
+    Mono<Long> count();
 }
