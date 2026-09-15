@@ -7,9 +7,9 @@ import com.example.common.event.ReservationExpiredEvent;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
+import com.example.order.outbox.R2dbcOutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
-import com.example.order.service.OrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -27,16 +27,16 @@ public class ReservationExpiredEventListener {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final IdempotentEventProcessor idempotentEventProcessor;
-    private final OrderService orderService;
+    private final R2dbcOutboxEventPublisher outboxPublisher;
 
     public ReservationExpiredEventListener(OrderRepository orderRepository,
                                            OrderItemRepository orderItemRepository,
                                            IdempotentEventProcessor idempotentEventProcessor,
-                                           OrderService orderService) {
+                                           R2dbcOutboxEventPublisher outboxPublisher) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.idempotentEventProcessor = idempotentEventProcessor;
-        this.orderService = orderService;
+        this.outboxPublisher = outboxPublisher;
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.reservation-expired}")
@@ -80,7 +80,7 @@ public class ReservationExpiredEventListener {
                                         .doOnNext(saved -> {
                                             log.info("Order {} cancelled due to all items being CANCELLED or BACKORDERED", saved.getId());
 
-                                            // Publish OrderEvent.CANCELLED
+                                            // Publish OrderEvent.CANCELLED to outbox
                                             orderItemRepository.findByOrderId(orderId).collectList()
                                                     .subscribe(cancelledItems -> {
                                                         OrderEvent cancelledEvent = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
@@ -97,7 +97,8 @@ public class ReservationExpiredEventListener {
                                                                                 OrderEvent.OrderItemStatus.valueOf(item.getStatus().name()),
                                                                                 item.getReservedAt()))
                                                                         .collect(Collectors.toList()));
-                                                        orderService.publishOrderEvent(cancelledEvent);
+                                                        outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                                                "ORDER_CANCELLED", cancelledEvent).block();
                                                     });
                                         })
                                         .then();

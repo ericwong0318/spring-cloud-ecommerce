@@ -7,9 +7,9 @@ import com.example.common.event.OrderEvent;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
+import com.example.order.outbox.R2dbcOutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
-import com.example.order.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,7 +46,7 @@ class InventoryEventListenerTest {
     private IdempotentEventProcessor idempotentEventProcessor;
 
     @Mock(lenient = true)
-    private OrderService orderService;
+    private R2dbcOutboxEventPublisher outboxPublisher;
 
     private InventoryEventListener listener;
 
@@ -56,7 +56,7 @@ class InventoryEventListenerTest {
 
     @BeforeEach
     void setUp() {
-        listener = new InventoryEventListener(orderRepository, orderItemRepository, idempotentEventProcessor, orderService);
+        listener = new InventoryEventListener(orderRepository, orderItemRepository, idempotentEventProcessor, outboxPublisher);
 
         order = new Order();
         ReflectionTestUtils.setField(order, "id", 1L);
@@ -129,6 +129,7 @@ class InventoryEventListenerTest {
         when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
         when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
         when(orderItemRepository.findByOrderId(1L)).thenReturn(Flux.just(item1, item2));
+        when(outboxPublisher.saveEvent(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
@@ -140,10 +141,10 @@ class InventoryEventListenerTest {
         verify(orderItemRepository).findByVariantIdAndStatus(1L, OrderItem.OrderItemStatus.PENDING);
         verify(orderItemRepository).save(argThat(i -> i.getStatus() == OrderItem.OrderItemStatus.RESERVED));
         verify(orderRepository).save(argThat(o -> "RESERVED".equals(o.getStatus())));
-        verify(orderService).publishOrderEvent(any(OrderEvent.class));
+        verify(outboxPublisher).saveEvent(eq("Order"), eq("1"), eq("ORDER_UPDATED"), any(OrderEvent.class));
     }
 
-@Test
+    @Test
     void handleStockReserved_shouldSetItemToBackordered_whenPartiallyReserved() {
         InventoryEvent event = createInventoryEvent("RESERVED", 1L, 1, 1);
 
@@ -176,6 +177,7 @@ class InventoryEventListenerTest {
         when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
         when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
         when(orderItemRepository.findByOrderId(1L)).thenReturn(Flux.just(item1, item2));
+        when(outboxPublisher.saveEvent(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
@@ -192,7 +194,7 @@ class InventoryEventListenerTest {
         verify(orderRepository).save(orderCaptor.capture());
         assertThat(orderCaptor.getValue().getStatus()).isEqualTo("CANCELLED");
 
-        verify(orderService).publishOrderEvent(any(OrderEvent.class));
+        verify(outboxPublisher).saveEvent(eq("Order"), eq("1"), eq("ORDER_CANCELLED"), any(OrderEvent.class));
     }
 
     @Test

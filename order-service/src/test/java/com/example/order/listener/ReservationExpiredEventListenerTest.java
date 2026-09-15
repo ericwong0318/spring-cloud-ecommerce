@@ -7,9 +7,9 @@ import com.example.common.event.ReservationExpiredEvent;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
+import com.example.order.outbox.R2dbcOutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
-import com.example.order.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,7 +46,7 @@ class ReservationExpiredEventListenerTest {
     private IdempotentEventProcessor idempotentEventProcessor;
 
     @Mock(lenient = true)
-    private OrderService orderService;
+    private R2dbcOutboxEventPublisher outboxPublisher;
 
     private ReservationExpiredEventListener listener;
 
@@ -56,7 +56,7 @@ class ReservationExpiredEventListenerTest {
 
     @BeforeEach
     void setUp() {
-        listener = new ReservationExpiredEventListener(orderRepository, orderItemRepository, idempotentEventProcessor, orderService);
+        listener = new ReservationExpiredEventListener(orderRepository, orderItemRepository, idempotentEventProcessor, outboxPublisher);
 
         order = new Order();
         ReflectionTestUtils.setField(order, "id", 1L);
@@ -128,6 +128,7 @@ class ReservationExpiredEventListenerTest {
         when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
         when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(order));
         when(orderItemRepository.findByOrderId(1L)).thenReturn(Flux.just(item1, item2));
+        when(outboxPublisher.saveEvent(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
@@ -139,7 +140,7 @@ class ReservationExpiredEventListenerTest {
         verify(orderItemRepository).findById(1L);
         verify(orderItemRepository).save(argThat(i -> i.getStatus() == OrderItem.OrderItemStatus.CANCELLED));
         verify(orderRepository).save(argThat(o -> "CANCELLED".equals(o.getStatus())));
-        verify(orderService).publishOrderEvent(any(OrderEvent.class));
+        verify(outboxPublisher).saveEvent(eq("Order"), eq("1"), eq("ORDER_CANCELLED"), any(OrderEvent.class));
     }
 
     @Test

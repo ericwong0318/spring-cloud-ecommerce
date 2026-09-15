@@ -7,9 +7,9 @@ import com.example.common.event.OrderEvent;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
+import com.example.order.outbox.R2dbcOutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
-import com.example.order.service.OrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -29,16 +29,16 @@ public class InventoryEventListener {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final IdempotentEventProcessor idempotentEventProcessor;
-    private final OrderService orderService;
+    private final R2dbcOutboxEventPublisher outboxPublisher;
 
     public InventoryEventListener(OrderRepository orderRepository,
                                   OrderItemRepository orderItemRepository,
                                   IdempotentEventProcessor idempotentEventProcessor,
-                                  OrderService orderService) {
+                                  R2dbcOutboxEventPublisher outboxPublisher) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.idempotentEventProcessor = idempotentEventProcessor;
-        this.orderService = orderService;
+        this.outboxPublisher = outboxPublisher;
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.inventory-events}")
@@ -80,7 +80,7 @@ public class InventoryEventListener {
     private void updateOrderItemStatusForReserved(Long variantId, int reserved, int backordered) {
         // Find the order item by variantId that is in PENDING status
         OrderItem orderItem = orderItemRepository.findByVariantIdAndStatus(variantId, OrderItem.OrderItemStatus.PENDING)
-                .block(); // Block to get the result
+                .block();
 
         if (orderItem == null) {
             log.warn("No PENDING OrderItem found for variantId: {}", variantId);
@@ -116,9 +116,10 @@ public class InventoryEventListener {
                                             .doOnNext(saved -> {
                                                 log.info("Order {} transitioned to RESERVED", saved.getId());
 
-                                                // Publish OrderEvent.UPDATED
+                                                // Publish OrderEvent.UPDATED to outbox
                                                 OrderEvent updatedEvent = OrderEvent.statusChanged(saved.getId(), OrderEvent.OrderStatus.valueOf("RESERVED"));
-                                                orderService.publishOrderEvent(updatedEvent);
+                                                outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                                        "ORDER_UPDATED", updatedEvent).block();
                                             })
                                             .then();
                                 }
@@ -159,7 +160,7 @@ public class InventoryEventListener {
                                         .doOnNext(saved -> {
                                             log.info("Order {} cancelled due to stock reservation failure", saved.getId());
 
-                                            // Publish OrderEvent.CANCELLED
+                                            // Publish OrderEvent.CANCELLED to outbox
                                             orderItemRepository.findByOrderId(orderId).collectList()
                                                     .subscribe(cancelledItems -> {
                                                         OrderEvent cancelledEvent = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
@@ -176,7 +177,8 @@ public class InventoryEventListener {
                                                                                 OrderEvent.OrderItemStatus.valueOf(item.getStatus().name()),
                                                                                 item.getReservedAt()))
                                                                         .collect(Collectors.toList()));
-                                                        orderService.publishOrderEvent(cancelledEvent);
+                                                        outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                                                "ORDER_CANCELLED", cancelledEvent).block();
                                                     });
                                         })
                                         .then();
