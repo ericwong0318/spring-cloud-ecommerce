@@ -3,7 +3,7 @@ package com.example.inventory.pact;
 import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
-import au.com.dius.pact.provider.junit.State;
+import au.com.dius.pact.provider.junitsupport.State;
 import au.com.dius.pact.provider.ProviderInfo;
 import au.com.dius.pact.provider.ConsumerInfo;
 import au.com.dius.pact.consumer.dsl.PactDslJsonBody;

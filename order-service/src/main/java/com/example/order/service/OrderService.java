@@ -7,6 +7,7 @@ import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
+import com.example.order.outbox.R2dbcOutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -15,15 +16,11 @@ import io.github.resilience4j.retry.annotation.Retry;
 import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.r2dbc.connection.R2dbcTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
-import org.springframework.transaction.reactive.TransactionCallback;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -44,9 +41,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
     private final TransactionalOperator transactionalOperator;
-    private final RabbitTemplate rabbitTemplate;
-    private final String orderExchange;
-    private final String ecommerceExchange;
+    private final R2dbcOutboxEventPublisher outboxPublisher;
 
     @Autowired
     public OrderService(OrderRepository orderRepository,
@@ -54,36 +49,13 @@ public class OrderService {
                         OrderMapper orderMapper,
                         ObjectMapper objectMapper,
                         R2dbcTransactionManager transactionManager,
-                        RabbitTemplate rabbitTemplate,
-                        @Value("${rabbitmq.exchange.order}") String orderExchange,
-                        @Value("${rabbitmq.exchange.ecommerce}") String ecommerceExchange) {
+                        R2dbcOutboxEventPublisher outboxPublisher) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.orderMapper = orderMapper;
         this.objectMapper = objectMapper;
         this.transactionalOperator = TransactionalOperator.create(transactionManager);
-        this.rabbitTemplate = rabbitTemplate;
-        this.orderExchange = orderExchange;
-        this.ecommerceExchange = ecommerceExchange;
-    }
-
-    // Test-only constructor
-    OrderService(OrderRepository orderRepository,
-                 OrderItemRepository orderItemRepository,
-                 OrderMapper orderMapper,
-                 ObjectMapper objectMapper,
-                 TransactionalOperator transactionalOperator,
-                 RabbitTemplate rabbitTemplate,
-                 String orderExchange,
-                 String ecommerceExchange) {
-        this.orderRepository = orderRepository;
-        this.orderItemRepository = orderItemRepository;
-        this.orderMapper = orderMapper;
-        this.objectMapper = objectMapper;
-        this.transactionalOperator = transactionalOperator;
-        this.rabbitTemplate = rabbitTemplate;
-        this.orderExchange = orderExchange;
-        this.ecommerceExchange = ecommerceExchange;
+        this.outboxPublisher = outboxPublisher;
     }
 
     private OrderEvent.OrderStatus mapToEventOrderStatus(OrderEvent.OrderStatus status) {
@@ -137,15 +109,9 @@ public class OrderService {
                     List<OrderEvent.OrderItem> eventItems = toEventItems(saved.getItems());
                     OrderEvent event = OrderEvent.created(saved.getId(), saved.getCustomerId(),
                             orderDto.customerEmail(), saved.getTotalAmount(), eventItems);
-                    try {
-                        String jsonPayload = objectMapper.writeValueAsString(event);
-                        rabbitTemplate.convertAndSend(orderExchange, "order.created", jsonPayload);
-                        log.info("Published OrderEvent.CREATED to RabbitMQ for order: {}", saved.getId());
-                    } catch (JsonProcessingException e) {
-                        log.error("Failed to serialize OrderEvent for order: {}", saved.getId(), e);
-                        throw new RuntimeException("Failed to serialize OrderEvent", e);
-                    }
-                    return Mono.just(saved);
+                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                            "ORDER_CREATED", event)
+                            .then(Mono.just(saved));
                 })
                 .map(orderMapper::toDto);
     }
@@ -162,9 +128,9 @@ public class OrderService {
                 })
                 .flatMap(saved -> {
                     OrderEvent event = OrderEvent.statusChanged(saved.getId(), mapToEventOrderStatus(OrderEvent.OrderStatus.valueOf(saved.getStatus())));
-                    rabbitTemplate.convertAndSend(orderExchange, "order.updated", event);
-                    log.info("Published OrderEvent.UPDATED to RabbitMQ for order: {}", saved.getId());
-                    return Mono.just(saved);
+                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                            "ORDER_UPDATED", event)
+                            .then(Mono.just(saved));
                 })
                 .map(orderMapper::toDto));
     }
@@ -197,15 +163,9 @@ public class OrderService {
                                 List<OrderEvent.OrderItem> eventItems = toEventItems(saved.getItems());
                                 OrderEvent event = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
                                         saved.getCustomerEmail(), eventItems);
-                                try {
-                                    String jsonPayload = objectMapper.writeValueAsString(event);
-                                    rabbitTemplate.convertAndSend(orderExchange, "order.cancelled", jsonPayload);
-                                    log.info("Published OrderEvent.CANCELLED to RabbitMQ for order: {}", saved.getId());
-                                } catch (JsonProcessingException e) {
-                                    log.error("Failed to serialize OrderEvent for order: {}", saved.getId(), e);
-                                    throw new RuntimeException("Failed to serialize OrderEvent", e);
-                                }
-                                return Mono.just(saved);
+                                return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                        "ORDER_CANCELLED", event)
+                                        .then(Mono.just(saved));
                             })
                             .map(orderMapper::toDto);
                 }));
@@ -259,9 +219,9 @@ public class OrderService {
                 })
                 .flatMap(saved -> {
                     OrderEvent event = OrderEvent.statusChanged(saved.getId(), mapToEventOrderStatus(OrderEvent.OrderStatus.valueOf(saved.getStatus())));
-                    rabbitTemplate.convertAndSend(orderExchange, "order.updated", event);
-                    log.info("Published OrderEvent.UPDATED to RabbitMQ for order: {}", saved.getId());
-                    return Mono.just(saved);
+                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                            "ORDER_UPDATED", event)
+                            .then(Mono.just(saved));
                 })
                 .map(orderMapper::toDto));
     }
@@ -285,23 +245,16 @@ public class OrderService {
                                 return orderItemRepository.save(item);
                             });
 
-                    Mono<Order> savedOrder = itemsToUpdate
+                    return itemsToUpdate
                             .then(orderRepository.save(order))
                             .flatMap(saved -> {
                                 List<OrderEvent.OrderItem> eventItems = toEventItems(saved.getItems());
                                 OrderEvent event = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
                                         saved.getCustomerEmail(), eventItems);
-                                try {
-                                    String jsonPayload = objectMapper.writeValueAsString(event);
-                                    rabbitTemplate.convertAndSend(orderExchange, "order.cancelled", jsonPayload);
-                                    log.info("Published OrderEvent.CANCELLED to RabbitMQ for order: {}", saved.getId());
-                                } catch (JsonProcessingException e) {
-                                    log.error("Failed to serialize OrderEvent for order: {}", saved.getId(), e);
-                                    throw new RuntimeException("Failed to serialize OrderEvent", e);
-                                }
-                                return Mono.just(saved);
+                                return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                        "ORDER_CANCELLED", event)
+                                        .then(Mono.empty());
                             });
-                    return savedOrder.then();
                 }));
     }
 
@@ -332,8 +285,8 @@ public class OrderService {
                     log.info("Order {} partially refunded, reserved items cancelled", orderId);
 
                     OrderEvent updatedEvent = OrderEvent.statusChanged(orderId, OrderEvent.OrderStatus.valueOf(order.getStatus()));
-                    publishOrderEvent(updatedEvent);
-                    return Mono.empty();
+                    return outboxPublisher.saveEvent("Order", orderId.toString(),
+                            "ORDER_UPDATED", updatedEvent);
                 })
                 .switchIfEmpty(Mono.empty())
                 .<Void>map(v -> null)
@@ -355,8 +308,8 @@ public class OrderService {
                 })
                 .flatMap(saved -> {
                     OrderEvent event = OrderEvent.statusChanged(saved.getId(), OrderEvent.OrderStatus.RESERVED);
-                    publishOrderEvent(event);
-                    return Mono.empty();
+                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                            "PAYMENT_AUTHORIZED", event);
                 }));
     }
 
@@ -371,8 +324,8 @@ public class OrderService {
                 .flatMap(saved -> {
                     OrderEvent event = OrderEvent.confirmed(saved.getId(), saved.getCustomerId(),
                             saved.getCustomerEmail(), amount, toEventItems(saved.getItems()));
-                    publishOrderEvent(event);
-                    return Mono.empty();
+                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                            "ORDER_CONFIRMED", event);
                 }));
     }
 
@@ -387,8 +340,8 @@ public class OrderService {
                 .flatMap(saved -> {
                     OrderEvent event = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
                             saved.getCustomerEmail(), toEventItems(saved.getItems()));
-                    publishOrderEvent(event);
-                    return Mono.empty();
+                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                            "ORDER_CANCELLED", event);
                 }));
     }
 
@@ -403,8 +356,8 @@ public class OrderService {
                 .flatMap(saved -> {
                     OrderEvent event = OrderEvent.refunded(saved.getId(), saved.getCustomerId(),
                             saved.getCustomerEmail(), saved.getTotalAmount(), toEventItems(saved.getItems()));
-                    publishOrderEvent(event);
-                    return Mono.empty();
+                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                            "PAYMENT_REFUNDED", event);
                 }));
     }
 
@@ -419,37 +372,22 @@ public class OrderService {
                 .flatMap(saved -> {
                     OrderEvent event = OrderEvent.partiallyRefunded(saved.getId(), saved.getCustomerId(),
                             saved.getCustomerEmail(), saved.getTotalAmount(), toEventItems(saved.getItems()));
-                    publishOrderEvent(event);
-                    return Mono.empty();
+                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                            "PAYMENT_PARTIALLY_REFUNDED", event);
                 }));
     }
 
-    public void publishOrderEvent(OrderEvent event) {
-        String routingKey;
-        switch (event.getEventType()) {
-            case "CREATED":
-                routingKey = "order.created";
-                break;
-            case "UPDATED":
-                routingKey = "order.updated";
-                break;
-            case "CANCELLED":
-                routingKey = "order.cancelled";
-                break;
-            case "CONFIRMED":
-                routingKey = "order.confirmed";
-                break;
-            case "SHIPPED":
-                routingKey = "order.shipped";
-                break;
-            case "DELIVERED":
-                routingKey = "order.delivered";
-                break;
-            default:
-                routingKey = "order.updated";
-        }
-        rabbitTemplate.convertAndSend(orderExchange, routingKey, event);
-        rabbitTemplate.convertAndSend(ecommerceExchange, routingKey, event);
-        log.info("Published OrderEvent {} to RabbitMQ for order: {}", event.getEventType(), event.getOrderId());
+    public Mono<Void> publishOrderEvent(OrderEvent event) {
+        String eventType = event.getEventType();
+        String outboxEventType = switch (eventType) {
+            case "CREATED" -> "ORDER_CREATED";
+            case "UPDATED" -> "ORDER_UPDATED";
+            case "CANCELLED" -> "ORDER_CANCELLED";
+            case "CONFIRMED" -> "ORDER_CONFIRMED";
+            case "SHIPPED" -> "ORDER_SHIPPED";
+            case "DELIVERED" -> "ORDER_DELIVERED";
+            default -> "ORDER_UPDATED";
+        };
+        return outboxPublisher.saveEvent("Order", event.getOrderId().toString(), outboxEventType, event);
     }
 }

@@ -7,6 +7,7 @@ import com.example.common.event.OrderEvent;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
+import com.example.order.outbox.R2dbcOutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,13 +17,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.r2dbc.connection.R2dbcTransactionManager;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.reactive.TransactionalOperator;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -44,12 +42,6 @@ import static org.mockito.Mockito.*;
 @TestPropertySource("classpath:application-test.yml")
 class OrderServiceTest {
 
-    @Value("${rabbitmq.exchange.order}")
-    private String orderExchange;
-
-    @Value("${rabbitmq.exchange.ecommerce}")
-    private String ecommerceExchange;
-
     @Mock(lenient = true)
     private OrderRepository orderRepository;
 
@@ -60,7 +52,7 @@ class OrderServiceTest {
     private OrderMapper orderMapper;
 
     @Mock(lenient = true)
-    private RabbitTemplate rabbitTemplate;
+    private R2dbcOutboxEventPublisher outboxPublisher;
 
     @Mock(lenient = true)
     private R2dbcTransactionManager transactionManager;
@@ -74,15 +66,21 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Create a TransactionalOperator that passes through without actual transactions
         TransactionalOperator transactionalOperator = TransactionalOperator.create(transactionManager);
+        
         orderService = new OrderService(orderRepository, orderItemRepository, orderMapper,
                 objectMapper,
-                transactionalOperator,
-                rabbitTemplate, orderExchange, ecommerceExchange);
+                transactionManager,
+                outboxPublisher);
+
+        // Mock outboxPublisher to return empty Mono
+        when(outboxPublisher.saveEvent(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
 
         // Mock TransactionalOperator to pass through the publisher (no actual transaction in tests)
-        when(transactionalOperator.transactional(any(Mono.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(transactionalOperator.transactional(any(Flux.class))).thenAnswer(inv -> inv.getArgument(0));
+        // Use lenient to allow unused stubbings
+        lenient().when(transactionalOperator.transactional(any(Mono.class))).thenAnswer(inv -> inv.getArgument(0));
+        lenient().when(transactionalOperator.transactional(any(Flux.class))).thenAnswer(inv -> inv.getArgument(0));
 
         LocalDateTime now = LocalDateTime.now();
         orderDto = new OrderDto(
@@ -330,26 +328,26 @@ class OrderServiceTest {
 
     @Test
     void deleteOrder_shouldDeleteOrder_whenExists() {
-        when(orderRepository.existsById(1L)).thenReturn(Mono.just(true));
+        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
         when(orderRepository.deleteById(1L)).thenReturn(Mono.empty());
 
         StepVerifier.create(orderService.deleteOrder(1L))
                 .verifyComplete();
 
-        verify(orderRepository).existsById(1L);
+        verify(orderRepository).findById(1L);
         verify(orderRepository).deleteById(1L);
     }
 
     @Test
     void deleteOrder_shouldThrowException_whenNotFound() {
-        when(orderRepository.existsById(999L)).thenReturn(Mono.just(false));
+        when(orderRepository.findById(999L)).thenReturn(Mono.empty());
 
         StepVerifier.create(orderService.deleteOrder(999L))
                 .expectErrorMatches(e -> e instanceof ResourceNotFoundException &&
                         e.getMessage().contains("Order not found with id: 999"))
                 .verify();
 
-        verify(orderRepository).existsById(999L);
+        verify(orderRepository).findById(999L);
         verify(orderRepository, never()).deleteById(anyLong());
     }
 }

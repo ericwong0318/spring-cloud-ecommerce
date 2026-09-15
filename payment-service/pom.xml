@@ -189,23 +189,23 @@
 
         <!-- Pact Provider Verification -->
         <dependency>
-            <groupId>au.com.dius</groupId>
-            <artifactId>pact-jvm-provider-junit5</artifactId>
+            <groupId>au.com.dius.pact.provider</groupId>
+            <artifactId>junit5</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>au.com.dius</groupId>
-            <artifactId>pact-jvm-provider-junit5-spring</artifactId>
+            <groupId>au.com.dius.pact.provider</groupId>
+            <artifactId>spring</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>au.com.dius</groupId>
-            <artifactId>pact-jvm-provider</artifactId>
+            <groupId>au.com.dius.pact.provider</groupId>
+            <artifactId>junit5spring</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>au.com.dius</groupId>
-            <artifactId>pact-jvm-consumer</artifactId>
+            <groupId>au.com.dius.pact</groupId>
+            <artifactId>consumer</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
