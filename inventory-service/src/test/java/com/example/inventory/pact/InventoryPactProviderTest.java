@@ -4,43 +4,54 @@ import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
 import au.com.dius.pact.provider.junitsupport.Provider;
+import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import au.com.dius.pact.provider.junitsupport.State;
-import au.com.dius.pact.provider.ProviderInfo;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.RabbitMQContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.io.File;
 import java.util.Map;
 
-import static kotlin.Unit.INSTANCE;
-
+@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("inventory-service")
+@PactFolder("../order-service/target/pacts")
 class InventoryPactProviderTest {
 
-    @LocalServerPort
-    private int port;
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
+            .withDatabaseName("inventory_db")
+            .withUsername("test")
+            .withPassword("test");
 
-    private static ProviderInfo providerInfo;
+    @Container
+    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management")
+            .withExposedPorts(5672);
 
-    @BeforeAll
-    static void setupProvider() {
-        providerInfo = new ProviderInfo("inventory-service");
-        providerInfo.setProtocol("http");
-        providerInfo.setHost("localhost");
-        providerInfo.setPath("/");
-
-        providerInfo.hasPactWith("order-service", consumer -> {
-            consumer.setPactSource(new File("../order-service/target/pacts"));
-            return kotlin.Unit.INSTANCE;
-        });
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", () -> postgres.getJdbcUrl());
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+        registry.add("spring.flyway.enabled", () -> "false");
+        registry.add("spring.rabbitmq.host", rabbitmq::getHost);
+        registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
+        registry.add("spring.rabbitmq.username", () -> "guest");
+        registry.add("spring.rabbitmq.password", () -> "guest");
+        registry.add("eureka.client.enabled", () -> "false");
     }
 
     @LocalServerPort
@@ -49,7 +60,6 @@ class InventoryPactProviderTest {
     @BeforeEach
     void before(PactVerificationContext context) {
         context.setTarget(new HttpTestTarget("localhost", port));
-        context.setProviderInfo(providerInfo);
     }
 
     @TestTemplate

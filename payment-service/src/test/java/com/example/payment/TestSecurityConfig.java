@@ -1,6 +1,7 @@
 package com.example.payment;
 
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +13,7 @@ import reactor.core.publisher.Mono;
 import java.time.Instant;
 
 @Configuration
-@EnableAutoConfiguration(exclude = {SecurityAutoConfiguration.class, ManagementWebSecurityAutoConfiguration.class})
+@EnableAutoConfiguration(exclude = {SecurityAutoConfiguration.class, ManagementWebSecurityAutoConfiguration.class, ReactiveOAuth2ResourceServerAutoConfiguration.class})
 public class TestSecurityConfig {
 
     @Bean

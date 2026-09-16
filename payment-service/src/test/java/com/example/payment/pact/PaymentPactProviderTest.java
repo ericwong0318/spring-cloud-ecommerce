@@ -4,50 +4,36 @@ import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
 import au.com.dius.pact.provider.junitsupport.Provider;
+import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import au.com.dius.pact.provider.junitsupport.State;
-import au.com.dius.pact.provider.ProviderInfo;
-import org.junit.jupiter.api.BeforeAll;
+import com.example.payment.TestSecurityConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.io.File;
-import java.math.BigDecimal;
 import java.util.Map;
-
-import static kotlin.Unit.INSTANCE;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("payment-service")
+@PactFolder("../order-service/target/pacts")
+@Import(TestSecurityConfig.class)
+@EnableAutoConfiguration(exclude = {ReactiveOAuth2ResourceServerAutoConfiguration.class})
 class PaymentPactProviderTest {
 
     @LocalServerPort
     private int port;
 
-    private static ProviderInfo providerInfo;
-
-    @BeforeAll
-    static void setupProvider() {
-        providerInfo = new ProviderInfo("payment-service");
-        providerInfo.setProtocol("http");
-        providerInfo.setHost("localhost");
-        providerInfo.setPath("/");
-
-        providerInfo.hasPactWith("order-service", consumer -> {
-            consumer.setPactSource(new File("../order-service/target/pacts"));
-            return kotlin.Unit.INSTANCE;
-        });
-    }
-
     @BeforeEach
     void before(PactVerificationContext context) {
         context.setTarget(new HttpTestTarget("localhost", port));
-        context.setProviderInfo(providerInfo);
     }
 
     @TestTemplate
