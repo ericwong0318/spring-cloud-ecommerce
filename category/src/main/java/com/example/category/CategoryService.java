@@ -39,9 +39,9 @@ public class CategoryService {
     @Transactional(readOnly = true)
     public CategoryDto getCategoryById(Long id) {
         log.debug("Fetching category by id: {}", id);
-        Category category = categoryRepository.findById(id)
+        Category category = categoryRepository.findByIdFetchChildren(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", id));
-        return categoryMapper.toDto(category);
+        return buildCategoryTree(category);
     }
 
     @Transactional(readOnly = true)
