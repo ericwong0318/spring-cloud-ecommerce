@@ -6,10 +6,14 @@ import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvide
 import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import au.com.dius.pact.provider.junitsupport.State;
+import com.example.product.CategoryClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -18,8 +22,7 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.math.BigDecimal;
-import java.util.Map;
+import java.util.Optional;
 
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -35,6 +38,9 @@ class ProductPactProviderTest {
     @LocalServerPort
     private int port;
 
+    @MockBean
+    private CategoryClient categoryClient;
+
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongo::getConnectionString);
@@ -43,6 +49,8 @@ class ProductPactProviderTest {
     @BeforeEach
     void before(PactVerificationContext context) {
         context.setTarget(new HttpTestTarget("localhost", port));
+        Mockito.reset(categoryClient);
+        Mockito.when(categoryClient.getCategoryName(123L)).thenReturn(Optional.of("Electronics"));
     }
 
     @TestTemplate
@@ -51,77 +59,62 @@ class ProductPactProviderTest {
     }
 
     @State("valid product create request")
-    void validProductCreateRequest(Map<String, Object> params) {
-        // Provider state setup for valid product create request
+    void validProductCreateRequest() {
     }
 
     @State("valid product update request")
-    void validProductUpdateRequest(Map<String, Object> params) {
-        // Provider state setup for valid product update request
+    void validProductUpdateRequest() {
     }
 
     @State("product create request - name blank")
-    void productCreateRequestNameBlank(Map<String, Object> params) {
-        // Provider state setup for product create request with blank name
+    void productCreateRequestNameBlank() {
     }
 
     @State("product create request - name null")
-    void productCreateRequestNameNull(Map<String, Object> params) {
-        // Provider state setup for product create request with null name
+    void productCreateRequestNameNull() {
     }
 
     @State("product create request - name too long")
-    void productCreateRequestNameTooLong(Map<String, Object> params) {
-        // Provider state setup for product create request with name too long
+    void productCreateRequestNameTooLong() {
     }
 
     @State("product create request - description too long")
-    void productCreateRequestDescriptionTooLong(Map<String, Object> params) {
-        // Provider state setup for product create request with description too long
+    void productCreateRequestDescriptionTooLong() {
     }
 
     @State("product create request - price null")
-    void productCreateRequestPriceNull(Map<String, Object> params) {
-        // Provider state setup for product create request with null price
+    void productCreateRequestPriceNull() {
     }
 
     @State("product create request - price not positive")
-    void productCreateRequestPriceNotPositive(Map<String, Object> params) {
-        // Provider state setup for product create request with price not positive
+    void productCreateRequestPriceNotPositive() {
     }
 
     @State("product create request - price negative")
-    void productCreateRequestPriceNegative(Map<String, Object> params) {
-        // Provider state setup for product create request with negative price
+    void productCreateRequestPriceNegative() {
     }
 
     @State("product update request - name blank")
-    void productUpdateRequestNameBlank(Map<String, Object> params) {
-        // Provider state setup for product update request with blank name
+    void productUpdateRequestNameBlank() {
     }
 
     @State("product update request - name null")
-    void productUpdateRequestNameNull(Map<String, Object> params) {
-        // Provider state setup for product update request with null name
+    void productUpdateRequestNameNull() {
     }
 
     @State("product update request - name too long")
-    void productUpdateRequestNameTooLong(Map<String, Object> params) {
-        // Provider state setup for product update request with name too long
+    void productUpdateRequestNameTooLong() {
     }
 
     @State("product update request - description too long")
-    void productUpdateRequestDescriptionTooLong(Map<String, Object> params) {
-        // Provider state setup for product update request with description too long
+    void productUpdateRequestDescriptionTooLong() {
     }
 
     @State("product update request - price null")
-    void productUpdateRequestPriceNull(Map<String, Object> params) {
-        // Provider state setup for product update request with null price
+    void productUpdateRequestPriceNull() {
     }
 
     @State("product update request - price not positive")
-    void productUpdateRequestPriceNotPositive(Map<String, Object> params) {
-        // Provider state setup for product update request with price not positive
+    void productUpdateRequestPriceNotPositive() {
     }
 }

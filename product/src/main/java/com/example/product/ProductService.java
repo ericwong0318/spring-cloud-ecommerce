@@ -12,6 +12,7 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class ProductService {
@@ -20,10 +21,12 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+    private final CategoryClient categoryClient;
 
-    public ProductService(ProductRepository productRepository, ProductMapper productMapper) {
+    public ProductService(ProductRepository productRepository, ProductMapper productMapper, CategoryClient categoryClient) {
         this.productRepository = productRepository;
         this.productMapper = productMapper;
+        this.categoryClient = categoryClient;
     }
 
     public Flux<ProductDto> getAllProducts(Pageable pageable) {
@@ -58,7 +61,11 @@ public class ProductService {
     public Mono<ProductDto> createProduct(ProductDto productDto) {
         log.info("Creating product: {}", productDto.name());
         Product product = productMapper.toEntity(productDto);
-        return productRepository.save(product)
+        return fetchCategoryName(productDto.categoryId())
+                .flatMap(categoryName -> {
+                    product.setCategoryName(categoryName.orElse(null));
+                    return productRepository.save(product);
+                })
                 .map(productMapper::toDto);
     }
 
@@ -67,15 +74,36 @@ public class ProductService {
         return productRepository.findById(id)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", id)))
                 .flatMap(existing -> {
-                    // Create updated product entity - Product is mutable so we can just update it
-                    existing.setName(productDto.name());
-                    existing.setDescription(productDto.description());
-                    existing.setCategoryId(productDto.categoryId());
-                    existing.setCategoryName(productDto.categoryName());
-                    existing.setPrice(productDto.price());
-                    return productRepository.save(existing);
+                    return fetchCategoryName(productDto.categoryId())
+                            .flatMap(categoryName -> {
+                                existing.setName(productDto.name());
+                                existing.setDescription(productDto.description());
+                                existing.setCategoryId(productDto.categoryId());
+                                existing.setCategoryName(categoryName.orElse(null));
+                                existing.setPrice(productDto.price());
+                                return productRepository.save(existing);
+                            });
                 })
                 .map(productMapper::toDto);
+    }
+
+    private Mono<Optional<String>> fetchCategoryName(String categoryId) {
+        if (categoryId == null || categoryId.isBlank()) {
+            return Mono.just(Optional.empty());
+        }
+        // Extract numeric ID from formats like "cat-123" or just "123"
+        String numericId = categoryId.replaceAll("\\D+", "");
+        if (numericId.isEmpty()) {
+            log.warn("Invalid categoryId format: {}", categoryId);
+            return Mono.just(Optional.empty());
+        }
+        try {
+            Long id = Long.parseLong(numericId);
+            return Mono.fromCallable(() -> categoryClient.getCategoryName(id));
+        } catch (NumberFormatException e) {
+            log.warn("Invalid categoryId format: {}", categoryId);
+            return Mono.just(Optional.empty());
+        }
     }
 
     public Mono<Void> deleteProduct(String id) {

@@ -43,6 +43,8 @@ rabbitmq:
 
 server:
   port: 8082
+  servlet:
+    context-path: /api
 
 management:
   endpoints:
