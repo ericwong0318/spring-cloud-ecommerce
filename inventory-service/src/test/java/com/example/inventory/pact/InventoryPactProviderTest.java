@@ -3,10 +3,9 @@ package com.example.inventory.pact;
 import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
+import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.State;
 import au.com.dius.pact.provider.ProviderInfo;
-import au.com.dius.pact.provider.ConsumerInfo;
-import au.com.dius.pact.consumer.dsl.PactDslJsonBody;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
@@ -15,9 +14,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.io.File;
+import java.util.Map;
+
+import static kotlin.Unit.INSTANCE;
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
+@Provider("inventory-service")
 class InventoryPactProviderTest {
 
     @LocalServerPort
@@ -31,12 +36,15 @@ class InventoryPactProviderTest {
         providerInfo.setProtocol("http");
         providerInfo.setHost("localhost");
         providerInfo.setPath("/");
-        
+
         providerInfo.hasPactWith("order-service", consumer -> {
-            consumer.setPactSource("target/pacts");
+            consumer.setPactSource(new File("../order-service/target/pacts"));
             return kotlin.Unit.INSTANCE;
         });
     }
+
+    @LocalServerPort
+    private int port;
 
     @BeforeEach
     void before(PactVerificationContext context) {
@@ -45,66 +53,44 @@ class InventoryPactProviderTest {
     }
 
     @TestTemplate
+    @ExtendWith(PactVerificationInvocationContextProvider.class)
     void pactVerificationTestTemplate(PactVerificationContext context) {
         context.verifyInteraction();
     }
 
     @State("valid reserve stock request")
-    void validReserveStockRequest(PactDslJsonBody body) {
-        body.integerType("variantId", 1L)
-            .integerType("quantity", 5)
-            .integerType("orderItemId", 100L);
+    void validReserveStockRequest(Map<String, Object> params) {
     }
 
     @State("valid confirm stock request")
-    void validConfirmStockRequest(PactDslJsonBody body) {
-        body.integerType("variantId", 1L)
-            .integerType("quantity", 5);
+    void validConfirmStockRequest(Map<String, Object> params) {
     }
 
     @State("reserve stock request - variantId null")
-    void reserveStockRequestVariantIdNull(PactDslJsonBody body) {
-        body.stringType("variantId", null)
-            .integerType("quantity", 5)
-            .integerType("orderItemId", 100L);
+    void reserveStockRequestVariantIdNull(Map<String, Object> params) {
     }
 
     @State("reserve stock request - quantity null")
-    void reserveStockRequestQuantityNull(PactDslJsonBody body) {
-        body.integerType("variantId", 1L)
-            .stringType("quantity", null)
-            .integerType("orderItemId", 100L);
+    void reserveStockRequestQuantityNull(Map<String, Object> params) {
     }
 
     @State("reserve stock request - quantity less than 1")
-    void reserveStockRequestQuantityLessThanOne(PactDslJsonBody body) {
-        body.integerType("variantId", 1L)
-            .integerType("quantity", 0)
-            .integerType("orderItemId", 100L);
+    void reserveStockRequestQuantityLessThanOne(Map<String, Object> params) {
     }
 
     @State("reserve stock request - orderItemId null")
-    void reserveStockRequestOrderItemIdNull(PactDslJsonBody body) {
-        body.integerType("variantId", 1L)
-            .integerType("quantity", 5)
-            .stringType("orderItemId", null);
+    void reserveStockRequestOrderItemIdNull(Map<String, Object> params) {
     }
 
     @State("confirm stock request - variantId null")
-    void confirmStockRequestVariantIdNull(PactDslJsonBody body) {
-        body.stringType("variantId", null)
-            .integerType("quantity", 5);
+    void confirmStockRequestVariantIdNull(Map<String, Object> params) {
     }
 
     @State("confirm stock request - quantity null")
-    void confirmStockRequestQuantityNull(PactDslJsonBody body) {
-        body.integerType("variantId", 1L)
-            .stringType("quantity", null);
+    void confirmStockRequestQuantityNull(Map<String, Object> params) {
     }
 
     @State("confirm stock request - quantity less than 1")
-    void confirmStockRequestQuantityLessThanOne(PactDslJsonBody body) {
-        body.integerType("variantId", 1L)
-            .integerType("quantity", 0);
+    void confirmStockRequestQuantityLessThanOne(Map<String, Object> params) {
     }
 }

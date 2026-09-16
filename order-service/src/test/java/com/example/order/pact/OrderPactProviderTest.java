@@ -3,9 +3,9 @@ package com.example.order.pact;
 import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
+import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.State;
 import au.com.dius.pact.provider.ProviderInfo;
-import au.com.dius.pact.consumer.dsl.PactDslJsonBody;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
@@ -14,11 +14,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.math.BigDecimal;
+import java.io.File;
+import java.util.Map;
+
+import static kotlin.Unit.INSTANCE;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
+@Provider("order-service")
 class OrderPactProviderTest {
 
     @LocalServerPort
@@ -33,17 +37,21 @@ class OrderPactProviderTest {
         providerInfo.setHost("localhost");
         providerInfo.setPath("/");
 
-        providerInfo.hasPactWith("product", consumer -> {
-            consumer.setPactSource("target/pacts");
-            return kotlin.Unit.INSTANCE;
+        providerInfo.hasPactWith("order-service", consumer -> {
+            consumer.setPactSource(new File("../order-service/target/pacts"));
+            return INSTANCE;
+        });
+        providerInfo.hasPactWith("product-service", consumer -> {
+            consumer.setPactSource(new File("../product/target/pacts"));
+            return INSTANCE;
         });
         providerInfo.hasPactWith("payment-service", consumer -> {
-            consumer.setPactSource("target/pacts");
-            return kotlin.Unit.INSTANCE;
+            consumer.setPactSource(new File("../payment-service/target/pacts"));
+            return INSTANCE;
         });
         providerInfo.hasPactWith("inventory-service", consumer -> {
-            consumer.setPactSource("target/pacts");
-            return kotlin.Unit.INSTANCE;
+            consumer.setPactSource(new File("../inventory-service/target/pacts"));
+            return INSTANCE;
         });
     }
 
@@ -54,91 +62,32 @@ class OrderPactProviderTest {
     }
 
     @TestTemplate
+    @ExtendWith(PactVerificationInvocationContextProvider.class)
     void pactVerificationTestTemplate(PactVerificationContext context) {
         context.verifyInteraction();
     }
 
     @State("valid order create request")
-    void validOrderCreateRequest(PactDslJsonBody body) {
-        body.stringType("customerId", "CUST-001")
-            .stringType("customerEmail", "customer@example.com")
-            .decimalType("totalAmount", new BigDecimal("1999.98"))
-            .array("items")
-                .object()
-                    .stringType("productId", "1")
-                    .stringType("variantId", "1")
-                    .integerType("quantity", 2)
-                    .decimalType("price", new BigDecimal("999.99"))
-                .closeObject()
-            .closeArray();
+    void validOrderCreateRequest(Map<String, Object> params) {
     }
 
     @State("valid order update request")
-    void validOrderUpdateRequest(PactDslJsonBody body) {
-        body.stringType("customerId", "CUST-001")
-            .stringType("customerEmail", "customer@example.com")
-            .decimalType("totalAmount", new BigDecimal("2999.97"))
-            .array("items")
-                .object()
-                    .stringType("productId", "1")
-                    .stringType("variantId", "1")
-                    .integerType("quantity", 3)
-                    .decimalType("price", new BigDecimal("999.99"))
-                .closeObject()
-            .closeArray();
+    void validOrderUpdateRequest(Map<String, Object> params) {
     }
 
     @State("order create request - customerId blank")
-    void orderCreateRequestCustomerIdBlank(PactDslJsonBody body) {
-        body.stringValue("customerId", "")
-            .stringType("customerEmail", "customer@example.com")
-            .decimalType("totalAmount", new BigDecimal("1999.98"))
-            .array("items")
-                .object()
-                    .stringType("productId", "1")
-                    .stringType("variantId", "1")
-                    .integerType("quantity", 2)
-                    .decimalType("price", new BigDecimal("999.99"))
-                .closeObject()
-            .closeArray();
+    void orderCreateRequestCustomerIdBlank(Map<String, Object> params) {
     }
 
     @State("order create request - customerEmail invalid")
-    void orderCreateRequestCustomerEmailInvalid(PactDslJsonBody body) {
-        body.stringType("customerId", "CUST-001")
-            .stringValue("customerEmail", "invalid-email")
-            .decimalType("totalAmount", new BigDecimal("1999.98"))
-            .array("items")
-                .object()
-                    .stringType("productId", "1")
-                    .stringType("variantId", "1")
-                    .integerType("quantity", 2)
-                    .decimalType("price", new BigDecimal("999.99"))
-                .closeObject()
-            .closeArray();
+    void orderCreateRequestCustomerEmailInvalid(Map<String, Object> params) {
     }
 
     @State("order create request - totalAmount null")
-    void orderCreateRequestTotalAmountNull(PactDslJsonBody body) {
-        body.stringType("customerId", "CUST-001")
-            .stringType("customerEmail", "customer@example.com")
-            .stringType("totalAmount", null)
-            .array("items")
-                .object()
-                    .stringType("productId", "1")
-                    .stringType("variantId", "1")
-                    .integerType("quantity", 2)
-                    .decimalType("price", new BigDecimal("999.99"))
-                .closeObject()
-            .closeArray();
+    void orderCreateRequestTotalAmountNull(Map<String, Object> params) {
     }
 
     @State("order create request - items empty")
-    void orderCreateRequestItemsEmpty(PactDslJsonBody body) {
-        body.stringType("customerId", "CUST-001")
-            .stringType("customerEmail", "customer@example.com")
-            .decimalType("totalAmount", new BigDecimal("1999.98"))
-            .array("items")
-            .closeArray();
+    void orderCreateRequestItemsEmpty(Map<String, Object> params) {
     }
 }

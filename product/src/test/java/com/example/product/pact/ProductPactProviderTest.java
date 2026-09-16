@@ -3,45 +3,46 @@ package com.example.product.pact;
 import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
+import au.com.dius.pact.provider.junitsupport.Provider;
+import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import au.com.dius.pact.provider.junitsupport.State;
-import au.com.dius.pact.provider.ProviderInfo;
-import au.com.dius.pact.provider.ConsumerInfo;
-import au.com.dius.pact.consumer.dsl.PactDslJsonBody;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.math.BigDecimal;
+import java.util.Map;
+
+@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
+@Provider("product-service")
+@PactFolder("../order-service/target/pacts")
 class ProductPactProviderTest {
+
+    @Container
+    static final MongoDBContainer mongo = new MongoDBContainer("mongo:7.0");
 
     @LocalServerPort
     private int port;
 
-    private static ProviderInfo providerInfo;
-
-    @BeforeAll
-    static void setupProvider() {
-        providerInfo = new ProviderInfo("product-service");
-        providerInfo.setProtocol("http");
-        providerInfo.setHost("localhost");
-        providerInfo.setPath("/");
-        
-        providerInfo.hasPactWith("order-service", consumer -> {
-            consumer.setPactSource("target/pacts");
-            return kotlin.Unit.INSTANCE;
-        });
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.mongodb.uri", mongo::getConnectionString);
     }
 
     @BeforeEach
     void before(PactVerificationContext context) {
         context.setTarget(new HttpTestTarget("localhost", port));
-        context.setProviderInfo(providerInfo);
     }
 
     @TestTemplate
@@ -50,122 +51,77 @@ class ProductPactProviderTest {
     }
 
     @State("valid product create request")
-    void validProductCreateRequest(PactDslJsonBody body) {
-        body.stringType("name", "Laptop Pro 15")
-            .stringType("description", "High-performance laptop for professionals")
-            .decimalType("price", "1999.99")
-            .stringType("categoryId", "cat-123");
+    void validProductCreateRequest(Map<String, Object> params) {
+        // Provider state setup for valid product create request
     }
 
     @State("valid product update request")
-    void validProductUpdateRequest(PactDslJsonBody body) {
-        body.stringType("name", "Laptop Pro 16")
-            .stringType("description", "Updated high-performance laptop")
-            .decimalType("price", "2199.99")
-            .stringType("categoryId", "cat-123");
+    void validProductUpdateRequest(Map<String, Object> params) {
+        // Provider state setup for valid product update request
     }
 
     @State("product create request - name blank")
-    void productCreateRequestNameBlank(PactDslJsonBody body) {
-        body.stringValue("name", "")
-            .stringType("description", "High-performance laptop")
-            .decimalType("price", "1999.99")
-            .stringType("categoryId", "cat-123");
+    void productCreateRequestNameBlank(Map<String, Object> params) {
+        // Provider state setup for product create request with blank name
     }
 
     @State("product create request - name null")
-    void productCreateRequestNameNull(PactDslJsonBody body) {
-        body.stringType("name", null)
-            .stringType("description", "High-performance laptop")
-            .decimalType("price", "1999.99")
-            .stringType("categoryId", "cat-123");
+    void productCreateRequestNameNull(Map<String, Object> params) {
+        // Provider state setup for product create request with null name
     }
 
     @State("product create request - name too long")
-    void productCreateRequestNameTooLong(PactDslJsonBody body) {
-        body.stringValue("name", "A".repeat(256))
-            .stringType("description", "High-performance laptop")
-            .decimalType("price", "1999.99")
-            .stringType("categoryId", "cat-123");
+    void productCreateRequestNameTooLong(Map<String, Object> params) {
+        // Provider state setup for product create request with name too long
     }
 
     @State("product create request - description too long")
-    void productCreateRequestDescriptionTooLong(PactDslJsonBody body) {
-        body.stringType("name", "Laptop Pro 15")
-            .stringValue("description", "A".repeat(1001))
-            .decimalType("price", "1999.99")
-            .stringType("categoryId", "cat-123");
+    void productCreateRequestDescriptionTooLong(Map<String, Object> params) {
+        // Provider state setup for product create request with description too long
     }
 
     @State("product create request - price null")
-    void productCreateRequestPriceNull(PactDslJsonBody body) {
-        body.stringType("name", "Laptop Pro 15")
-            .stringType("description", "High-performance laptop")
-            .stringType("price", null)
-            .stringType("categoryId", "cat-123");
+    void productCreateRequestPriceNull(Map<String, Object> params) {
+        // Provider state setup for product create request with null price
     }
 
     @State("product create request - price not positive")
-    void productCreateRequestPriceNotPositive(PactDslJsonBody body) {
-        body.stringType("name", "Laptop Pro 15")
-            .stringType("description", "High-performance laptop")
-            .decimalType("price", "0.00")
-            .stringType("categoryId", "cat-123");
+    void productCreateRequestPriceNotPositive(Map<String, Object> params) {
+        // Provider state setup for product create request with price not positive
     }
 
     @State("product create request - price negative")
-    void productCreateRequestPriceNegative(PactDslJsonBody body) {
-        body.stringType("name", "Laptop Pro 15")
-            .stringType("description", "High-performance laptop")
-            .decimalType("price", "-10.00")
-            .stringType("categoryId", "cat-123");
+    void productCreateRequestPriceNegative(Map<String, Object> params) {
+        // Provider state setup for product create request with negative price
     }
 
     @State("product update request - name blank")
-    void productUpdateRequestNameBlank(PactDslJsonBody body) {
-        body.stringValue("name", "")
-            .stringType("description", "High-performance laptop")
-            .decimalType("price", "1999.99")
-            .stringType("categoryId", "cat-123");
+    void productUpdateRequestNameBlank(Map<String, Object> params) {
+        // Provider state setup for product update request with blank name
     }
 
     @State("product update request - name null")
-    void productUpdateRequestNameNull(PactDslJsonBody body) {
-        body.stringType("name", null)
-            .stringType("description", "High-performance laptop")
-            .decimalType("price", "1999.99")
-            .stringType("categoryId", "cat-123");
+    void productUpdateRequestNameNull(Map<String, Object> params) {
+        // Provider state setup for product update request with null name
     }
 
     @State("product update request - name too long")
-    void productUpdateRequestNameTooLong(PactDslJsonBody body) {
-        body.stringValue("name", "A".repeat(256))
-            .stringType("description", "High-performance laptop")
-            .decimalType("price", "1999.99")
-            .stringType("categoryId", "cat-123");
+    void productUpdateRequestNameTooLong(Map<String, Object> params) {
+        // Provider state setup for product update request with name too long
     }
 
     @State("product update request - description too long")
-    void productUpdateRequestDescriptionTooLong(PactDslJsonBody body) {
-        body.stringType("name", "Laptop Pro 15")
-            .stringValue("description", "A".repeat(1001))
-            .decimalType("price", "1999.99")
-            .stringType("categoryId", "cat-123");
+    void productUpdateRequestDescriptionTooLong(Map<String, Object> params) {
+        // Provider state setup for product update request with description too long
     }
 
     @State("product update request - price null")
-    void productUpdateRequestPriceNull(PactDslJsonBody body) {
-        body.stringType("name", "Laptop Pro 15")
-            .stringType("description", "High-performance laptop")
-            .stringType("price", null)
-            .stringType("categoryId", "cat-123");
+    void productUpdateRequestPriceNull(Map<String, Object> params) {
+        // Provider state setup for product update request with null price
     }
 
     @State("product update request - price not positive")
-    void productUpdateRequestPriceNotPositive(PactDslJsonBody body) {
-        body.stringType("name", "Laptop Pro 15")
-            .stringType("description", "High-performance laptop")
-            .decimalType("price", "0.00")
-            .stringType("categoryId", "cat-123");
+    void productUpdateRequestPriceNotPositive(Map<String, Object> params) {
+        // Provider state setup for product update request with price not positive
     }
 }

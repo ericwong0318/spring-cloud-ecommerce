@@ -3,10 +3,9 @@ package com.example.payment.pact;
 import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
+import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.State;
 import au.com.dius.pact.provider.ProviderInfo;
-import au.com.dius.pact.provider.ConsumerInfo;
-import au.com.dius.pact.consumer.dsl.PactDslJsonBody;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
@@ -15,11 +14,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.io.File;
 import java.math.BigDecimal;
+import java.util.Map;
+
+import static kotlin.Unit.INSTANCE;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
+@Provider("payment-service")
 class PaymentPactProviderTest {
 
     @LocalServerPort
@@ -33,9 +37,9 @@ class PaymentPactProviderTest {
         providerInfo.setProtocol("http");
         providerInfo.setHost("localhost");
         providerInfo.setPath("/");
-        
+
         providerInfo.hasPactWith("order-service", consumer -> {
-            consumer.setPactSource("target/pacts");
+            consumer.setPactSource(new File("../order-service/target/pacts"));
             return kotlin.Unit.INSTANCE;
         });
     }
@@ -47,150 +51,76 @@ class PaymentPactProviderTest {
     }
 
     @TestTemplate
+    @ExtendWith(PactVerificationInvocationContextProvider.class)
     void pactVerificationTestTemplate(PactVerificationContext context) {
         context.verifyInteraction();
     }
 
     @State("valid authorize request")
-    void validAuthorizeRequest(PactDslJsonBody body) {
-        body.integerType("orderId", 1L)
-            .decimalType("amount", new BigDecimal("99.99"))
-            .stringType("currency", "USD")
-            .stringType("customerId", "cust-123")
-            .stringType("customerEmail", "customer@example.com")
-            .stringType("idempotencyKey", "idem-key-123");
+    void validAuthorizeRequest(Map<String, Object> params) {
     }
 
     @State("valid capture request")
-    void validCaptureRequest(PactDslJsonBody body) {
-        body.stringType("gatewayTransactionId", "txn-abc-123");
+    void validCaptureRequest(Map<String, Object> params) {
     }
 
     @State("valid refund request")
-    void validRefundRequest(PactDslJsonBody body) {
-        body.decimalType("amount", new BigDecimal("50.00"))
-            .stringType("reason", "Customer requested refund");
+    void validRefundRequest(Map<String, Object> params) {
     }
 
     @State("authorize request - orderId null")
-    void authorizeRequestOrderIdNull(PactDslJsonBody body) {
-        body.stringType("orderId", null)
-            .decimalType("amount", new BigDecimal("99.99"))
-            .stringType("currency", "USD")
-            .stringType("customerId", "cust-123")
-            .stringType("customerEmail", "customer@example.com")
-            .stringType("idempotencyKey", "idem-key-123");
+    void authorizeRequestOrderIdNull(Map<String, Object> params) {
     }
 
     @State("authorize request - amount null")
-    void authorizeRequestAmountNull(PactDslJsonBody body) {
-        body.integerType("orderId", 1L)
-            .stringType("amount", null)
-            .stringType("currency", "USD")
-            .stringType("customerId", "cust-123")
-            .stringType("customerEmail", "customer@example.com")
-            .stringType("idempotencyKey", "idem-key-123");
+    void authorizeRequestAmountNull(Map<String, Object> params) {
     }
 
     @State("authorize request - currency blank")
-    void authorizeRequestCurrencyBlank(PactDslJsonBody body) {
-        body.integerType("orderId", 1L)
-            .decimalType("amount", new BigDecimal("99.99"))
-            .stringValue("currency", "")
-            .stringType("customerId", "cust-123")
-            .stringType("customerEmail", "customer@example.com")
-            .stringType("idempotencyKey", "idem-key-123");
+    void authorizeRequestCurrencyBlank(Map<String, Object> params) {
     }
 
     @State("authorize request - currency invalid length")
-    void authorizeRequestCurrencyInvalidLength(PactDslJsonBody body) {
-        body.integerType("orderId", 1L)
-            .decimalType("amount", new BigDecimal("99.99"))
-            .stringValue("currency", "US")
-            .stringType("customerId", "cust-123")
-            .stringType("customerEmail", "customer@example.com")
-            .stringType("idempotencyKey", "idem-key-123");
+    void authorizeRequestCurrencyInvalidLength(Map<String, Object> params) {
     }
 
     @State("authorize request - customerId blank")
-    void authorizeRequestCustomerIdBlank(PactDslJsonBody body) {
-        body.integerType("orderId", 1L)
-            .decimalType("amount", new BigDecimal("99.99"))
-            .stringType("currency", "USD")
-            .stringValue("customerId", "")
-            .stringType("customerEmail", "customer@example.com")
-            .stringType("idempotencyKey", "idem-key-123");
+    void authorizeRequestCustomerIdBlank(Map<String, Object> params) {
     }
 
     @State("authorize request - customerId too long")
-    void authorizeRequestCustomerIdTooLong(PactDslJsonBody body) {
-        body.integerType("orderId", 1L)
-            .decimalType("amount", new BigDecimal("99.99"))
-            .stringType("currency", "USD")
-            .stringValue("customerId", "A".repeat(256))
-            .stringType("customerEmail", "customer@example.com")
-            .stringType("idempotencyKey", "idem-key-123");
+    void authorizeRequestCustomerIdTooLong(Map<String, Object> params) {
     }
 
     @State("authorize request - customerEmail blank")
-    void authorizeRequestCustomerEmailBlank(PactDslJsonBody body) {
-        body.integerType("orderId", 1L)
-            .decimalType("amount", new BigDecimal("99.99"))
-            .stringType("currency", "USD")
-            .stringType("customerId", "cust-123")
-            .stringValue("customerEmail", "")
-            .stringType("idempotencyKey", "idem-key-123");
+    void authorizeRequestCustomerEmailBlank(Map<String, Object> params) {
     }
 
     @State("authorize request - customerEmail too long")
-    void authorizeRequestCustomerEmailTooLong(PactDslJsonBody body) {
-        body.integerType("orderId", 1L)
-            .decimalType("amount", new BigDecimal("99.99"))
-            .stringType("currency", "USD")
-            .stringType("customerId", "cust-123")
-            .stringValue("customerEmail", "A".repeat(256))
-            .stringType("idempotencyKey", "idem-key-123");
+    void authorizeRequestCustomerEmailTooLong(Map<String, Object> params) {
     }
 
     @State("authorize request - idempotencyKey blank")
-    void authorizeRequestIdempotencyKeyBlank(PactDslJsonBody body) {
-        body.integerType("orderId", 1L)
-            .decimalType("amount", new BigDecimal("99.99"))
-            .stringType("currency", "USD")
-            .stringType("customerId", "cust-123")
-            .stringType("customerEmail", "customer@example.com")
-            .stringValue("idempotencyKey", "");
+    void authorizeRequestIdempotencyKeyBlank(Map<String, Object> params) {
     }
 
     @State("authorize request - idempotencyKey too long")
-    void authorizeRequestIdempotencyKeyTooLong(PactDslJsonBody body) {
-        body.integerType("orderId", 1L)
-            .decimalType("amount", new BigDecimal("99.99"))
-            .stringType("currency", "USD")
-            .stringType("customerId", "cust-123")
-            .stringType("customerEmail", "customer@example.com")
-            .stringValue("idempotencyKey", "A".repeat(101));
+    void authorizeRequestIdempotencyKeyTooLong(Map<String, Object> params) {
     }
 
     @State("capture request - gatewayTransactionId blank")
-    void captureRequestGatewayTransactionIdBlank(PactDslJsonBody body) {
-        body.stringValue("gatewayTransactionId", "");
+    void captureRequestGatewayTransactionIdBlank(Map<String, Object> params) {
     }
 
     @State("capture request - gatewayTransactionId too long")
-    void captureRequestGatewayTransactionIdTooLong(PactDslJsonBody body) {
-        body.stringValue("gatewayTransactionId", "A".repeat(101));
+    void captureRequestGatewayTransactionIdTooLong(Map<String, Object> params) {
     }
 
     @State("refund request - amount null")
-    void refundRequestAmountNull(PactDslJsonBody body) {
-        body.stringType("amount", null)
-            .stringType("reason", "Customer requested refund");
+    void refundRequestAmountNull(Map<String, Object> params) {
     }
 
     @State("refund request - reason too long")
-    void refundRequestReasonTooLong(PactDslJsonBody body) {
-        body.decimalType("amount", new BigDecimal("50.00"))
-            .stringValue("reason", "A".repeat(501));
+    void refundRequestReasonTooLong(Map<String, Object> params) {
     }
 }
