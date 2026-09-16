@@ -4,6 +4,7 @@ import au.com.dius.pact.consumer.dsl.PactDslJsonBody;
 import au.com.dius.pact.consumer.dsl.PactDslWithProvider;
 import au.com.dius.pact.consumer.junit5.PactConsumerTestExt;
 import au.com.dius.pact.consumer.junit5.PactTestFor;
+import au.com.dius.pact.consumer.MockServer;
 import au.com.dius.pact.core.model.V4Pact;
 import au.com.dius.pact.core.model.annotations.Pact;
 import org.junit.jupiter.api.Disabled;
@@ -304,13 +305,14 @@ class OrderProductConsumerPactTest {
 
     @Test
     @PactTestFor(pactMethod = "validProductCreateRequest")
-    void testValidProductCreateRequest() {
+    void testValidProductCreateRequest(MockServer mockServer) {
         record ProductCreateRequest(String name, String description, BigDecimal price, String categoryId) {}
-        // Use the mock server URL from the pact test configuration
-        String mockServerUrl = "http://localhost:8081";
+        String mockServerUrl = mockServer.getUrl();
+        System.out.println("Mock server URL: " + mockServerUrl);
         WebClient.create(mockServerUrl)
                 .post()
                 .uri("/api/products")
+                .header("Content-Type", "application/json; charset=UTF-8")
                 .bodyValue(new ProductCreateRequest("Laptop Pro 15", "High-performance laptop for professionals", new BigDecimal("1999.99"), "cat-123"))
                 .retrieve()
                 .toBodilessEntity()
