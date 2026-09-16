@@ -33,14 +33,14 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
     void testAuthorizePayment() {
         String idempotencyKey = "auth-test-" + UUID.randomUUID().toString().substring(0, 8);
 
-        AuthorizeRequest request = AuthorizeRequest.builder()
-                .orderId(1L)
-                .amount(new BigDecimal("1999.98"))
-                .currency("USD")
-                .customerId("CUST-001")
-                .customerEmail("customer@example.com")
-                .idempotencyKey(idempotencyKey)
-                .build();
+        AuthorizeRequest request = new AuthorizeRequest(
+                1L,
+                new BigDecimal("1999.98"),
+                "USD",
+                "CUST-001",
+                "customer@example.com",
+                idempotencyKey
+        );
 
         webTestClient.post()
                 .uri("/payments/authorize")
@@ -51,12 +51,12 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isCreated()
                 .expectBody(PaymentDto.class)
                 .value(response -> {
-                    assertEquals(1L, response.getOrderId());
-                    assertEquals(new BigDecimal("1999.98"), response.getAmount());
-                    assertEquals("USD", response.getCurrency());
-                    assertEquals(PaymentDto.PaymentStatus.AUTHORIZED, response.getStatus());
-                    assertEquals(idempotencyKey, response.getIdempotencyKey());
-                    assertNotNull(response.getAuthorizedAt());
+                    assertEquals(1L, response.orderId());
+                    assertEquals(new BigDecimal("1999.98"), response.amount());
+                    assertEquals("USD", response.currency());
+                    assertEquals(PaymentDto.PaymentStatus.AUTHORIZED, response.status());
+                    assertEquals(idempotencyKey, response.idempotencyKey());
+                    assertNotNull(response.authorizedAt());
                 });
     }
 
@@ -64,14 +64,14 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
     void testAuthorizePaymentIdempotency() {
         String idempotencyKey = "auth-idempotent-" + UUID.randomUUID().toString().substring(0, 8);
 
-        AuthorizeRequest request = AuthorizeRequest.builder()
-                .orderId(2L)
-                .amount(new BigDecimal("999.99"))
-                .currency("USD")
-                .customerId("CUST-002")
-                .customerEmail("customer2@example.com")
-                .idempotencyKey(idempotencyKey)
-                .build();
+        AuthorizeRequest request = new AuthorizeRequest(
+                2L,
+                new BigDecimal("999.99"),
+                "USD",
+                "CUST-002",
+                "customer2@example.com",
+                idempotencyKey
+        );
 
         webTestClient.post()
                 .uri("/payments/authorize")
@@ -94,14 +94,14 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
     void testCapturePayment() {
         String idempotencyKey = "auth-capture-" + UUID.randomUUID().toString().substring(0, 8);
 
-        AuthorizeRequest authRequest = AuthorizeRequest.builder()
-                .orderId(3L)
-                .amount(new BigDecimal("1499.99"))
-                .currency("USD")
-                .customerId("CUST-003")
-                .customerEmail("customer3@example.com")
-                .idempotencyKey(idempotencyKey)
-                .build();
+        AuthorizeRequest authRequest = new AuthorizeRequest(
+                3L,
+                new BigDecimal("1499.99"),
+                "USD",
+                "CUST-003",
+                "customer3@example.com",
+                idempotencyKey
+        );
 
         PaymentDto authResponse = webTestClient.post()
                 .uri("/payments/authorize")
@@ -115,11 +115,9 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertNotNull(authResponse);
-        Long paymentId = authResponse.getId();
+        Long paymentId = authResponse.id();
 
-        CaptureRequest captureRequest = CaptureRequest.builder()
-                .gatewayTransactionId("txn_123456")
-                .build();
+        CaptureRequest captureRequest = new CaptureRequest("txn_123456");
 
         webTestClient.post()
                 .uri("/payments/{id}/capture", paymentId)
@@ -130,10 +128,10 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody(PaymentDto.class)
                 .value(response -> {
-                    assertEquals(paymentId, response.getId());
-                    assertEquals(PaymentDto.PaymentStatus.CAPTURED, response.getStatus());
-                    assertEquals("txn_123456", response.getGatewayTransactionId());
-                    assertNotNull(response.getCapturedAt());
+                    assertEquals(paymentId, response.id());
+                    assertEquals(PaymentDto.PaymentStatus.CAPTURED, response.status());
+                    assertEquals("txn_123456", response.gatewayTransactionId());
+                    assertNotNull(response.capturedAt());
                 });
     }
 
@@ -141,14 +139,14 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
     void testCapturePaymentIdempotency() {
         String idempotencyKey = "auth-capture-idem-" + UUID.randomUUID().toString().substring(0, 8);
 
-        AuthorizeRequest authRequest = AuthorizeRequest.builder()
-                .orderId(4L)
-                .amount(new BigDecimal("2999.99"))
-                .currency("USD")
-                .customerId("CUST-004")
-                .customerEmail("customer4@example.com")
-                .idempotencyKey(idempotencyKey)
-                .build();
+        AuthorizeRequest authRequest = new AuthorizeRequest(
+                4L,
+                new BigDecimal("2999.99"),
+                "USD",
+                "CUST-004",
+                "customer4@example.com",
+                idempotencyKey
+        );
 
         PaymentDto authResponse = webTestClient.post()
                 .uri("/payments/authorize")
@@ -162,11 +160,9 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertNotNull(authResponse);
-        Long paymentId = authResponse.getId();
+        Long paymentId = authResponse.id();
 
-        CaptureRequest captureRequest = CaptureRequest.builder()
-                .gatewayTransactionId("txn_789012")
-                .build();
+        CaptureRequest captureRequest = new CaptureRequest("txn_789012");
 
         webTestClient.post()
                 .uri("/payments/{id}/capture", paymentId)
@@ -185,7 +181,7 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody(PaymentDto.class)
                 .value(response -> {
-                    assertEquals(paymentId, response.getId());
+                    assertEquals(paymentId, response.id());
                 });
     }
 
@@ -193,14 +189,14 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
     void testRefundPaymentFull() {
         String idempotencyKey = "auth-refund-full-" + UUID.randomUUID().toString().substring(0, 8);
 
-        AuthorizeRequest authRequest = AuthorizeRequest.builder()
-                .orderId(5L)
-                .amount(new BigDecimal("1999.99"))
-                .currency("USD")
-                .customerId("CUST-005")
-                .customerEmail("customer5@example.com")
-                .idempotencyKey(idempotencyKey)
-                .build();
+        AuthorizeRequest authRequest = new AuthorizeRequest(
+                5L,
+                new BigDecimal("1999.99"),
+                "USD",
+                "CUST-005",
+                "customer5@example.com",
+                idempotencyKey
+        );
 
         PaymentDto authResponse = webTestClient.post()
                 .uri("/payments/authorize")
@@ -214,11 +210,9 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertNotNull(authResponse);
-        Long paymentId = authResponse.getId();
+        Long paymentId = authResponse.id();
 
-        CaptureRequest captureRequest = CaptureRequest.builder()
-                .gatewayTransactionId("txn_refund_1")
-                .build();
+        CaptureRequest captureRequest = new CaptureRequest("txn_refund_1");
 
         webTestClient.post()
                 .uri("/payments/{id}/capture", paymentId)
@@ -228,10 +222,10 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk();
 
-        RefundRequest refundRequest = RefundRequest.builder()
-                .amount(new BigDecimal("1999.99"))
-                .reason("Customer requested full refund")
-                .build();
+        RefundRequest refundRequest = new RefundRequest(
+                new BigDecimal("1999.99"),
+                "Customer requested full refund"
+        );
 
         webTestClient.post()
                 .uri("/payments/{id}/refund", paymentId)
@@ -242,8 +236,8 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody(PaymentDto.class)
                 .value(response -> {
-                    assertEquals(PaymentDto.PaymentStatus.REFUNDED, response.getStatus());
-                    assertNotNull(response.getRefundedAt());
+                    assertEquals(PaymentDto.PaymentStatus.REFUNDED, response.status());
+                    assertNotNull(response.refundedAt());
                 });
     }
 
@@ -251,14 +245,14 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
     void testRefundPaymentPartial() {
         String idempotencyKey = "auth-refund-partial-" + UUID.randomUUID().toString().substring(0, 8);
 
-        AuthorizeRequest authRequest = AuthorizeRequest.builder()
-                .orderId(6L)
-                .amount(new BigDecimal("1000.00"))
-                .currency("USD")
-                .customerId("CUST-006")
-                .customerEmail("customer6@example.com")
-                .idempotencyKey(idempotencyKey)
-                .build();
+        AuthorizeRequest authRequest = new AuthorizeRequest(
+                6L,
+                new BigDecimal("1000.00"),
+                "USD",
+                "CUST-006",
+                "customer6@example.com",
+                idempotencyKey
+        );
 
         PaymentDto authResponse = webTestClient.post()
                 .uri("/payments/authorize")
@@ -272,11 +266,9 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .getResponseBody();
 
         assertNotNull(authResponse);
-        Long paymentId = authResponse.getId();
+        Long paymentId = authResponse.id();
 
-        CaptureRequest captureRequest = CaptureRequest.builder()
-                .gatewayTransactionId("txn_refund_2")
-                .build();
+        CaptureRequest captureRequest = new CaptureRequest("txn_refund_2");
 
         webTestClient.post()
                 .uri("/payments/{id}/capture", paymentId)
@@ -286,10 +278,10 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .exchange()
                 .expectStatus().isOk();
 
-        RefundRequest refundRequest = RefundRequest.builder()
-                .amount(new BigDecimal("500.00"))
-                .reason("Partial refund for returned item")
-                .build();
+        RefundRequest refundRequest = new RefundRequest(
+                new BigDecimal("500.00"),
+                "Partial refund for returned item"
+        );
 
         webTestClient.post()
                 .uri("/payments/{id}/refund", paymentId)
@@ -300,8 +292,8 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody(PaymentDto.class)
                 .value(response -> {
-                    assertEquals(PaymentDto.PaymentStatus.PARTIALLY_REFUNDED, response.getStatus());
-                    assertNotNull(response.getRefundedAt());
+                    assertEquals(PaymentDto.PaymentStatus.PARTIALLY_REFUNDED, response.status());
+                    assertNotNull(response.refundedAt());
                 });
     }
 
@@ -309,14 +301,14 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
     void testGetPaymentById() {
         String idempotencyKey = "auth-get-" + UUID.randomUUID().toString().substring(0, 8);
 
-        AuthorizeRequest authRequest = AuthorizeRequest.builder()
-                .orderId(7L)
-                .amount(new BigDecimal("750.00"))
-                .currency("USD")
-                .customerId("CUST-007")
-                .customerEmail("customer7@example.com")
-                .idempotencyKey(idempotencyKey)
-                .build();
+        AuthorizeRequest authRequest = new AuthorizeRequest(
+                7L,
+                new BigDecimal("750.00"),
+                "USD",
+                "CUST-007",
+                "customer7@example.com",
+                idempotencyKey
+        );
 
         PaymentDto authResponse = webTestClient.post()
                 .uri("/payments/authorize")
@@ -347,14 +339,14 @@ public class PaymentServiceIntegrationTest extends BaseIntegrationTest {
     void testGetPaymentByOrderId() {
         String idempotencyKey = "auth-get-order-" + UUID.randomUUID().toString().substring(0, 8);
 
-        AuthorizeRequest authRequest = AuthorizeRequest.builder()
-                .orderId(8L)
-                .amount(new BigDecimal("1250.00"))
-                .currency("USD")
-                .customerId("CUST-008")
-                .customerEmail("customer8@example.com")
-                .idempotencyKey(idempotencyKey)
-                .build();
+        AuthorizeRequest authRequest = new AuthorizeRequest(
+                8L,
+                new BigDecimal("1250.00"),
+                "USD",
+                "CUST-008",
+                "customer8@example.com",
+                idempotencyKey
+        );
 
         PaymentDto authResponse = webTestClient.post()
                 .uri("/payments/authorize")
