@@ -25,7 +25,7 @@ class OrderProductConsumerPactTest {
         return builder
                 .given("valid product create request")
                 .uponReceiving("A request to create a product")
-                .path("/api/products")
+                .path("/products")
                 .method("POST")
                 .body(new PactDslJsonBody()
                         .stringType("name", "Laptop Pro 15")
@@ -75,7 +75,7 @@ class OrderProductConsumerPactTest {
         return builder
                 .given("product create request - name blank")
                 .uponReceiving("A request to create a product with blank name")
-                .path("/api/products")
+                .path("/products")
                 .method("POST")
                 .body(new PactDslJsonBody()
                         .stringValue("name", "")
@@ -93,7 +93,7 @@ class OrderProductConsumerPactTest {
         return builder
                 .given("product create request - name null")
                 .uponReceiving("A request to create a product with null name")
-                .path("/api/products")
+                .path("/products")
                 .method("POST")
                 .body(new PactDslJsonBody()
                         .stringType("name", null)
@@ -111,7 +111,7 @@ class OrderProductConsumerPactTest {
         return builder
                 .given("product create request - name too long")
                 .uponReceiving("A request to create a product with name too long")
-                .path("/api/products")
+                .path("/products")
                 .method("POST")
                 .body(new PactDslJsonBody()
                         .stringValue("name", "A".repeat(256))
@@ -129,7 +129,7 @@ class OrderProductConsumerPactTest {
         return builder
                 .given("product create request - description too long")
                 .uponReceiving("A request to create a product with description too long")
-                .path("/api/products")
+                .path("/products")
                 .method("POST")
                 .body(new PactDslJsonBody()
                         .stringType("name", "Laptop Pro 15")
@@ -147,7 +147,7 @@ class OrderProductConsumerPactTest {
         return builder
                 .given("product create request - price null")
                 .uponReceiving("A request to create a product with null price")
-                .path("/api/products")
+                .path("/products")
                 .method("POST")
                 .body(new PactDslJsonBody()
                         .stringType("name", "Laptop Pro 15")
@@ -165,7 +165,7 @@ class OrderProductConsumerPactTest {
         return builder
                 .given("product create request - price not positive")
                 .uponReceiving("A request to create a product with price not positive")
-                .path("/api/products")
+                .path("/products")
                 .method("POST")
                 .body(new PactDslJsonBody()
                         .stringType("name", "Laptop Pro 15")
@@ -183,7 +183,7 @@ class OrderProductConsumerPactTest {
         return builder
                 .given("product create request - price negative")
                 .uponReceiving("A request to create a product with negative price")
-                .path("/api/products")
+                .path("/products")
                 .method("POST")
                 .body(new PactDslJsonBody()
                         .stringType("name", "Laptop Pro 15")
@@ -311,7 +311,7 @@ class OrderProductConsumerPactTest {
         System.out.println("Mock server URL: " + mockServerUrl);
         WebClient.create(mockServerUrl)
                 .post()
-                .uri("/api/products")
+                .uri("/products")
                 .header("Content-Type", "application/json; charset=UTF-8")
                 .bodyValue(new ProductCreateRequest("Laptop Pro 15", "High-performance laptop for professionals", new BigDecimal("1999.99"), "cat-123"))
                 .retrieve()
