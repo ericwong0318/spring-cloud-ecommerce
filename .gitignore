@@ -54,3 +54,6 @@ otel-collector/otel-collector-config.yaml
 
 # scratch
 .scratch/
+
+# worktrees
+.worktrees
