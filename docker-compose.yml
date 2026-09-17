@@ -1,6 +1,6 @@
 services:
   mongodb:
-    image: mongo:7
+    image: mongo:7-jammy
     container_name: mongodb
     ports:
       - "27017:27017"
@@ -18,7 +18,7 @@ services:
       retries: 5
 
   otel-collector:
-    image: ghcr.io/open-telemetry/opentelemetry-collector-releases/otel-collector-contrib:0.110.0
+    image: otel/opentelemetry-collector-contrib:0.110.0
     container_name: otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
@@ -26,7 +26,7 @@ services:
     ports:
       - "4317:4317"
       - "4318:4318"
-      - "8888:8888"
+      - "8889:8888"
     environment:
       SPLUNK_ACCESS_TOKEN: ${SPLUNK_ACCESS_TOKEN}
       SPLUNK_INGEST_URL: ${SPLUNK_INGEST_URL}
@@ -46,7 +46,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=config-server
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=config-server
-      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_PROPAGATORS=tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -60,8 +60,7 @@ services:
     networks:
       - spring-cloud-network
     depends_on:
-      otel-collector:
-        condition: service_healthy
+      - otel-collector
 
   eureka-server:
     build:
@@ -76,7 +75,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=eureka-server
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=eureka-server
-      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_PROPAGATORS=tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -84,8 +83,6 @@ services:
       - profiler.interval=60s
     depends_on:
       config-server:
-        condition: service_healthy
-      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
@@ -110,7 +107,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=auth-server
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=auth-server
-      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_PROPAGATORS=tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -120,8 +117,6 @@ services:
       config-server:
         condition: service_healthy
       eureka-server:
-        condition: service_healthy
-      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
@@ -146,7 +141,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=gateway
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=gateway
-      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_PROPAGATORS=tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -158,8 +153,6 @@ services:
       eureka-server:
         condition: service_healthy
       auth-server:
-        condition: service_healthy
-      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
@@ -184,7 +177,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=product
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=product
-      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_PROPAGATORS=tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -196,8 +189,6 @@ services:
       eureka-server:
         condition: service_healthy
       mongodb:
-        condition: service_healthy
-      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
@@ -222,7 +213,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=category
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=category
-      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_PROPAGATORS=tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -232,8 +223,6 @@ services:
       config-server:
         condition: service_healthy
       eureka-server:
-        condition: service_healthy
-      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
@@ -258,7 +247,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=order-service
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=order-service
-      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_PROPAGATORS=tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -268,8 +257,6 @@ services:
       config-server:
         condition: service_healthy
       eureka-server:
-        condition: service_healthy
-      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
@@ -301,7 +288,7 @@ services:
       retries: 5
 
   postgres-product:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: postgres-product
     command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
     environment:
@@ -322,7 +309,7 @@ services:
       retries: 5
 
   postgres-category:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: postgres-category
     command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
     environment:
@@ -343,7 +330,7 @@ services:
       retries: 5
 
   postgres-order:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: postgres-order
     command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
     environment:
@@ -364,7 +351,7 @@ services:
       retries: 5
 
   postgres-payment:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: postgres-payment
     command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
     environment:
@@ -385,7 +372,7 @@ services:
       retries: 5
 
   postgres-inventory:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: postgres-inventory
     environment:
       - POSTGRES_DB=inventory_db
@@ -405,7 +392,7 @@ services:
       retries: 5
 
   postgres-notification:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: postgres-notification
     environment:
       - POSTGRES_DB=notification_db
@@ -438,7 +425,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=inventory-service
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=inventory-service
-      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_PROPAGATORS=tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -450,8 +437,6 @@ services:
       eureka-server:
         condition: service_healthy
       postgres-inventory:
-        condition: service_healthy
-      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
@@ -479,7 +464,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=notification-service
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=notification-service
-      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_PROPAGATORS=tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -491,8 +476,6 @@ services:
       eureka-server:
         condition: service_healthy
       postgres-notification:
-        condition: service_healthy
-      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
@@ -517,7 +500,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=payment-service
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=payment-service
-      - OTEL_PROPAGATORS=w3c,tracecontext
+      - OTEL_PROPAGATORS=tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -531,8 +514,6 @@ services:
       postgres-payment:
         condition: service_healthy
       rabbitmq:
-        condition: service_healthy
-      otel-collector:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
