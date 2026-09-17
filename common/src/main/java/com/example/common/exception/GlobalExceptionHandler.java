@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -120,6 +121,32 @@ public class GlobalExceptionHandler {
         });
 
         log.warn("Constraint violation: {}", errors);
+
+        ProblemDetailResponse problem = ProblemDetailResponse.builder()
+                .type(URI.create("https://api.example.com/errors/validation"))
+                .title("Validation Failed")
+                .status(HttpStatus.BAD_REQUEST.value())
+                .detail("Invalid request parameters")
+                .instance(URI.create(request.getRequestURI()))
+                .timestamp(Instant.now())
+                .addProperty("errors", errors)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
+    }
+
+    @ExceptionHandler(WebExchangeBindException.class)
+    public ResponseEntity<ProblemDetailResponse> handleWebExchangeBindException(
+            WebExchangeBindException ex, HttpServletRequest request) {
+
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach(error -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+
+        log.warn("Web exchange validation failed: {}", errors);
 
         ProblemDetailResponse problem = ProblemDetailResponse.builder()
                 .type(URI.create("https://api.example.com/errors/validation"))
