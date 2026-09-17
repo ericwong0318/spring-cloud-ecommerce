@@ -45,12 +45,6 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: {{ .Values.name }}
-            - name: SPRING_PROFILES_ACTIVE
-              value: {{ .Values.global.profile | default "prod" }}
-            - name: SPRING_CLOUD_CONFIG_URI
-              value: {{ .Values.global.configServer.uri }}
-            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
-              value: {{ .Values.global.eureka.serviceUrl }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.global.otel.endpoint }}
             - name: OTEL_EXPORTER_OTLP_PROTOCOL
@@ -61,36 +55,6 @@ spec:
               value: {{ .Values.global.otel.metricsExporter | default "otlp" }}
             - name: OTEL_LOGS_EXPORTER
               value: {{ .Values.global.otel.logsExporter | default "otlp" }}
-            {{- if .Values.database }}
-            - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://{{ .Values.global.postgres.host }}:{{ .Values.global.postgres.port }}/{{ .Values.database }}
-            - name: SPRING_DATASOURCE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Chart.Name }}-secrets
-                  key: POSTGRES_USER
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Chart.Name }}-secrets
-                  key: POSTGRES_PASSWORD
-            {{- end }}
-            {{- if .Values.rabbitmqEnabled }}
-            - name: SPRING_RABBITMQ_HOST
-              value: {{ .Values.global.rabbitmq.host }}
-            - name: SPRING_RABBITMQ_PORT
-              value: "{{ .Values.global.rabbitmq.port }}"
-            - name: SPRING_RABBITMQ_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Chart.Name }}-secrets
-                  key: RABBITMQ_USER
-            - name: SPRING_RABBITMQ_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Chart.Name }}-secrets
-                  key: RABBITMQ_PASSWORD
-            {{- end }}
             {{- range $key, $value := .Values.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

@@ -39,46 +39,6 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: "notification-service"
-            - name: SPRING_DATASOURCE_URL
-              value: "jdbc:postgresql://postgres:5432/notification_db"
-            - name: SPRING_DATASOURCE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: POSTGRES_USER
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: POSTGRES_PASSWORD
-            - name: SPRING_RABBITMQ_HOST
-              value: "rabbitmq"
-            - name: SPRING_RABBITMQ_PORT
-              value: "5672"
-            - name: SPRING_RABBITMQ_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: RABBITMQ_USER
-            - name: SPRING_RABBITMQ_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: RABBITMQ_PASSWORD
-            - name: SPRING_MAIL_HOST
-              value: "smtp.gmail.com"
-            - name: SPRING_MAIL_PORT
-              value: "587"
-            - name: SPRING_MAIL_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: MAIL_USERNAME
-            - name: SPRING_MAIL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: MAIL_PASSWORD
           livenessProbe:
             httpGet:
               path: /actuator/health

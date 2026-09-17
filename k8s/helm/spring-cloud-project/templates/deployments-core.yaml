@@ -39,24 +39,6 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: auth-server
-            - name: SPRING_PROFILES_ACTIVE
-              value: {{ .Values.global.profile | default "prod" }}
-            - name: SPRING_CLOUD_CONFIG_URI
-              value: {{ .Values.global.configServer.uri }}
-            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
-              value: {{ .Values.global.eureka.serviceUrl }}
-            - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://{{ .Values.global.postgres.host }}:{{ .Values.global.postgres.port }}/{{ .Values.authServer.database }}
-            - name: SPRING_DATASOURCE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Chart.Name }}-secrets
-                  key: POSTGRES_USER
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Chart.Name }}-secrets
-                  key: POSTGRES_PASSWORD
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.global.otel.endpoint }}
             - name: OTEL_EXPORTER_OTLP_PROTOCOL
@@ -130,12 +112,6 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: gateway
-            - name: SPRING_PROFILES_ACTIVE
-              value: {{ .Values.global.profile | default "prod" }}
-            - name: SPRING_CLOUD_CONFIG_URI
-              value: {{ .Values.global.configServer.uri }}
-            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
-              value: {{ .Values.global.eureka.serviceUrl }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.global.otel.endpoint }}
             - name: OTEL_EXPORTER_OTLP_PROTOCOL

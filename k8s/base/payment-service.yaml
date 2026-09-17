@@ -39,32 +39,6 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: "payment-service"
-            - name: SPRING_DATASOURCE_URL
-              value: "jdbc:postgresql://postgres:5432/payment_service"
-            - name: SPRING_DATASOURCE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: POSTGRES_USER
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: POSTGRES_PASSWORD
-            - name: SPRING_RABBITMQ_HOST
-              value: "rabbitmq"
-            - name: SPRING_RABBITMQ_PORT
-              value: "5672"
-            - name: SPRING_RABBITMQ_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: RABBITMQ_USER
-            - name: SPRING_RABBITMQ_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: RABBITMQ_PASSWORD
           livenessProbe:
             httpGet:
               path: /actuator/health

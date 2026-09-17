@@ -39,12 +39,6 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: config-server
-            - name: SPRING_PROFILES_ACTIVE
-              value: {{ .Values.global.profile | default "prod" }}
-            - name: SPRING_CLOUD_CONFIG_URI
-              value: {{ .Values.global.configServer.uri }}
-            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
-              value: {{ .Values.global.eureka.serviceUrl }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.global.otel.endpoint }}
             - name: OTEL_EXPORTER_OTLP_PROTOCOL
@@ -118,12 +112,6 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: eureka-server
-            - name: SPRING_PROFILES_ACTIVE
-              value: {{ .Values.global.profile | default "prod" }}
-            - name: SPRING_CLOUD_CONFIG_URI
-              value: {{ .Values.global.configServer.uri }}
-            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
-              value: {{ .Values.global.eureka.serviceUrl }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: {{ .Values.global.otel.endpoint }}
             - name: OTEL_EXPORTER_OTLP_PROTOCOL

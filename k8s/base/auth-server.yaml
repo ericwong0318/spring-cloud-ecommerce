@@ -33,18 +33,6 @@ spec:
           env:
             - name: OTEL_SERVICE_NAME
               value: "auth-server"
-            - name: SPRING_DATASOURCE_URL
-              value: "jdbc:postgresql://postgres:5432/oauth2_db"
-            - name: SPRING_DATASOURCE_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: POSTGRES_USER
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: spring-cloud-secrets
-                  key: POSTGRES_PASSWORD
           livenessProbe:
             httpGet:
               path: /actuator/health
