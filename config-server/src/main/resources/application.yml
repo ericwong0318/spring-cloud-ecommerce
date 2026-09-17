@@ -4,13 +4,6 @@ server:
 spring:
   application:
     name: config-server
-  cloud:
-    config:
-      server:
-        git:
-          uri: file://${user.home}/spring-cloud-config-repo
-          default-label: main
-          clone-on-start: true
   profiles:
     active: native
 
