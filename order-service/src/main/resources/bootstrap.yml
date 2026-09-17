@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: order-service
+  cloud:
+    config:
+      uri: http://config-server:8888
+      import: "optional:configserver:"
+  profiles:
+    active: dev
