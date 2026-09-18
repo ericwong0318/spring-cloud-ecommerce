@@ -251,8 +251,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build payment-service
-        run: mvn clean install -pl payment-service -DskipTests -B
+      - name: Build all modules
+        run: mvn clean install -DskipTests -B
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
