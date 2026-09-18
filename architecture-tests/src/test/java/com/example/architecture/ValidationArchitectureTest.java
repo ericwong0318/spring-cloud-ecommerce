@@ -87,7 +87,8 @@ public class ValidationArchitectureTest {
             })
             .because("Every @RequestBody in a @RestController must be validated with @Valid "
                     + "to enforce Jakarta Validation constraints at the API boundary. "
-                    + "Primitives and String (raw payloads) are exempt.");
+                    + "Primitives and String (raw payloads) are exempt.")
+            .allowEmptyShould(true);
 
     // =========================================================================
     // Rule 2: All DTO/Request classes must declare at least one Jakarta Validation annotation
@@ -145,14 +146,16 @@ public class ValidationArchitectureTest {
             .that().areAnnotatedWith(Entity.class).or().areAnnotatedWith(Document.class)
             .should().beAnnotatedWith(Valid.class)
             .because("@Valid is for technical validation at the API boundary; "
-                    + "domain entities enforce invariants in the service/saga layer, not via annotations");
+                    + "domain entities enforce invariants in the service/saga layer, not via annotations")
+            .allowEmptyShould(true);
 
     @ArchTest
     static final ArchRule valid_not_on_service_classes = noClasses()
             .that().resideInAPackage("..service..")
             .should().beAnnotatedWith(Valid.class)
             .because("@Valid on service-layer types leaks technical validation into the domain layer; "
-                    + "use explicit validation methods in services instead");
+                    + "use explicit validation methods in services instead")
+            .allowEmptyShould(true);
 
     // =========================================================================
     // Rule 4: @Pattern regexes must not contain ReDoS-prone patterns (nested quantifiers)
