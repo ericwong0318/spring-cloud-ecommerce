@@ -16,3 +16,13 @@ management:
   endpoint:
     health:
       show-details: always
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
