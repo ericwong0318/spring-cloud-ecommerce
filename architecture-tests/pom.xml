@@ -97,11 +97,6 @@
             <artifactId>payment-service</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.example</groupId>
-            <artifactId>system-test</artifactId>
-            <version>${project.version}</version>
-        </dependency>
     </dependencies>
 
     <build>
