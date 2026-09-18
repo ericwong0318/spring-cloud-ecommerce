@@ -315,13 +315,13 @@ jobs:
         run: mvn clean install -DskipTests -B
 
       - name: Start infrastructure
-        run: docker compose up -d
+        run: docker compose -f docker-compose.ci.yml up -d
 
       - name: Wait for infrastructure health
         run: |
           for service in mongodb postgres-product postgres-category postgres-order postgres-inventory postgres-notification postgres-payment rabbitmq; do
             echo "Waiting for $service..."
-            timeout 180 bash -c "until docker compose ps $service | grep -q healthy; do sleep 5; done"
+            timeout 180 bash -c "until docker compose -f docker-compose.ci.yml ps $service | grep -q healthy; do sleep 5; done"
           done
 
       - name: Wait for Config Server
@@ -379,7 +379,7 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: docker compose down -v
+        run: docker compose -f docker-compose.ci.yml down -v
 
   docker:
     name: Docker Build

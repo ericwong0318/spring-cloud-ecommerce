@@ -49,16 +49,6 @@ services:
       - "8888:8888"
     environment:
       - SPRING_PROFILES_ACTIVE=native
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-      - OTEL_SERVICE_NAME=config-server
-      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=config-server
-      - OTEL_PROPAGATORS=tracecontext
-      - OTEL_METRICS_EXPORTER=otlp
-      - OTEL_LOGS_EXPORTER=otlp
-      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
-      - profiler.enabled=true
-      - profiler.interval=60s
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8888/actuator/health"]
       interval: 10s
@@ -66,8 +56,6 @@ services:
       retries: 5
     networks:
       - spring-cloud-network
-    depends_on:
-      - otel-collector
 
   eureka-server:
     build:
