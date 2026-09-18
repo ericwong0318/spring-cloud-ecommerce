@@ -68,8 +68,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build all modules
-        run: mvn clean install -DskipTests -B
+      - name: Build all modules (excluding system-test)
+        run: mvn clean install -DskipTests -B -pl '!system-test'
 
       - name: Run ArchUnit tests
         run: mvn test -pl architecture-tests -B
@@ -172,8 +172,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build all modules
-        run: mvn clean install -DskipTests -B
+      - name: Build all modules (excluding system-test)
+        run: mvn clean install -DskipTests -B -pl '!system-test'
 
       - name: Build verifier
         run: mvn package -pl ci/validation -B
@@ -240,8 +240,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build all modules
-        run: mvn clean install -DskipTests -B
+      - name: Build all modules (excluding system-test)
+        run: mvn clean install -DskipTests -B -pl '!system-test'
 
       - name: Generate VALIDATION.md
         run: mvn exec:java -pl ci/validation -Dexec.mainClass=com.example.validation.ValidationMarkdownGenerator -Dexec.args="VALIDATION.md" -B
@@ -268,8 +268,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build all modules
-        run: mvn clean install -DskipTests -B
+      - name: Build all modules (excluding system-test)
+        run: mvn clean install -DskipTests -B -pl '!system-test'
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
@@ -311,8 +311,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build all modules
-        run: mvn clean install -DskipTests -B
+      - name: Build all modules (excluding system-test)
+        run: mvn clean install -DskipTests -B -pl '!system-test'
 
       - name: Start infrastructure
         run: docker compose -f docker-compose.ci.yml up -d
