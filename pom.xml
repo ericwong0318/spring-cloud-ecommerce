@@ -423,6 +423,8 @@
                         </includes>
                         <excludes>
                             <exclude>**/*IntegrationTest.java</exclude>
+                            <exclude>**/*PactProviderTest.java</exclude>
+                            <exclude>**/*PactConsumerTest.java</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
