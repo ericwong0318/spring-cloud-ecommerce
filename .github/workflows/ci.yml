@@ -421,11 +421,35 @@ jobs:
           key: ${{ runner.os }}-sonar-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-sonar-
 
+      - name: Start SonarQube Community Edition
+        run: |
+          docker run -d --name sonarqube \
+            -p 9000:9000 \
+            -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+            sonarqube:community
+
+      - name: Wait for SonarQube to be ready
+        run: |
+          echo "Waiting for SonarQube to start..."
+          for i in {1..60}; do
+            if curl -sf http://localhost:9000/api/system/status | grep -q '"status":"UP"'; then
+              echo "SonarQube is ready"
+              break
+            fi
+            echo "Waiting... ($i/60)"
+            sleep 10
+          done
+
       - name: Run SonarQube Scan
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        run: mvn sonar:sonar -B
+          SONAR_LOGIN: admin
+          SONAR_PASSWORD: admin
+          SONAR_HOST_URL: http://localhost:9000
+        run: mvn sonar:sonar -B -Dsonar.login=admin -Dsonar.password=admin
+
+      - name: Stop SonarQube
+        if: always()
+        run: docker stop sonarqube && docker rm sonarqube
 
   security-scan:
     name: Security Scan
@@ -444,6 +468,8 @@ jobs:
 
       - name: Run OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
+        env:
+          JAVA_HOME: /opt/jdk
         with:
           project: 'payment-service'
           path: 'payment-service'
