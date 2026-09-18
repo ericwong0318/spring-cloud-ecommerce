@@ -33,6 +33,11 @@ services:
     networks:
       - spring-cloud-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   config-server:
     build:
