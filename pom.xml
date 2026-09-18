@@ -421,6 +421,9 @@
                         <includes>
                             <include>**/*Test.java</include>
                         </includes>
+                        <excludes>
+                            <exclude>**/*IntegrationTest.java</exclude>
+                        </excludes>
                     </configuration>
                 </plugin>
                 <plugin>
