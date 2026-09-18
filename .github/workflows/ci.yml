@@ -46,12 +46,6 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
       - name: Generate OpenAPI specs
         run: mvn compile -DskipTests -B
 
@@ -62,7 +56,7 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     needs: validate
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -73,6 +67,9 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
+
+      - name: Build all modules
+        run: mvn clean install -DskipTests -B
 
       - name: Run ArchUnit tests
         run: mvn test -pl architecture-tests -B
