@@ -336,14 +336,16 @@ jobs:
           echo "Starting eureka-server..."
           (cd eureka-server && nohup mvn spring-boot:run \
             -Dspring-boot.run.profiles=docker \
-            -Dspring.cloud.config.uri=http://localhost:8888 \
+            -Dspring.config.import= \
             -Deureka.client.service-url.defaultZone=http://localhost:8761/eureka/ \
+            -Deureka.client.register-with-eureka=false \
+            -Deureka.client.fetch-registry=false \
             > ../logs/eureka-server.log 2>&1 &)
 
       - name: Wait for Eureka Server
         run: |
           echo "Waiting for eureka-server..."
-          timeout 180 bash -c "until curl -sf http://localhost:8761/actuator/health | grep -q UP; do sleep 5; done"
+          timeout 300 bash -c "until curl -sf http://localhost:8761/actuator/health | grep -q UP; do sleep 5; done"
 
       - name: Start Auth Server
         run: |
