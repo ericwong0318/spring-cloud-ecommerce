@@ -145,6 +145,7 @@ jobs:
     needs: verify
     timeout-minutes: 10
     env:
+      ENABLE_SPLUNK_AGENT: "false"
       SPLUNK_ACCESS_TOKEN: test-token
       SPLUNK_INGEST_URL: https://ingest.sg0.splunkcloud.com
       SPLUNK_REALM: sg0
@@ -283,6 +284,7 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     timeout-minutes: 30
     env:
+      ENABLE_SPLUNK_AGENT: "false"
       SPLUNK_ACCESS_TOKEN: test-token
       SPLUNK_INGEST_URL: https://ingest.sg0.splunkcloud.com
       SPLUNK_REALM: sg0

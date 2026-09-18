@@ -38,6 +38,8 @@ services:
     build:
       context: ./config-server
       dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8888:8888"
     environment:
@@ -66,6 +68,8 @@ services:
     build:
       context: ./eureka-server
       dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8761:8761"
     environment:
@@ -97,6 +101,8 @@ services:
     build:
       context: ./auth-server
       dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "9000:9000"
     environment:
@@ -131,6 +137,8 @@ services:
     build:
       context: ./gateway
       dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8080:8080"
     environment:
@@ -167,6 +175,8 @@ services:
     build:
       context: ./product
       dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8081:8081"
     environment:
@@ -203,6 +213,8 @@ services:
     build:
       context: ./category
       dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8082:8082"
     environment:
@@ -237,6 +249,8 @@ services:
     build:
       context: ./order-service
       dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8083:8083"
     environment:
@@ -415,6 +429,8 @@ services:
     build:
       context: ./inventory-service
       dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8084:8084"
     environment:
@@ -451,6 +467,8 @@ services:
     build:
       context: ./notification-service
       dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8085:8085"
     environment:
@@ -490,6 +508,8 @@ services:
     build:
       context: ./payment-service
       dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8086:8085"
     environment:
