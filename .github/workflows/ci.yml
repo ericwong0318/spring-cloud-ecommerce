@@ -320,29 +320,76 @@ jobs:
             timeout 180 bash -c "until docker compose -f docker-compose.ci.yml ps $service | grep -q healthy; do sleep 5; done"
           done
 
+      - name: Start Config Server
+        run: |
+          echo "Starting config-server..."
+          mkdir -p logs
+          (cd config-server && nohup mvn spring-boot:run -Dspring-boot.run.profiles=native > ../logs/config-server.log 2>&1 &)
+
       - name: Wait for Config Server
         run: |
           echo "Waiting for config-server..."
           timeout 180 bash -c "until curl -sf http://localhost:8888/actuator/health | grep -q UP; do sleep 5; done"
+
+      - name: Start Eureka Server
+        run: |
+          echo "Starting eureka-server..."
+          (cd eureka-server && nohup mvn spring-boot:run \
+            -Dspring-boot.run.profiles=docker \
+            -Dspring.cloud.config.uri=http://localhost:8888 \
+            -Deureka.client.service-url.defaultZone=http://localhost:8761/eureka/ \
+            > ../logs/eureka-server.log 2>&1 &)
 
       - name: Wait for Eureka Server
         run: |
           echo "Waiting for eureka-server..."
           timeout 180 bash -c "until curl -sf http://localhost:8761/actuator/health | grep -q UP; do sleep 5; done"
 
+      - name: Start Auth Server
+        run: |
+          echo "Starting auth-server..."
+          (cd auth-server && nohup mvn spring-boot:run \
+            -Dspring-boot.run.profiles=docker \
+            -Dspring.cloud.config.uri=http://localhost:8888 \
+            -Deureka.client.service-url.defaultZone=http://localhost:8761/eureka/ \
+            > ../logs/auth-server.log 2>&1 &)
+
       - name: Wait for Auth Server
         run: |
           echo "Waiting for auth-server..."
           timeout 180 bash -c "until curl -sf http://localhost:9000/actuator/health | grep -q UP; do sleep 5; done"
+
+      - name: Start Gateway
+        run: |
+          echo "Starting gateway..."
+          (cd gateway && nohup mvn spring-boot:run \
+            -Dspring-boot.run.profiles=docker \
+            -Dspring.cloud.config.uri=http://localhost:8888 \
+            -Deureka.client.service-url.defaultZone=http://localhost:8761/eureka/ \
+            > ../logs/gateway.log 2>&1 &)
 
       - name: Wait for Gateway
         run: |
           echo "Waiting for gateway..."
           timeout 180 bash -c "until curl -sf http://localhost:8080/actuator/health | grep -q UP; do sleep 5; done"
 
+      - name: Start Business Services
+        run: |
+          SERVICES="product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8085 payment-service:8086"
+          for svc_port in $SERVICES; do
+            svc=${svc_port%:*}
+            port=${svc_port#*:}
+            echo "Starting $svc..."
+            (cd $svc && nohup mvn spring-boot:run \
+              -Dspring-boot.run.profiles=docker \
+              -Dspring.cloud.config.uri=http://localhost:8888 \
+              -Deureka.client.service-url.defaultZone=http://localhost:8761/eureka/ \
+              > ../logs/$svc.log 2>&1 &)
+          done
+
       - name: Wait for all services
         run: |
-          SERVICES="product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8085 payment-service:8085"
+          SERVICES="product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8085 payment-service:8086"
           for svc_port in $SERVICES; do
             svc=${svc_port%:*}
             port=${svc_port#*:}
@@ -366,7 +413,7 @@ jobs:
       - name: Verify config from Config Server
         run: |
           echo "Verifying config sourced from Config Server..."
-          for svc_port in "product:8081" "category:8082" "order-service:8083" "inventory-service:8084" "notification-service:8085" "payment-service:8085"; do
+          for svc_port in "product:8081" "category:8082" "order-service:8083" "inventory-service:8084" "notification-service:8085" "payment-service:8086"; do
             svc=${svc_port%:*}
             port=${svc_port#*:}
             echo "Checking $svc configprops..."
