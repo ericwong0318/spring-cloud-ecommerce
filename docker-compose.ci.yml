@@ -1,0 +1,440 @@
+services:
+  mongodb:
+    image: mongo:7-jammy
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  config-server:
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: "false"
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=native
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-cloud-network
+
+  eureka-server:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: "false"
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+
+  auth-server:
+    build:
+      context: ./auth-server
+      dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: "false"
+    ports:
+      - "9000:9000"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:9000/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: "false"
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      auth-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+
+  product:
+    build:
+      context: ./product
+      dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: "false"
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+
+  category:
+    build:
+      context: ./category
+      dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: "false"
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: "false"
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8083/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-product:
+    image: postgres:16-alpine
+    container_name: postgres-product
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
+    environment:
+      - POSTGRES_DB=product_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PRODUCT_PASSWORD}
+    ports:
+      - "5435:5432"
+    volumes:
+      - product-db-data:/var/lib/postgresql/data
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-category:
+    image: postgres:16-alpine
+    container_name: postgres-category
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
+    environment:
+      - POSTGRES_DB=category_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_CATEGORY_PASSWORD}
+    ports:
+      - "5436:5432"
+    volumes:
+      - category-db-data:/var/lib/postgresql/data
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-order:
+    image: postgres:16-alpine
+    container_name: postgres-order
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
+    environment:
+      - POSTGRES_DB=order_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_ORDER_PASSWORD}
+    ports:
+      - "5437:5432"
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-payment:
+    image: postgres:16-alpine
+    container_name: postgres-payment
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
+    environment:
+      - POSTGRES_DB=payment_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PAYMENT_PASSWORD}
+    ports:
+      - "5438:5432"
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-inventory:
+    image: postgres:16-alpine
+    container_name: postgres-inventory
+    environment:
+      - POSTGRES_DB=inventory_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_INVENTORY_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - inventory-db-data:/var/lib/postgresql/data
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-notification:
+    image: postgres:16-alpine
+    container_name: postgres-notification
+    environment:
+      - POSTGRES_DB=notification_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_NOTIFICATION_PASSWORD}
+    ports:
+      - "5434:5432"
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  inventory-service:
+    build:
+      context: ./inventory-service
+      dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: "false"
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres-inventory:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8084/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: "false"
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - AUTH_SERVER_URL=http://auth-server:9000
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres-notification:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8085/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+      args:
+        ENABLE_SPLUNK_AGENT: "false"
+    ports:
+      - "8086:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres-payment:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8085/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+
+networks:
+  spring-cloud-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+  rabbitmq-data:
+  inventory-db-data:
+  notification-db-data:
+  product-db-data:
+  category-db-data:
+  order-db-data:
+  payment-db-data:
