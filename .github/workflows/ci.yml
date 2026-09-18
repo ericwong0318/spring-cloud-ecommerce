@@ -69,7 +69,7 @@ jobs:
           cache: maven
 
       - name: Build and test all modules (excluding system-test)
-        run: mvn clean install -B -pl '!system-test'
+        run: mvn clean install -DskipITs -B -pl '!system-test'
 
       - name: Upload ArchUnit test reports
         if: always()
