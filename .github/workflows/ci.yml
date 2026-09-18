@@ -144,6 +144,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: verify
     timeout-minutes: 10
+    env:
+      SPLUNK_ACCESS_TOKEN: test-token
+      SPLUNK_INGEST_URL: https://ingest.sg0.splunkcloud.com
+      SPLUNK_REALM: sg0
+      SPLUNK_ENVIRONMENT: spring-cloud-ecommerce
+      POSTGRES_PRODUCT_PASSWORD: localdev
+      POSTGRES_CATEGORY_PASSWORD: localdev
+      POSTGRES_ORDER_PASSWORD: localdev
+      POSTGRES_INVENTORY_PASSWORD: localdev
+      POSTGRES_PAYMENT_PASSWORD: localdev
+      POSTGRES_NOTIFICATION_PASSWORD: localdev
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      MONGO_INITDB_DATABASE: product_db
+      MAIL_USERNAME: test@example.com
+      MAIL_PASSWORD: test-password
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -266,6 +282,22 @@ jobs:
     needs: build
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     timeout-minutes: 30
+    env:
+      SPLUNK_ACCESS_TOKEN: test-token
+      SPLUNK_INGEST_URL: https://ingest.sg0.splunkcloud.com
+      SPLUNK_REALM: sg0
+      SPLUNK_ENVIRONMENT: spring-cloud-ecommerce
+      POSTGRES_PRODUCT_PASSWORD: localdev
+      POSTGRES_CATEGORY_PASSWORD: localdev
+      POSTGRES_ORDER_PASSWORD: localdev
+      POSTGRES_INVENTORY_PASSWORD: localdev
+      POSTGRES_PAYMENT_PASSWORD: localdev
+      POSTGRES_NOTIFICATION_PASSWORD: localdev
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      MONGO_INITDB_DATABASE: product_db
+      MAIL_USERNAME: test@example.com
+      MAIL_PASSWORD: test-password
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
