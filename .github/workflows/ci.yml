@@ -68,12 +68,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build all modules (excluding system-test)
-        run: mvn clean install -DskipTests -B -pl '!system-test'
-
-      - name: Run ArchUnit tests
-        run: mvn test -am -pl architecture-tests -B
-        continue-on-error: false
+      - name: Build and test all modules (excluding system-test)
+        run: mvn clean install -B -pl '!system-test'
 
       - name: Upload ArchUnit test reports
         if: always()
