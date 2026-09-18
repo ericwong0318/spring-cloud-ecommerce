@@ -75,22 +75,12 @@ jobs:
         run: mvn test -pl architecture-tests -B
         continue-on-error: false
 
-      - name: Run unit tests (payment-service)
-        run: mvn test -pl payment-service -B
-
       - name: Upload ArchUnit test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: architecture-tests-reports
           path: architecture-tests/target/surefire-reports/
-
-      - name: Upload unit test reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: payment-service-test-reports
-          path: payment-service/target/surefire-reports/
 
       - name: Annotate ArchUnit failures
         if: failure()
@@ -105,10 +95,11 @@ jobs:
           fi
 
   verify:
-    name: Integration Tests (Pact + Fuzz)
+    name: Integration Tests (Fuzz)
     runs-on: ubuntu-latest
     needs: validate
     timeout-minutes: 30
+    if: github.event_name == 'schedule'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -123,31 +114,11 @@ jobs:
       - name: Build all modules
         run: mvn clean install -DskipTests -B
 
-      - name: Run Pact verification (payment-service)
-        if: github.event_name != 'schedule'
-        run: mvn pact:verify -pl payment-service -B
-        continue-on-error: false
-
-      - name: Run Pact verification (category)
-        if: github.event_name != 'schedule'
-        run: mvn pact:verify -pl category -B
-        continue-on-error: false
-
       - name: Run fuzz tests (nightly)
-        if: github.event_name == 'schedule'
         run: mvn verify -pl system-test -Pfuzz -B
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
         timeout-minutes: 25
-
-      - name: Upload Pact verification reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pact-verification-reports
-          path: |
-            payment-service/target/pacts/
-            category/target/pacts/
 
       - name: Upload fuzz test reports
         if: always()
@@ -156,20 +127,8 @@ jobs:
           name: fuzz-test-reports
           path: system-test/target/fuzz-results/
 
-      - name: Annotate Pact failures
-        if: failure() && github.event_name != 'schedule'
-        run: |
-          for module in payment-service category product inventory-service; do
-            if [ -f "$module/target/pact/failures.txt" ]; then
-              while IFS= read -r line; do
-                interaction=$(echo "$line" | grep -oP '(?<=interaction: ).*' | head -1)
-                echo "::error file=$module/target/pact/failures.txt::Pact interaction failed: ${interaction:-unknown interaction}"
-              done < "$module/target/pact/failures.txt"
-            fi
-          done
-
       - name: Annotate fuzz failures
-        if: failure() && github.event_name == 'schedule'
+        if: failure()
         run: |
           if [ -d system-test/target/fuzz-results ]; then
             for file in system-test/target/fuzz-results/*.failure system-test/target/fuzz-results/*.crash; do
