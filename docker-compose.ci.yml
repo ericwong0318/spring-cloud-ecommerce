@@ -28,10 +28,10 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=native
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8888/actuator/health"]
-      interval: 10s
-      timeout: 10s
-      retries: 12
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health"]
+      interval: 15s
+      timeout: 15s
+      retries: 20
       start_period: 30s
     networks:
       - spring-cloud-network
