@@ -146,6 +146,7 @@ jobs:
     timeout-minutes: 10
     env:
       ENABLE_SPLUNK_AGENT: "false"
+      OTEL_JAVAAGENT_CONFIG: ""
       SPLUNK_ACCESS_TOKEN: test-token
       SPLUNK_INGEST_URL: https://ingest.sg0.splunkcloud.com
       SPLUNK_REALM: sg0
@@ -285,6 +286,7 @@ jobs:
     timeout-minutes: 30
     env:
       ENABLE_SPLUNK_AGENT: "false"
+      OTEL_JAVAAGENT_CONFIG: ""
       SPLUNK_ACCESS_TOKEN: test-token
       SPLUNK_INGEST_URL: https://ingest.sg0.splunkcloud.com
       SPLUNK_REALM: sg0
