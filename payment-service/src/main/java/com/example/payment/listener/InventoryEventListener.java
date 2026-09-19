@@ -1,8 +1,8 @@
 package com.example.payment.listener;
 
-import com.example.common.event.BaseEvent;
 import com.example.common.event.InventoryEvent;
-import com.example.payment.event.ReactiveIdempotentEventProcessor;
+import com.example.common.event.ReactiveIdempotentEventProcessor;
+import com.example.common.listener.BaseReactiveSagaListener;
 import com.example.payment.service.PaymentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,30 +13,25 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 
 @Component
-public class InventoryEventListener {
+public class InventoryEventListener extends BaseReactiveSagaListener<InventoryEvent> {
 
     private static final Logger log = LoggerFactory.getLogger(InventoryEventListener.class);
 
     private final PaymentService paymentService;
-    private final ReactiveIdempotentEventProcessor idempotentEventProcessor;
 
-    public InventoryEventListener(PaymentService paymentService,
-                                   ReactiveIdempotentEventProcessor idempotentEventProcessor) {
+    public InventoryEventListener(ReactiveIdempotentEventProcessor idempotentEventProcessor,
+                                   PaymentService paymentService) {
+        super(idempotentEventProcessor);
         this.paymentService = paymentService;
-        this.idempotentEventProcessor = idempotentEventProcessor;
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.inventory-reserved}")
     public void handleInventoryReserved(InventoryEvent event) {
-        idempotentEventProcessor.process(event, this::handleInventoryReservedInternal)
-                .subscribe(
-                        unused -> log.debug("Successfully processed inventory event: eventId={}", event.getEventId()),
-                        error -> log.error("Failed to process inventory event: eventId={}, error={}",
-                                event.getEventId(), error.getMessage())
-                );
+        processEvent(event);
     }
 
-    private Mono<Void> handleInventoryReservedInternal(InventoryEvent event) {
+    @Override
+    protected Mono<Void> handleEventInternal(InventoryEvent event) {
         log.info("Received inventory reserved event: variantId={}, reserved={}, backordered={}, eventId={}",
                 event.getVariantId(), event.getReserved(), event.getBackordered(), event.getEventId());
 

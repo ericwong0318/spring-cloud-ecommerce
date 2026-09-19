@@ -1,41 +1,35 @@
 package com.example.order.listener;
 
-import com.example.common.event.BaseEvent;
 import com.example.common.event.PaymentEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
+import com.example.common.listener.BaseReactiveSagaListener;
 import com.example.order.service.OrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
-
 import reactor.core.publisher.Mono;
 
 @Component
-public class PaymentEventListener {
+public class PaymentEventListener extends BaseReactiveSagaListener<PaymentEvent> {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentEventListener.class);
 
-    private final ReactiveIdempotentEventProcessor idempotentEventProcessor;
     private final OrderService orderService;
 
     public PaymentEventListener(ReactiveIdempotentEventProcessor idempotentEventProcessor,
-                                OrderService orderService) {
-        this.idempotentEventProcessor = idempotentEventProcessor;
+                                 OrderService orderService) {
+        super(idempotentEventProcessor);
         this.orderService = orderService;
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.payment-events}")
     public void handlePaymentEvent(PaymentEvent event) {
-        idempotentEventProcessor.process(event, this::handlePaymentEventInternal)
-                .subscribe(
-                        unused -> log.debug("Successfully processed payment event: eventId={}", event.getEventId()),
-                        error -> log.error("Failed to process payment event: eventId={}, error={}",
-                                event.getEventId(), error.getMessage())
-                );
+        processEvent(event);
     }
 
-    private Mono<Void> handlePaymentEventInternal(PaymentEvent event) {
+    @Override
+    protected Mono<Void> handleEventInternal(PaymentEvent event) {
         log.info("Received payment event: eventType={}, eventId={}, orderId={}, status={}",
                 event.getEventType(), event.getEventId(), event.getOrderId(), event.getStatus());
 
