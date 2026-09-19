@@ -19,6 +19,7 @@ import org.springframework.context.annotation.FilterType;
 }, excludeFilters = {
     @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
         com.example.common.event.OutboxEventRepository.class,
+        com.example.common.event.ReactiveOutboxEventPublisher.class,
         com.example.common.event.IdempotentEventProcessor.class
     })
 })

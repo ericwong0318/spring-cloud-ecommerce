@@ -14,16 +14,13 @@ import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 @Component
 @EnableScheduling
-public class ReactiveOutboxEventPublisher {
+public class ReactiveOutboxEventPublisher<T extends OutboxEvent> {
 
     private static final Logger log = LoggerFactory.getLogger(ReactiveOutboxEventPublisher.class);
 
-    private final OutboxEventRepository outboxEventRepository;
+    private final ReactiveOutboxEventRepository<T> outboxEventRepository;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
     private final TransactionalOperator transactionalOperator;
@@ -37,7 +34,7 @@ public class ReactiveOutboxEventPublisher {
     @Value("${outbox.publisher.exchange:outbox.exchange}")
     private String exchange;
 
-    public ReactiveOutboxEventPublisher(OutboxEventRepository outboxEventRepository,
+    public ReactiveOutboxEventPublisher(ReactiveOutboxEventRepository<T> outboxEventRepository,
                                          RabbitTemplate rabbitTemplate,
                                          ObjectMapper objectMapper,
                                          TransactionalOperator transactionalOperator) {
@@ -50,29 +47,30 @@ public class ReactiveOutboxEventPublisher {
     @Scheduled(fixedDelayString = "${outbox.publisher.poll-interval-ms:5000}")
     @SchedulerLock(name = "outboxPublisher", lockAtLeastFor = "30s", lockAtMostFor = "5m")
     public void publishOutboxEvents() {
-        Flux.fromIterable(outboxEventRepository.findUnpublishedEventsWithRetryLimit(maxRetries))
-                .flatMap(this::publishEventTransactional, batchSize)
+        outboxEventRepository.findUnpublishedEventsWithRetryLimit(maxRetries)
+                .take(batchSize)
+                .flatMap(this::publishEventTransactional)
                 .subscribe();
     }
 
-    private Mono<Void> publishEventTransactional(OutboxEvent event) {
+    private Mono<Void> publishEventTransactional(T event) {
         return Mono.fromRunnable(() -> {
                     try {
                         publishEvent(event);
                         event.markPublished();
-                        outboxEventRepository.save(event);
+                        outboxEventRepository.save(event).subscribe();
                         log.debug("Published outbox event: id={}, type={}", event.getId(), event.getEventType());
                     } catch (Exception e) {
                         log.error("Failed to publish outbox event: id={}, type={}", event.getId(), event.getEventType(), e);
                         event.incrementRetryCount();
-                        outboxEventRepository.save(event);
+                        outboxEventRepository.save(event).subscribe();
                     }
                 })
                 .then()
                 .as(transactionalOperator::transactional);
     }
 
-    private void publishEvent(OutboxEvent event) throws JsonProcessingException {
+    private void publishEvent(T event) throws JsonProcessingException {
         String routingKey = event.getAggregateType().toLowerCase() + "." + event.getEventType().toLowerCase();
         rabbitTemplate.convertAndSend(exchange, routingKey, event.getPayload());
     }
@@ -82,7 +80,8 @@ public class ReactiveOutboxEventPublisher {
                     try {
                         String jsonPayload = objectMapper.writeValueAsString(payload);
                         OutboxEvent event = new OutboxEvent(aggregateType, aggregateId, eventType, jsonPayload);
-                        outboxEventRepository.save(event);
+                        // Note: This creates a base OutboxEvent, subclasses should override saveEvent to create their specific type
+                        outboxEventRepository.save((T) event).subscribe();
                         log.debug("Saved outbox event: aggregateType={}, aggregateId={}, eventType={}", aggregateType, aggregateId, eventType);
                     } catch (JsonProcessingException e) {
                         log.error("Failed to serialize outbox event payload", e);

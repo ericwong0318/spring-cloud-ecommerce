@@ -6,6 +6,7 @@ import com.example.order.model.OrderItem;
 import com.example.order.model.Shipment;
 import com.example.order.model.ShipmentItem;
 import com.example.common.event.OutboxEventPublisher;
+import com.example.common.event.ReactiveOutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentItemRepository;
@@ -19,6 +20,8 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Primary;
+
+import reactor.core.publisher.Mono;
 
 /**
  * Minimal test configuration that only includes order-service beans, avoiding common module's JPA classes.
@@ -35,6 +38,7 @@ import org.springframework.context.annotation.Primary;
 @ComponentScan(basePackages = "com.example.order", excludeFilters = {
     @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
         com.example.common.event.OutboxEventRepository.class,
+        com.example.common.event.ReactiveOutboxEventPublisher.class,
         com.example.common.event.IdempotentEventProcessor.class,
         com.example.order.service.ShipmentService.class,
         com.example.order.service.OrderService.class
@@ -44,6 +48,11 @@ public class MinimalTestConfig {
     @Bean
     public OutboxEventPublisher outboxEventPublisher() {
         return Mockito.mock(OutboxEventPublisher.class);
+    }
+
+    @Bean
+    public ReactiveOutboxEventPublisher reactiveOutboxEventPublisher() {
+        return Mockito.mock(ReactiveOutboxEventPublisher.class);
     }
 
     @Bean
