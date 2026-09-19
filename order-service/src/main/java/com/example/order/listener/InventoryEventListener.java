@@ -1,10 +1,8 @@
 package com.example.order.listener;
 
-import com.example.common.event.BaseEvent;
 import com.example.common.event.InventoryEvent;
-import com.example.common.event.OrderEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
-import com.example.common.exception.ResourceNotFoundException;
+import com.example.common.listener.BaseReactiveSagaListener;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.outbox.R2dbcOutboxEventPublisher;
@@ -14,43 +12,37 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
-
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @Component
-public class InventoryEventListener {
+public class InventoryEventListener extends BaseReactiveSagaListener<InventoryEvent> {
 
     private static final Logger log = LoggerFactory.getLogger(InventoryEventListener.class);
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final ReactiveIdempotentEventProcessor idempotentEventProcessor;
     private final R2dbcOutboxEventPublisher outboxPublisher;
 
     public InventoryEventListener(OrderRepository orderRepository,
                                   OrderItemRepository orderItemRepository,
                                   ReactiveIdempotentEventProcessor idempotentEventProcessor,
                                   R2dbcOutboxEventPublisher outboxPublisher) {
+        super(idempotentEventProcessor);
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
-        this.idempotentEventProcessor = idempotentEventProcessor;
         this.outboxPublisher = outboxPublisher;
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.inventory-events}")
     public void handleInventoryEvent(InventoryEvent event) {
-        idempotentEventProcessor.process(event, this::handleInventoryEventInternal)
-                .subscribe(
-                        unused -> log.debug("Successfully processed inventory event: eventId={}", event.getEventId()),
-                        error -> log.error("Failed to process inventory event: eventId={}, error={}",
-                                event.getEventId(), error.getMessage())
-                );
+        processEvent(event);
     }
 
-    private Mono<Void> handleInventoryEventInternal(InventoryEvent event) {
+    @Override
+    protected Mono<Void> handleEventInternal(InventoryEvent event) {
         log.info("Received inventory event: eventType={}, eventId={}, variantId={}, reserved={}, backordered={}",
                 event.getEventType(), event.getEventId(), event.getVariantId(), event.getReserved(), event.getBackordered());
 
@@ -82,7 +74,6 @@ public class InventoryEventListener {
     }
 
     private void updateOrderItemStatusForReserved(Long variantId, int reserved, int backordered) {
-        // Find the order item by variantId that is in PENDING status
         orderItemRepository.findByVariantIdAndStatus(variantId, OrderItem.OrderItemStatus.PENDING)
                 .flatMap(orderItem -> {
                     if (orderItem == null) {
@@ -90,7 +81,6 @@ public class InventoryEventListener {
                         return Mono.empty();
                     }
 
-                    // Update the order item status
                     if (backordered > 0) {
                         orderItem.setStatus(OrderItem.OrderItemStatus.BACKORDERED);
                         log.info("OrderItem {} set to BACKORDERED (reserved={}, backordered={})", orderItem.getId(), reserved, backordered);
@@ -101,11 +91,9 @@ public class InventoryEventListener {
                     }
                     return orderItemRepository.save(orderItem)
                             .flatMap(savedItem -> {
-                                // Check if all order items are RESERVED or BACKORDERED
                                 Long orderId = savedItem.getOrderId();
                                 return orderRepository.findById(orderId)
                                         .flatMap(order -> {
-                                            // Fetch all items for this order
                                             return orderItemRepository.findByOrderId(orderId).collectList()
                                                     .flatMap(items -> {
                                                         boolean allItemsReservedOrBackordered = items.stream()
@@ -119,8 +107,7 @@ public class InventoryEventListener {
                                                                     .doOnNext(saved -> {
                                                                         log.info("Order {} transitioned to RESERVED", saved.getId());
 
-                                                                        // Publish OrderEvent.UPDATED to outbox
-                                                                        OrderEvent updatedEvent = OrderEvent.statusChanged(saved.getId(), OrderEvent.OrderStatus.valueOf("RESERVED"));
+                                                                        com.example.common.event.OrderEvent updatedEvent = com.example.common.event.OrderEvent.statusChanged(saved.getId(), com.example.common.event.OrderEvent.OrderStatus.valueOf("RESERVED"));
                                                                         outboxPublisher.saveEvent("Order", saved.getId().toString(),
                                                                                 "ORDER_UPDATED", updatedEvent).subscribe();
                                                                     })
@@ -136,7 +123,6 @@ public class InventoryEventListener {
     }
 
     private void handleStockReservationFailed(Long variantId, int backordered) {
-        // Find the order item by variantId that is in PENDING status
         orderItemRepository.findByVariantIdAndStatus(variantId, OrderItem.OrderItemStatus.PENDING)
                 .flatMap(orderItem -> {
                     if (orderItem == null) {
@@ -146,12 +132,10 @@ public class InventoryEventListener {
 
                     Long orderId = orderItem.getOrderId();
 
-                    // Cancel the order item
                     orderItem.setStatus(OrderItem.OrderItemStatus.CANCELLED);
                     return orderItemRepository.save(orderItem)
                             .doOnNext(saved -> log.info("OrderItem {} cancelled due to stock reservation failure", saved.getId()))
                             .flatMap(savedItem -> {
-                                // Check if all items are now CANCELLED or BACKORDERED - if so, cancel the order
                                 return orderRepository.findById(orderId)
                                         .flatMap(order -> orderItemRepository.findByOrderId(orderId).collectList()
                                                 .flatMap(orderItems -> {
@@ -165,12 +149,11 @@ public class InventoryEventListener {
                                                                 .doOnNext(saved -> {
                                                                     log.info("Order {} cancelled due to stock reservation failure", saved.getId());
 
-                                                                    // Publish OrderEvent.CANCELLED to outbox
                                                                     orderItemRepository.findByOrderId(orderId).collectList()
                                                                             .subscribe(cancelledItems -> {
-                                                                                OrderEvent cancelledEvent = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
+                                                                                com.example.common.event.OrderEvent cancelledEvent = com.example.common.event.OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
                                                                                         null, cancelledItems.stream()
-                                                                                .map(item -> new OrderEvent.OrderItem(
+                                                                                .map(item -> new com.example.common.event.OrderEvent.OrderItem(
                                                                                 item.getId(),
                                                                                 item.getProductId(),
                                                                                 item.getVariantId(),
@@ -179,7 +162,7 @@ public class InventoryEventListener {
                                                                                 item.getQuantityOrdered(),
                                                                                 item.getQuantityShipped(),
                                                                                 item.getUnitPrice(),
-                                                                                OrderEvent.OrderItemStatus.valueOf(item.getStatus().name()),
+                                                                                com.example.common.event.OrderEvent.OrderItemStatus.valueOf(item.getStatus().name()),
                                                                                 item.getReservedAt()))
                                                                                 .collect(Collectors.toList()));
                                                                                 outboxPublisher.saveEvent("Order", saved.getId().toString(),
@@ -198,11 +181,9 @@ public class InventoryEventListener {
 
     private void handleStockReleased(InventoryEvent event) {
         log.info("Stock released for variant: {}", event.getVariantId());
-        // Stock released due to order cancellation - order items already handled by PaymentEventListener
     }
 
     private void handleStockConfirmed(InventoryEvent event) {
         log.info("Stock confirmed for variant: {}", event.getVariantId());
-        // Stock confirmed (payment captured) - order already transitioned to CONFIRMED by PaymentEventListener
     }
 }
