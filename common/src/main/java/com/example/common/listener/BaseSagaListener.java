@@ -4,9 +4,7 @@ import com.example.common.event.BaseEvent;
 import com.example.common.event.IdempotentEventProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
-@Component
 public abstract class BaseSagaListener<E extends BaseEvent> {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());

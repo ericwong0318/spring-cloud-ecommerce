@@ -4,10 +4,8 @@ import com.example.common.event.BaseEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-@Component
 public abstract class BaseReactiveSagaListener<E extends BaseEvent> {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
@@ -22,7 +20,7 @@ public abstract class BaseReactiveSagaListener<E extends BaseEvent> {
         idempotentEventProcessor.process(event, this::handleEventInternal)
                 .subscribe(
                         unused -> log.debug("Successfully processed event: eventId={}, eventType={}", event.getEventId(), event.getEventType()),
-                        error -> log.error("Failed to process event: eventId={}, eventType={}, error={}", event.getEventId(), event.getEventType(), error.getMessage())
+                        error -> log.error("Failed to process event: eventId={}, eventType={}, error={}", event.getEventId(), event.getEventType(), error.toString())
                 );
     }
 
