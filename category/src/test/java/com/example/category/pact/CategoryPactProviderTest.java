@@ -23,6 +23,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import reactor.core.publisher.Mono;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -122,9 +123,19 @@ class CategoryPactProviderTest {
         @Bean
         @Primary
         OutboxEventPublisher outboxEventPublisher(OutboxEventRepository outboxEventRepository) {
-            return new OutboxEventPublisher(outboxEventRepository, null, new ObjectMapper()) {
+            return new OutboxEventPublisher() {
                 @Override
-                public void saveEvent(String aggregateType, String aggregateId, String eventType, Object payload) {
+                public Mono<Void> saveEvent(String aggregateType, String aggregateId, String eventType, Object payload) {
+                    return Mono.empty();
+                }
+
+                @Override
+                public void publishOutboxEvents() {
+                }
+
+                @Override
+                public Mono<Void> publishOutboxEventsReactive() {
+                    return Mono.empty();
                 }
             };
         }

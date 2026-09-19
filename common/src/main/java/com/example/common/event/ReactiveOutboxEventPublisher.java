@@ -6,7 +6,6 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -24,24 +23,21 @@ public class ReactiveOutboxEventPublisher<T extends OutboxEvent> implements Outb
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
     private final TransactionalOperator transactionalOperator;
-
-    @Value("${outbox.publisher.batch-size:100}")
-    private int batchSize;
-
-    @Value("${outbox.publisher.max-retries:5}")
-    private int maxRetries;
-
-    @Value("${outbox.publisher.exchange:outbox.exchange}")
-    private String exchange;
+    private final OutboxPublisherProperties properties;
+    private final RoutingKeyStrategy routingKeyStrategy;
 
     public ReactiveOutboxEventPublisher(ReactiveOutboxEventRepository<T> outboxEventRepository,
                                          RabbitTemplate rabbitTemplate,
                                          ObjectMapper objectMapper,
-                                         TransactionalOperator transactionalOperator) {
+                                         TransactionalOperator transactionalOperator,
+                                         OutboxPublisherProperties properties,
+                                         RoutingKeyStrategy routingKeyStrategy) {
         this.outboxEventRepository = outboxEventRepository;
         this.rabbitTemplate = rabbitTemplate;
         this.objectMapper = objectMapper;
         this.transactionalOperator = transactionalOperator;
+        this.properties = properties;
+        this.routingKeyStrategy = routingKeyStrategy;
     }
 
     @Scheduled(fixedDelayString = "${outbox.publisher.poll-interval-ms:5000}")
@@ -52,8 +48,8 @@ public class ReactiveOutboxEventPublisher<T extends OutboxEvent> implements Outb
 
     @Override
     public Mono<Void> publishOutboxEventsReactive() {
-        return outboxEventRepository.findUnpublishedEventsWithRetryLimit(maxRetries)
-                .take(batchSize)
+        return outboxEventRepository.findUnpublishedEventsWithRetryLimit(properties.getMaxRetries())
+                .take(properties.getBatchSize())
                 .flatMap(this::publishEventTransactional)
                 .then();
     }
@@ -77,7 +73,7 @@ public class ReactiveOutboxEventPublisher<T extends OutboxEvent> implements Outb
 
     private void publishEvent(T event) throws JsonProcessingException {
         String routingKey = determineRoutingKey(event.getAggregateType(), event.getEventType());
-        rabbitTemplate.convertAndSend(exchange, routingKey, event.getPayload());
+        rabbitTemplate.convertAndSend(properties.getExchange(), routingKey, event.getPayload());
     }
 
     /**
@@ -86,7 +82,7 @@ public class ReactiveOutboxEventPublisher<T extends OutboxEvent> implements Outb
      * Default implementation uses aggregateType.eventType format.
      */
     protected String determineRoutingKey(String aggregateType, String eventType) {
-        return aggregateType.toLowerCase() + "." + eventType.toLowerCase();
+        return routingKeyStrategy.determineRoutingKey(aggregateType, eventType);
     }
 
     public Mono<Void> saveEvent(String aggregateType, String aggregateId, String eventType, Object payload) {

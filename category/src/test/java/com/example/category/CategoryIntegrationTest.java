@@ -19,6 +19,7 @@ import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.O
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -470,10 +471,21 @@ class CategoryIntegrationTest {
         @Bean
         @Primary
         OutboxEventPublisher outboxEventPublisher(OutboxEventRepository outboxEventRepository) {
-            return new OutboxEventPublisher(outboxEventRepository, null, new ObjectMapper()) {
+            return new OutboxEventPublisher() {
                 @Override
-                public void saveEvent(String aggregateType, String aggregateId, String eventType, Object payload) {
+                public Mono<Void> saveEvent(String aggregateType, String aggregateId, String eventType, Object payload) {
                     // no-op for tests
+                    return Mono.empty();
+                }
+
+                @Override
+                public void publishOutboxEvents() {
+                    // no-op for tests
+                }
+
+                @Override
+                public Mono<Void> publishOutboxEventsReactive() {
+                    return Mono.empty();
                 }
             };
         }

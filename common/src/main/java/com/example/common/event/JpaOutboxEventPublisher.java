@@ -6,7 +6,6 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -25,37 +24,34 @@ public class JpaOutboxEventPublisher implements OutboxEventPublisher {
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
-
-    @Value("${outbox.publisher.batch-size:100}")
-    private int batchSize;
-
-    @Value("${outbox.publisher.max-retries:5}")
-    private int maxRetries;
-
-    @Value("${outbox.publisher.exchange:outbox.exchange}")
-    private String exchange;
+    private final OutboxPublisherProperties properties;
+    private final RoutingKeyStrategy routingKeyStrategy;
 
     public JpaOutboxEventPublisher(OutboxEventRepository outboxEventRepository,
                                     RabbitTemplate rabbitTemplate,
                                     ObjectMapper objectMapper,
-                                    TransactionTemplate transactionTemplate) {
+                                    TransactionTemplate transactionTemplate,
+                                    OutboxPublisherProperties properties,
+                                    RoutingKeyStrategy routingKeyStrategy) {
         this.outboxEventRepository = outboxEventRepository;
         this.rabbitTemplate = rabbitTemplate;
         this.objectMapper = objectMapper;
         this.transactionTemplate = transactionTemplate;
+        this.properties = properties;
+        this.routingKeyStrategy = routingKeyStrategy;
     }
 
     @Override
     @Scheduled(fixedDelayString = "${outbox.publisher.poll-interval-ms:5000}")
     @SchedulerLock(name = "outboxPublisher", lockAtLeastFor = "30s", lockAtMostFor = "5m")
     public void publishOutboxEvents() {
-        List<OutboxEvent> events = outboxEventRepository.findUnpublishedEventsWithRetryLimit(maxRetries);
+        List<OutboxEvent> events = outboxEventRepository.findUnpublishedEventsWithRetryLimit(properties.getMaxRetries());
         if (events.isEmpty()) {
             return;
         }
 
-        if (events.size() > batchSize) {
-            events = events.subList(0, Math.min(batchSize, events.size()));
+        if (events.size() > properties.getBatchSize()) {
+            events = events.subList(0, Math.min(properties.getBatchSize(), events.size()));
         }
 
         log.debug("Publishing {} outbox events", events.size());
@@ -99,7 +95,11 @@ public class JpaOutboxEventPublisher implements OutboxEventPublisher {
     }
 
     private void publishEvent(OutboxEvent event) throws JsonProcessingException {
-        String routingKey = OutboxEventPublisher.determineRoutingKey(event.getAggregateType(), event.getEventType());
-        rabbitTemplate.convertAndSend(exchange, routingKey, event.getPayload());
+        String routingKey = determineRoutingKey(event.getAggregateType(), event.getEventType());
+        rabbitTemplate.convertAndSend(properties.getExchange(), routingKey, event.getPayload());
+    }
+
+    protected String determineRoutingKey(String aggregateType, String eventType) {
+        return routingKeyStrategy.determineRoutingKey(aggregateType, eventType);
     }
 }

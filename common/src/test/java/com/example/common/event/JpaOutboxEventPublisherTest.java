@@ -4,11 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.TransactionStatus;
@@ -27,14 +25,19 @@ class JpaOutboxEventPublisherTest {
     @Mock TransactionTemplate transactionTemplate;
     @Mock TransactionStatus transactionStatus;
 
-    @InjectMocks
     private JpaOutboxEventPublisher publisher;
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(publisher, "maxRetries", 5);
-        ReflectionTestUtils.setField(publisher, "batchSize", 10);
-        ReflectionTestUtils.setField(publisher, "exchange", "outbox.exchange");
+        OutboxPublisherProperties properties = new OutboxPublisherProperties();
+        properties.setMaxRetries(5);
+        properties.setBatchSize(10);
+        properties.setExchange("outbox.exchange");
+        RoutingKeyStrategy routingKeyStrategy = RoutingKeyStrategy.DEFAULT;
+
+        publisher = new JpaOutboxEventPublisher(
+                repository, rabbitTemplate, objectMapper, transactionTemplate,
+                properties, routingKeyStrategy);
 
         // Mock TransactionTemplate to execute the callback immediately
         doAnswer(inv -> {
@@ -76,7 +79,7 @@ class JpaOutboxEventPublisherTest {
 
         // Assert
         verify(repository).findUnpublishedEventsWithRetryLimit(5);
-        verify(rabbitTemplate).convertAndSend(eq("outbox.exchange"), eq("order.order_created"), eq("{\"id\":\"1\"}"));
+        verify(rabbitTemplate).convertAndSend(eq("outbox.exchange"), eq("order.order.created"), eq("{\"id\":\"1\"}"));
         verify(repository).save(argThat(e -> e.getPublishedAt() != null));
         verify(transactionTemplate, times(1)).execute(any(TransactionCallback.class));
     }
