@@ -1,77 +1,18 @@
 package com.example.common.event;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Mono;
 
-import java.time.LocalDateTime;
-import java.util.List;
+public interface OutboxEventPublisher {
 
-@Component
-public class OutboxEventPublisher {
+    Mono<Void> saveEvent(String aggregateType, String aggregateId, String eventType, Object payload);
 
-    private static final Logger log = LoggerFactory.getLogger(OutboxEventPublisher.class);
+    void publishOutboxEvents();
 
-    private final OutboxEventRepository outboxEventRepository;
-    private final RabbitTemplate rabbitTemplate;
-    private final ObjectMapper objectMapper;
+    Mono<Void> publishOutboxEventsReactive();
 
-    @Value("${outbox.publisher.batch-size:100}")
-    private int batchSize;
-
-    @Value("${outbox.publisher.max-retries:5}")
-    private int maxRetries;
-
-    @Value("${outbox.publisher.exchange:outbox.exchange}")
-    private String exchange;
-
-    public OutboxEventPublisher(OutboxEventRepository outboxEventRepository, RabbitTemplate rabbitTemplate, ObjectMapper objectMapper) {
-        this.outboxEventRepository = outboxEventRepository;
-        this.rabbitTemplate = rabbitTemplate;
-        this.objectMapper = objectMapper;
-    }
-
-    public void publishOutboxEvents() {
-        List<OutboxEvent> events = outboxEventRepository.findUnpublishedEventsWithRetryLimit(maxRetries);
-        if (events.isEmpty()) {
-            return;
-        }
-
-        log.debug("Publishing {} outbox events", events.size());
-
-        for (OutboxEvent event : events) {
-            try {
-                publishEvent(event);
-                event.markPublished();
-                outboxEventRepository.save(event);
-                log.debug("Published outbox event: id={}, type={}", event.getId(), event.getEventType());
-            } catch (Exception e) {
-                log.error("Failed to publish outbox event: id={}, type={}", event.getId(), event.getEventType(), e);
-                event.incrementRetryCount();
-                outboxEventRepository.save(event);
-            }
-        }
-    }
-
-    private void publishEvent(OutboxEvent event) throws JsonProcessingException {
-        String routingKey = event.getAggregateType().toLowerCase() + "." + event.getEventType().toLowerCase();
-        rabbitTemplate.convertAndSend(exchange, routingKey, event.getPayload());
-    }
-
-    public void saveEvent(String aggregateType, String aggregateId, String eventType, Object payload) {
-        try {
-            String jsonPayload = objectMapper.writeValueAsString(payload);
-            OutboxEvent event = new OutboxEvent(aggregateType, aggregateId, eventType, jsonPayload);
-            outboxEventRepository.save(event);
-            log.debug("Saved outbox event: aggregateType={}, aggregateId={}, eventType={}", aggregateType, aggregateId, eventType);
-        } catch (JsonProcessingException e) {
-            log.error("Failed to serialize outbox event payload", e);
-            throw new RuntimeException("Failed to serialize outbox event payload", e);
-        }
+    // Default routing key logic
+    static String determineRoutingKey(String aggregateType, String eventType) {
+        return aggregateType.toLowerCase() + "." + eventType.toLowerCase();
     }
 }
