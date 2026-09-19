@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -14,10 +15,10 @@ public class ReactiveIdempotentEventProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(ReactiveIdempotentEventProcessor.class);
 
-    private final ProcessedEventRepository processedEventRepository;
+    private final CommonProcessedEventRepository processedEventRepository;
     private final TransactionalOperator transactionalOperator;
 
-    public ReactiveIdempotentEventProcessor(ProcessedEventRepository processedEventRepository,
+    public ReactiveIdempotentEventProcessor(CommonProcessedEventRepository processedEventRepository,
                                              TransactionalOperator transactionalOperator) {
         this.processedEventRepository = processedEventRepository;
         this.transactionalOperator = transactionalOperator;
@@ -30,14 +31,14 @@ public class ReactiveIdempotentEventProcessor {
             return handler.apply(event);
         }
 
-        return Mono.fromCallable(() -> processedEventRepository.existsByEventId(eventId))
+        return processedEventRepository.existsByEventIdReactive(eventId)
                 .flatMap(exists -> {
                     if (exists) {
                         log.info("Duplicate event detected, skipping: eventId={}, eventType={}", eventId, event.getEventType());
                         return Mono.<Void>empty();
                     }
                     return handler.apply(event)
-                            .then(Mono.fromRunnable(() -> processedEventRepository.save(new ProcessedEvent(eventId))));
+                            .then(processedEventRepository.save(eventId, LocalDateTime.now()).then());
                 })
                 .as(transactionalOperator::transactional);
     }

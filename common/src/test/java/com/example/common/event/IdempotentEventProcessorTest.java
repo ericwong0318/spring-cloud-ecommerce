@@ -16,7 +16,7 @@ import static org.mockito.Mockito.when;
 class IdempotentEventProcessorTest {
 
     @Mock
-    private ProcessedEventRepository processedEventRepository;
+    private CommonProcessedEventRepository processedEventRepository;
 
     private IdempotentEventProcessor idempotentEventProcessor;
 
@@ -33,7 +33,7 @@ class IdempotentEventProcessorTest {
 
         // then
         verify(processedEventRepository).existsByEventId(event.getEventId());
-        verify(processedEventRepository).save(any(ProcessedEvent.class));
+        verify(processedEventRepository).saveBlocking(any(ProcessedEvent.class));
     }
 
     @Test
@@ -49,7 +49,7 @@ class IdempotentEventProcessorTest {
 
         // then
         verify(processedEventRepository).existsByEventId(event.getEventId());
-        verify(processedEventRepository, never()).save(any(ProcessedEvent.class));
+        verify(processedEventRepository, never()).saveBlocking(any(ProcessedEvent.class));
     }
 
     @Test
@@ -65,6 +65,6 @@ class IdempotentEventProcessorTest {
 
         // then
         verify(processedEventRepository, never()).existsByEventId(any());
-        verify(processedEventRepository, never()).save(any());
+        verify(processedEventRepository, never()).saveBlocking(any());
     }
 }

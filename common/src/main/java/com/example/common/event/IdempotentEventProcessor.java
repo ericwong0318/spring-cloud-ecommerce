@@ -12,9 +12,9 @@ public class IdempotentEventProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(IdempotentEventProcessor.class);
 
-    private final ProcessedEventRepository processedEventRepository;
+    private final CommonProcessedEventRepository processedEventRepository;
 
-    public IdempotentEventProcessor(ProcessedEventRepository processedEventRepository) {
+    public IdempotentEventProcessor(CommonProcessedEventRepository processedEventRepository) {
         this.processedEventRepository = processedEventRepository;
     }
 
@@ -33,7 +33,7 @@ public class IdempotentEventProcessor {
 
         try {
             handler.accept(event);
-            processedEventRepository.save(new ProcessedEvent(eventId));
+            processedEventRepository.saveBlocking(new ProcessedEvent(eventId));
             log.debug("Processed event and saved idempotency key: eventId={}", eventId);
         } catch (Exception e) {
             log.error("Failed to process event: eventId={}, eventType={}", eventId, event.getEventType(), e);
