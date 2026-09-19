@@ -10,6 +10,9 @@ import com.example.order.model.OrderItem;
 import com.example.common.event.OutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
+import com.example.order.service.OrderEventPublisher;
+import com.example.order.service.OrderSagaOrchestrator;
+import com.example.order.service.PaymentProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +58,15 @@ class OrderServiceTest {
     private OutboxEventPublisher outboxPublisher;
 
     @Mock(lenient = true)
+    private OrderSagaOrchestrator sagaOrchestrator;
+
+    @Mock(lenient = true)
+    private PaymentProcessor paymentProcessor;
+
+    @Mock(lenient = true)
+    private OrderEventPublisher eventPublisher;
+
+    @Mock(lenient = true)
     private R2dbcTransactionManager transactionManager;
 
     @Mock(lenient = true)
@@ -72,7 +84,10 @@ class OrderServiceTest {
         orderService = new OrderService(orderRepository, orderItemRepository, orderMapper,
                 objectMapper,
                 transactionalOperator,
-                outboxPublisher);
+                sagaOrchestrator,
+                paymentProcessor,
+                eventPublisher,
+                true);
 
         // Mock TransactionalOperator to pass through the publisher (no actual transaction in tests)
         doAnswer(inv -> inv.getArgument(0)).when(transactionalOperator).transactional(any(Mono.class));
@@ -80,6 +95,28 @@ class OrderServiceTest {
 
         // Mock outboxPublisher to return empty Mono
         when(outboxPublisher.saveEvent(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
+
+        // Mock new dependencies - delegate to "real" behavior for createOrder tests
+        when(sagaOrchestrator.createOrder(any(OrderDto.class))).thenAnswer(inv -> {
+            OrderDto dto = inv.getArgument(0);
+            BigDecimal totalAmount = dto.totalAmount() != null ? dto.totalAmount() : BigDecimal.ZERO;
+            return Mono.just(new OrderDto(1L, dto.customerId(), "customer@example.com", dto.status(), totalAmount, Collections.emptyList(), Collections.emptyList(), null, null));
+        });
+        when(sagaOrchestrator.handleReservationExpiry(anyLong())).thenReturn(Mono.empty());
+        when(paymentProcessor.processRefund(anyLong())).thenReturn(Mono.empty());
+        when(paymentProcessor.handlePaymentAuthorized(anyLong())).thenReturn(Mono.empty());
+        when(paymentProcessor.handlePaymentCaptured(anyLong(), any(BigDecimal.class))).thenReturn(Mono.empty());
+        when(paymentProcessor.handlePaymentFailed(anyLong())).thenReturn(Mono.empty());
+        when(paymentProcessor.handlePaymentRefunded(anyLong())).thenReturn(Mono.empty());
+        when(paymentProcessor.handlePaymentPartiallyRefunded(anyLong())).thenReturn(Mono.empty());
+        when(eventPublisher.publishOrderCreated(any(Order.class))).thenReturn(Mono.empty());
+        when(eventPublisher.publishOrderUpdated(any(Order.class))).thenReturn(Mono.empty());
+        when(eventPublisher.publishOrderCancelled(any(Order.class))).thenReturn(Mono.empty());
+        when(eventPublisher.publishOrderConfirmed(any(Order.class), any(BigDecimal.class))).thenReturn(Mono.empty());
+        when(eventPublisher.publishPaymentAuthorized(any(Order.class))).thenReturn(Mono.empty());
+        when(eventPublisher.publishPaymentRefunded(any(Order.class))).thenReturn(Mono.empty());
+        when(eventPublisher.publishPaymentPartiallyRefunded(any(Order.class))).thenReturn(Mono.empty());
+        when(eventPublisher.publishOrderEvent(any(OrderEvent.class))).thenReturn(Mono.empty());
 
         LocalDateTime now = LocalDateTime.now();
         orderDto = new OrderDto(
@@ -189,30 +226,25 @@ class OrderServiceTest {
                 null
         );
 
-        Order newOrder = new Order();
-        newOrder.setCustomerId("CUST-001");
-        newOrder.setStatus("PENDING");
-        newOrder.setTotalAmount(new BigDecimal("1999.98"));
+        OrderDto expectedDto = new OrderDto(
+                1L,
+                "CUST-001",
+                "customer@example.com",
+                OrderDto.OrderStatus.PENDING,
+                new BigDecimal("1999.98"),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                null,
+                null
+        );
 
-        Order savedOrder = new Order();
-        savedOrder.setId(1L);
-        savedOrder.setCustomerId("CUST-001");
-        savedOrder.setStatus("PENDING");
-        savedOrder.setTotalAmount(new BigDecimal("1999.98"));
-        savedOrder.setCreatedAt(LocalDateTime.now());
-        savedOrder.setUpdatedAt(LocalDateTime.now());
-
-        when(orderMapper.toEntity(any(OrderDto.class))).thenReturn(newOrder);
-        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(savedOrder));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
+        when(sagaOrchestrator.createOrder(inputDto)).thenReturn(Mono.just(expectedDto));
 
         StepVerifier.create(orderService.createOrder(inputDto))
                 .expectNextMatches(dto -> dto.id().equals(1L) && dto.customerId().equals("CUST-001"))
                 .verifyComplete();
 
-        verify(orderMapper).toEntity(inputDto);
-        verify(orderRepository).save(any(Order.class));
-        verify(orderMapper).toDto(savedOrder);
+        verify(sagaOrchestrator).createOrder(inputDto);
     }
 
     @Test
@@ -229,20 +261,7 @@ class OrderServiceTest {
                 null
         );
 
-        Order newOrder = new Order();
-        newOrder.setCustomerId("CUST-001");
-        newOrder.setStatus("PENDING");
-        newOrder.setTotalAmount(null);
-
-        Order savedOrder = new Order();
-        savedOrder.setId(1L);
-        savedOrder.setCustomerId("CUST-001");
-        savedOrder.setStatus("PENDING");
-        savedOrder.setTotalAmount(BigDecimal.ZERO);
-        savedOrder.setCreatedAt(LocalDateTime.now());
-        savedOrder.setUpdatedAt(LocalDateTime.now());
-
-        OrderDto savedOrderDto = new OrderDto(
+        OrderDto expectedDto = new OrderDto(
                 1L,
                 "CUST-001",
                 "customer@example.com",
@@ -250,19 +269,17 @@ class OrderServiceTest {
                 BigDecimal.ZERO,
                 Collections.emptyList(),
                 Collections.emptyList(),
-                LocalDateTime.now(),
-                LocalDateTime.now()
+                null,
+                null
         );
 
-        when(orderMapper.toEntity(any(OrderDto.class))).thenReturn(newOrder);
-        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(savedOrder));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(savedOrderDto);
+        when(sagaOrchestrator.createOrder(inputDto)).thenReturn(Mono.just(expectedDto));
 
         StepVerifier.create(orderService.createOrder(inputDto))
                 .expectNextMatches(dto -> dto.totalAmount().equals(BigDecimal.ZERO))
                 .verifyComplete();
 
-        verify(orderRepository).save(argThat(o -> o.getTotalAmount().equals(BigDecimal.ZERO)));
+        verify(sagaOrchestrator).createOrder(inputDto);
     }
 
     @Test
