@@ -1,6 +1,7 @@
 package com.example.inventory.service;
 
 import com.example.common.event.InventoryEvent;
+import com.example.common.event.OutboxEventPublisher;
 import com.example.common.event.ReservationExpiredEvent;
 import com.example.inventory.model.Inventory;
 import com.example.inventory.model.Reservation;
@@ -11,9 +12,6 @@ import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.rabbit.connection.CorrelationData;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,20 +26,14 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
     private final ReservationRepository reservationRepository;
-    private final RabbitTemplate rabbitTemplate;
-
-    @Value("${rabbitmq.exchange.inventory}")
-    private String inventoryExchange;
-
-    @Value("${rabbitmq.routing-key.reservation-expired}")
-    private String reservationExpiredRoutingKey;
+    private final OutboxEventPublisher outboxPublisher;
 
     public InventoryService(InventoryRepository inventoryRepository,
                             ReservationRepository reservationRepository,
-                            RabbitTemplate rabbitTemplate) {
+                            OutboxEventPublisher outboxPublisher) {
         this.inventoryRepository = inventoryRepository;
         this.reservationRepository = reservationRepository;
-        this.rabbitTemplate = rabbitTemplate;
+        this.outboxPublisher = outboxPublisher;
     }
 
     @CircuitBreaker(name = "inventory-service", fallbackMethod = "reserveStockFallback")
@@ -167,12 +159,8 @@ public class InventoryService {
     private void publishReservationExpiredEvent(Long orderItemId, Long variantId, Integer quantityReleased) {
         if (orderItemId != null) {
             ReservationExpiredEvent event = ReservationExpiredEvent.expired(orderItemId, variantId, quantityReleased, LocalDateTime.now());
-            try {
-                rabbitTemplate.convertAndSend(inventoryExchange, reservationExpiredRoutingKey, event);
-                log.debug("Published ReservationExpiredEvent for OrderItem {}", orderItemId);
-            } catch (Exception e) {
-                log.error("Failed to publish ReservationExpiredEvent for OrderItem {}: {}", orderItemId, e.getMessage());
-            }
+            outboxPublisher.saveEvent("Inventory", variantId.toString(), "reservation.expired", event);
+            log.debug("Saved ReservationExpiredEvent for OrderItem {} to outbox", orderItemId);
         }
     }
 
@@ -192,18 +180,8 @@ public class InventoryService {
     }
 
     private void publishInventoryEvent(InventoryEvent event) {
-        CorrelationData correlationData = new CorrelationData(UUID.randomUUID().toString());
-        correlationData.getFuture().whenComplete((result, ex) -> {
-            if (ex != null) {
-                log.error("Failed to publish InventoryEvent {} for variant {}: {}", event.getEventType(), event.getVariantId(), ex.getMessage());
-            } else if (result != null && result.isAck()) {
-                log.debug("InventoryEvent {} for variant {} confirmed by broker", event.getEventType(), event.getVariantId());
-            } else {
-                log.warn("InventoryEvent {} for variant {} not acknowledged by broker", event.getEventType(), event.getVariantId());
-            }
-        });
-        rabbitTemplate.convertAndSend(inventoryExchange, event.getEventType().toLowerCase(), event, correlationData);
-        log.info("Published InventoryEvent {} for variant {}", event.getEventType(), event.getVariantId());
+        outboxPublisher.saveEvent("Inventory", event.getVariantId().toString(), event.getEventType(), event);
+        log.info("Saved InventoryEvent {} for variant {}", event.getEventType(), event.getVariantId());
     }
 
     public Optional<Inventory> getInventory(Long variantId) {

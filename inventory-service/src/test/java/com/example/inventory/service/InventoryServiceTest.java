@@ -1,5 +1,6 @@
 package com.example.inventory.service;
 
+import com.example.common.event.OutboxEventPublisher;
 import com.example.common.event.InventoryEvent;
 import com.example.common.event.ReservationExpiredEvent;
 import com.example.inventory.model.Inventory;
@@ -12,12 +13,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.connection.CorrelationData;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
+
+import reactor.core.publisher.Mono;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -33,7 +34,7 @@ class InventoryServiceTest {
     private ReservationRepository reservationRepository;
 
     @Mock(lenient = true)
-    private RabbitTemplate rabbitTemplate;
+    private OutboxEventPublisher outboxPublisher;
 
     private InventoryService inventoryService;
 
@@ -55,24 +56,10 @@ class InventoryServiceTest {
         inventory.setUpdatedAt(LocalDateTime.now());
         inventory.setLowStockNotified(false);
 
-        inventoryService = new InventoryService(inventoryRepository, reservationRepository, rabbitTemplate);
-        // Set the @Value fields via reflection since they're private
-        setField(inventoryService, "inventoryExchange", "inventory.exchange");
-        setField(inventoryService, "reservationExpiredRoutingKey", "reservation.expired");
-        
-        // Mock specific convertAndSend calls to avoid ambiguity
-        doNothing().when(rabbitTemplate).convertAndSend(eq("inventory.exchange"), eq("reservation.expired"), any(ReservationExpiredEvent.class));
-        doNothing().when(rabbitTemplate).convertAndSend(eq("inventory.exchange"), anyString(), any(InventoryEvent.class), any(CorrelationData.class));
-    }
-    
-    private void setField(Object target, String fieldName, Object value) {
-        try {
-            java.lang.reflect.Field field = InventoryService.class.getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        inventoryService = new InventoryService(inventoryRepository, reservationRepository, outboxPublisher);
+
+        // Mock saveEvent to avoid actual DB operations
+        when(outboxPublisher.saveEvent(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
     }
 
     @Test
