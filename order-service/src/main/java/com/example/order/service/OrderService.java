@@ -7,7 +7,7 @@ import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
-import com.example.order.outbox.R2dbcOutboxEventPublisher;
+import com.example.common.event.OutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -41,7 +41,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
     private final TransactionalOperator transactionalOperator;
-    private final R2dbcOutboxEventPublisher outboxPublisher;
+    private final OutboxEventPublisher outboxPublisher;
 
     @Autowired
     public OrderService(OrderRepository orderRepository,
@@ -49,7 +49,7 @@ public class OrderService {
                         OrderMapper orderMapper,
                         ObjectMapper objectMapper,
                         R2dbcTransactionManager transactionManager,
-                        R2dbcOutboxEventPublisher outboxPublisher) {
+                        OutboxEventPublisher outboxPublisher) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.orderMapper = orderMapper;
@@ -64,7 +64,7 @@ public class OrderService {
                  OrderMapper orderMapper,
                  ObjectMapper objectMapper,
                  TransactionalOperator transactionalOperator,
-                 R2dbcOutboxEventPublisher outboxPublisher) {
+                 OutboxEventPublisher outboxPublisher) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.orderMapper = orderMapper;

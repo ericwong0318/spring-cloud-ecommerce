@@ -9,7 +9,7 @@ import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.model.Shipment;
 import com.example.order.model.ShipmentItem;
-import com.example.order.outbox.R2dbcOutboxEventPublisher;
+import com.example.common.event.OutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentItemRepository;
@@ -39,7 +39,7 @@ public class ShipmentService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ShipmentMapper shipmentMapper;
-    private final R2dbcOutboxEventPublisher outboxPublisher;
+    private final OutboxEventPublisher outboxPublisher;
     private final ObjectMapper objectMapper;
     private final TransactionalOperator transactionalOperator;
 
@@ -48,7 +48,7 @@ public class ShipmentService {
                            OrderRepository orderRepository,
                            OrderItemRepository orderItemRepository,
                            ShipmentMapper shipmentMapper,
-                           R2dbcOutboxEventPublisher outboxPublisher,
+                           OutboxEventPublisher outboxPublisher,
                            ObjectMapper objectMapper,
                            R2dbcTransactionManager transactionManager) {
         this.shipmentRepository = shipmentRepository;
@@ -67,7 +67,7 @@ public class ShipmentService {
                     OrderRepository orderRepository,
                     OrderItemRepository orderItemRepository,
                     ShipmentMapper shipmentMapper,
-                    R2dbcOutboxEventPublisher outboxPublisher,
+                    OutboxEventPublisher outboxPublisher,
                     ObjectMapper objectMapper,
                     TransactionalOperator transactionalOperator) {
         this.shipmentRepository = shipmentRepository;

@@ -8,7 +8,7 @@ import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.model.Shipment;
 import com.example.order.model.ShipmentItem;
-import com.example.order.outbox.R2dbcOutboxEventPublisher;
+import com.example.common.event.OutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentItemRepository;
@@ -57,7 +57,7 @@ class ShipmentServiceTest {
     private ShipmentMapper shipmentMapper;
 
     @Mock(lenient = true)
-    private R2dbcOutboxEventPublisher outboxPublisher;
+    private OutboxEventPublisher outboxPublisher;
 
     @Mock(lenient = true)
     private R2dbcTransactionManager transactionManager;

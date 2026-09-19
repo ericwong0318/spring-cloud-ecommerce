@@ -7,7 +7,7 @@ import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
-import com.example.order.outbox.R2dbcOutboxEventPublisher;
+import com.example.common.event.OutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +46,7 @@ class InventoryEventListenerTest {
     private ReactiveIdempotentEventProcessor idempotentEventProcessor;
 
     @Mock(lenient = true)
-    private R2dbcOutboxEventPublisher outboxPublisher;
+    private OutboxEventPublisher outboxPublisher;
 
     private InventoryEventListener listener;
 

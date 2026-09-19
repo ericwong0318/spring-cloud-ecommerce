@@ -5,7 +5,7 @@ import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.model.Shipment;
 import com.example.order.model.ShipmentItem;
-import com.example.order.outbox.R2dbcOutboxEventPublisher;
+import com.example.common.event.OutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentItemRepository;
@@ -34,7 +34,6 @@ import org.springframework.context.annotation.Primary;
 })
 @ComponentScan(basePackages = "com.example.order", excludeFilters = {
     @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
-        com.example.common.event.OutboxEventPublisher.class,
         com.example.common.event.OutboxEventRepository.class,
         com.example.common.event.IdempotentEventProcessor.class,
         com.example.order.service.ShipmentService.class,
@@ -43,8 +42,8 @@ import org.springframework.context.annotation.Primary;
 })
 public class MinimalTestConfig {
     @Bean
-    public R2dbcOutboxEventPublisher r2dbcOutboxEventPublisher() {
-        return Mockito.mock(R2dbcOutboxEventPublisher.class);
+    public OutboxEventPublisher outboxEventPublisher() {
+        return Mockito.mock(OutboxEventPublisher.class);
     }
 
     @Bean

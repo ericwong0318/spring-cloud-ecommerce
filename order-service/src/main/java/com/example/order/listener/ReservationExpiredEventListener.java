@@ -7,7 +7,7 @@ import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
-import com.example.order.outbox.R2dbcOutboxEventPublisher;
+import com.example.common.event.OutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import org.slf4j.Logger;
@@ -27,12 +27,12 @@ public class ReservationExpiredEventListener {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final ReactiveIdempotentEventProcessor idempotentEventProcessor;
-    private final R2dbcOutboxEventPublisher outboxPublisher;
+    private final OutboxEventPublisher outboxPublisher;
 
     public ReservationExpiredEventListener(OrderRepository orderRepository,
                                            OrderItemRepository orderItemRepository,
                                            ReactiveIdempotentEventProcessor idempotentEventProcessor,
-                                           R2dbcOutboxEventPublisher outboxPublisher) {
+                                           OutboxEventPublisher outboxPublisher) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.idempotentEventProcessor = idempotentEventProcessor;
