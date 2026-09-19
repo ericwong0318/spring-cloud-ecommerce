@@ -33,7 +33,7 @@ public class OutboxPublisherAutoConfiguration {
         @Bean
         @ConditionalOnMissingBean
         public OutboxEventPublisher reactiveOutboxEventPublisher(
-                ReactiveOutboxEventRepository<OutboxEvent> outboxEventRepository,
+                ReactiveOutboxEventRepository<? extends OutboxEvent> outboxEventRepository,
                 RabbitTemplate rabbitTemplate,
                 ObjectMapper objectMapper,
                 R2dbcTransactionManager transactionManager,
@@ -41,8 +41,11 @@ public class OutboxPublisherAutoConfiguration {
                 RoutingKeyStrategy routingKeyStrategy) {
 
             TransactionalOperator transactionalOperator = TransactionalOperator.create(transactionManager);
+            // Cast is safe due to type erasure; the publisher only uses methods defined in the interface
+            @SuppressWarnings("unchecked")
+            ReactiveOutboxEventRepository<OutboxEvent> castRepo = (ReactiveOutboxEventRepository<OutboxEvent>) outboxEventRepository;
             return new ReactiveOutboxEventPublisher<>(
-                    outboxEventRepository,
+                    castRepo,
                     rabbitTemplate,
                     objectMapper,
                     transactionalOperator,

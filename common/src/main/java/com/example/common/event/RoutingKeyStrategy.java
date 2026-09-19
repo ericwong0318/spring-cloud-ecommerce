@@ -7,5 +7,5 @@ public interface RoutingKeyStrategy {
 
     String determineRoutingKey(String aggregateType, String eventType);
 
-    RoutingKeyStrategy DEFAULT = (aggregateType, eventType) -> aggregateType.toLowerCase() + "." + eventType.toLowerCase().replace('_', '.');
+    RoutingKeyStrategy DEFAULT = (aggregateType, eventType) -> aggregateType.toLowerCase() + "." + eventType.toLowerCase();
 }

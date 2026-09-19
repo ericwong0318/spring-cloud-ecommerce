@@ -89,9 +89,8 @@ public class ReactiveOutboxEventPublisher<T extends OutboxEvent> implements Outb
         return Mono.fromRunnable(() -> {
                     try {
                         String jsonPayload = objectMapper.writeValueAsString(payload);
-                        OutboxEvent event = new OutboxEvent(aggregateType, aggregateId, eventType, jsonPayload);
-                        // Note: This creates a base OutboxEvent, subclasses should override saveEvent to create their specific type
-                        outboxEventRepository.save((T) event).subscribe();
+                        T event = createOutboxEvent(aggregateType, aggregateId, eventType, jsonPayload);
+                        outboxEventRepository.save(event).subscribe();
                         log.debug("Saved outbox event: aggregateType={}, aggregateId={}, eventType={}", aggregateType, aggregateId, eventType);
                     } catch (JsonProcessingException e) {
                         log.error("Failed to serialize outbox event payload", e);
@@ -100,5 +99,13 @@ public class ReactiveOutboxEventPublisher<T extends OutboxEvent> implements Outb
                 })
                 .then()
                 .as(transactionalOperator::transactional);
+    }
+
+    /**
+     * Creates an outbox event instance. Override this method to create service-specific event types.
+     * Default implementation creates a base {@link OutboxEvent}.
+     */
+    protected T createOutboxEvent(String aggregateType, String aggregateId, String eventType, String payload) {
+        return (T) new OutboxEvent(aggregateType, aggregateId, eventType, payload);
     }
 }

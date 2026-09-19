@@ -79,7 +79,7 @@ class JpaOutboxEventPublisherTest {
 
         // Assert
         verify(repository).findUnpublishedEventsWithRetryLimit(5);
-        verify(rabbitTemplate).convertAndSend(eq("outbox.exchange"), eq("order.order.created"), eq("{\"id\":\"1\"}"));
+        verify(rabbitTemplate).convertAndSend(eq("outbox.exchange"), eq("order.order_created"), eq("{\"id\":\"1\"}"));
         verify(repository).save(argThat(e -> e.getPublishedAt() != null));
         verify(transactionTemplate, times(1)).execute(any(TransactionCallback.class));
     }
