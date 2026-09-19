@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 
 @Component
 @EnableScheduling
-public class ReactiveOutboxEventPublisher<T extends OutboxEvent> {
+public class ReactiveOutboxEventPublisher<T extends OutboxEvent> implements OutboxEventPublisher {
 
     private static final Logger log = LoggerFactory.getLogger(ReactiveOutboxEventPublisher.class);
 
@@ -47,10 +47,15 @@ public class ReactiveOutboxEventPublisher<T extends OutboxEvent> {
     @Scheduled(fixedDelayString = "${outbox.publisher.poll-interval-ms:5000}")
     @SchedulerLock(name = "outboxPublisher", lockAtLeastFor = "30s", lockAtMostFor = "5m")
     public void publishOutboxEvents() {
-        outboxEventRepository.findUnpublishedEventsWithRetryLimit(maxRetries)
+        publishOutboxEventsReactive().subscribe();
+    }
+
+    @Override
+    public Mono<Void> publishOutboxEventsReactive() {
+        return outboxEventRepository.findUnpublishedEventsWithRetryLimit(maxRetries)
                 .take(batchSize)
                 .flatMap(this::publishEventTransactional)
-                .subscribe();
+                .then();
     }
 
     private Mono<Void> publishEventTransactional(T event) {
@@ -71,8 +76,17 @@ public class ReactiveOutboxEventPublisher<T extends OutboxEvent> {
     }
 
     private void publishEvent(T event) throws JsonProcessingException {
-        String routingKey = event.getAggregateType().toLowerCase() + "." + event.getEventType().toLowerCase();
+        String routingKey = determineRoutingKey(event.getAggregateType(), event.getEventType());
         rabbitTemplate.convertAndSend(exchange, routingKey, event.getPayload());
+    }
+
+    /**
+     * Determine the RabbitMQ routing key for an event.
+     * Can be overridden by service-specific implementations.
+     * Default implementation uses aggregateType.eventType format.
+     */
+    protected String determineRoutingKey(String aggregateType, String eventType) {
+        return aggregateType.toLowerCase() + "." + eventType.toLowerCase();
     }
 
     public Mono<Void> saveEvent(String aggregateType, String aggregateId, String eventType, Object payload) {
