@@ -336,10 +336,7 @@ jobs:
           echo "Starting eureka-server..."
           (cd eureka-server && nohup mvn spring-boot:run \
             -Dspring-boot.run.profiles=docker \
-            -Dspring.config.import= \
-            -Deureka.client.service-url.defaultZone=http://localhost:8761/eureka/ \
-            -Deureka.client.register-with-eureka=false \
-            -Deureka.client.fetch-registry=false \
+            -Dspring-boot.run.arguments="--spring.config.import= --server.port=8761 --eureka.client.service-url.defaultZone=http://localhost:8761/eureka/ --eureka.client.register-with-eureka=false --eureka.client.fetch-registry=false --eureka.server.enable-self-preservation=false --management.endpoints.web.exposure.include=health,info,prometheus --management.endpoint.health.show-details=always" \
             > ../logs/eureka-server.log 2>&1 &)
 
       - name: Wait for Eureka Server
