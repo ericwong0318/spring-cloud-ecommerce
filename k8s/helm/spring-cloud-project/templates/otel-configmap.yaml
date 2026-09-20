@@ -29,7 +29,7 @@ data:
                   - 'auth-server:9000'
                   - 'order-service:8083'
                   - 'inventory-service:8084'
-                  - 'notification-service:8085'
+                  - 'notification-service:8087'
 
     processors:
       batch:

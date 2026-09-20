@@ -196,7 +196,7 @@ jobs:
       - name: Wait for services health
         run: |
           mkdir -p logs
-          SERVICES="config-server:8888 eureka-server:8761 auth-server:9000 gateway:8080 product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8085 payment-service:8086"
+          SERVICES="config-server:8888 eureka-server:8761 auth-server:9000 gateway:8080 product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8087 payment-service:8086"
           for svc_port in $SERVICES; do
             svc=${svc_port%:*}
             port=${svc_port#*:}
@@ -211,7 +211,7 @@ jobs:
             http://localhost:8082 \
             http://localhost:8083 \
             http://localhost:8084 \
-            http://localhost:8085 \
+            http://localhost:8087 \
             http://localhost:8086
 
       - name: Cleanup
@@ -377,7 +377,7 @@ jobs:
 
       - name: Start Business Services
         run: |
-          SERVICES="product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8085 payment-service:8086"
+          SERVICES="product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8087 payment-service:8086"
           for svc_port in $SERVICES; do
             svc=${svc_port%:*}
             port=${svc_port#*:}
@@ -391,7 +391,7 @@ jobs:
 
       - name: Wait for all services
         run: |
-          SERVICES="product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8085 payment-service:8086"
+          SERVICES="product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8087 payment-service:8086"
           for svc_port in $SERVICES; do
             svc=${svc_port%:*}
             port=${svc_port#*:}
@@ -415,7 +415,7 @@ jobs:
       - name: Verify config from Config Server
         run: |
           echo "Verifying config sourced from Config Server..."
-          for svc_port in "product:8081" "category:8082" "order-service:8083" "inventory-service:8084" "notification-service:8085" "payment-service:8086"; do
+          for svc_port in "product:8081" "category:8082" "order-service:8083" "inventory-service:8084" "notification-service:8087" "payment-service:8086"; do
             svc=${svc_port%:*}
             port=${svc_port#*:}
             echo "Checking $svc configprops..."

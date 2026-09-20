@@ -403,8 +403,8 @@ public class OpenApiConstraintVerifier {
         if (url.contains(":8082")) return "category";
         if (url.contains(":8083")) return "order-service";
         if (url.contains(":8084")) return "inventory-service";
-        if (url.contains(":8085")) return "notification-service";
         if (url.contains(":8086")) return "payment-service";
+        if (url.contains(":8087")) return "notification-service";
         if (url.contains(":8080")) return "gateway";
         return "unknown";
     }

@@ -28,7 +28,7 @@ spec:
           image: payment-service:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8085
+            - containerPort: 8086
           envFrom:
             - configMapRef:
                 name: spring-cloud-config
@@ -42,13 +42,13 @@ spec:
           livenessProbe:
             httpGet:
               path: /actuator/health
-              port: 8085
+              port: 8086
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8085
+              port: 8086
             initialDelaySeconds: 20
             periodSeconds: 10
           resources:
@@ -68,6 +68,6 @@ spec:
   selector:
     app: payment-service
   ports:
-    - port: 8085
-      targetPort: 8085
+    - port: 8086
+      targetPort: 8086
   type: ClusterIP

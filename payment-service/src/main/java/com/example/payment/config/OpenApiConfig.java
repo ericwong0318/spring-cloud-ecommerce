@@ -23,7 +23,7 @@ public class OpenApiConfig {
                                 .name("Spring Cloud Platform")
                                 .email("support@example.com")))
                 .servers(List.of(
-                        new Server().url("http://localhost:8085").description("Local development server"),
-                        new Server().url("http://payment-service:8085").description("Docker/Kubernetes internal")));
+                        new Server().url("http://localhost:8086").description("Local development server"),
+                        new Server().url("http://payment-service:8086").description("Docker/Kubernetes internal")));
     }
 }

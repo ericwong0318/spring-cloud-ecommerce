@@ -95,7 +95,8 @@ Examples:
 | category | 8082 | /api/v1 |
 | inventory | 8084 | /api/v1 |
 | order | 8083 | /api/v1 |
-| payment | 8085 | /api/v1 |
+| payment | 8086 | /api/v1 |
+| notification | 8087 | /api/v1 |
 | **RabbitMQ** | 5672 | / |
 | **RabbitMQ Management** | 15672 | / |
 

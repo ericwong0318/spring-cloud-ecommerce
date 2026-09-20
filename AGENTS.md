@@ -64,8 +64,8 @@ mvn spring-boot:run -pl payment-service
 | auth-server | 9000 |
 | order-service | 8083 |
 | inventory-service | 8084 |
-| notification-service | 8085 |
-| payment-service | 8085 |
+| payment-service | 8086 |
+| notification-service | 8087 |
 
 ## Configuration
 - Local config: `config-server/src/main/resources/config/` (Git repo)
@@ -88,6 +88,7 @@ mvn spring-boot:run -pl payment-service
 4. **OpenAPI docs**: `/swagger-ui.html` on each service, `/v3/api-docs` for JSON
 5. **Actuator endpoints**: `/actuator/health`, `/actuator/prometheus`, `/actuator/info`
 6. **Testcontainers** requires Docker/OrbStack running; uses `docker-java` 3.4+ for Docker API 1.40+
+7. **Default profile uses H2** — `docker` profile uses PostgreSQL; product service uses MongoDB
 
 ## Development Workflow
 1. Modify code in module

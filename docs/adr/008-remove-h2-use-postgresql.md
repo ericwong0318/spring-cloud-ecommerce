@@ -1,42 +1,45 @@
-# ADR 008: Remove H2, Use PostgreSQL Everywhere
+# ADR 008: Use PostgreSQL for Docker/Prod, H2 for Dev Profile
 
 ## Status
-Accepted
+Accepted (Amended)
 
 ## Context
-The project currently uses H2 in-memory database for local development (`dev` profile) and PostgreSQL for Docker/production. Several services use H2 in tests (`category`, `auth-server` via config-server defaults).
+The project originally planned to remove H2 entirely (ADR 008). However, the current implementation uses H2 for the default `dev` profile and PostgreSQL for `docker`/`prod` profiles.
 
 Problems with H2:
 - Not production-representative (different SQL dialect, types, behavior)
 - Causes subtle bugs that only surface in CI/production
 - Spring Authorization Server OAuth2 tables have PostgreSQL-specific migrations
 - Testcontainers PostgreSQL is already the standard for integration tests in most services
-- Maintaining dual dialect configurations adds complexity
+
+Current reality:
+- Default profile (`dev`) uses H2 in-memory databases for fast local development
+- `docker` profile uses PostgreSQL via Docker Compose
+- Integration tests use Testcontainers PostgreSQL
+- Product service uses MongoDB (not PostgreSQL)
 
 ## Decision
-**Remove H2 entirely. Use PostgreSQL everywhere via Testcontainers for tests and Docker for local development.**
+**Keep H2 for `dev` profile for fast local development. Use PostgreSQL for `docker`/`prod` profiles and all integration tests via Testcontainers.**
 
 Changes:
-1. Remove `com.h2database:h2` from root `pom.xml` dependencyManagement and all module `pom.xml` files
-2. Update config-server configurations: rename `docker` profile to `dev`, make it default (PostgreSQL)
-3. Update all test configurations to use Testcontainers PostgreSQL (standardize on pattern used by `inventory-service`, `order-service`, `payment-service`)
-4. Update `auth-server` to use PostgreSQL via Testcontainers for tests
-5. Document Docker/OrbStack as prerequisite for local development
+1. Rename `docker` profile to `dev` in config-server was not done - `docker` profile still exists
+2. Default profile remains `dev` with H2
+3. Integration tests use Testcontainers PostgreSQL (standardized on pattern used by `inventory-service`, `order-service`, `payment-service`)
+4. Document Docker/OrbStack as prerequisite for integration tests and Docker deployment
 
 ## Consequences
 ### Positive
-- Single database dialect everywhere (PostgreSQL)
+- Fast local development with H2 (no Docker required for basic dev)
 - Tests run against real PostgreSQL — catches dialect/type issues early
-- Simplified configuration (no dual-profile maintenance)
+- Simplified configuration (dual-profile maintenance is explicit)
 - Aligns with existing Testcontainers investment
 
 ### Negative
-- **Requires Docker/OrbStack running for all local development and tests**
-- Slightly slower test startup (Testcontainers container initialization)
-- Developers without Docker cannot run tests locally
+- Dual dialect configurations to maintain
+- Developers without Docker can run unit tests but not integration tests
 
 ### Migration Notes
-- Existing `docker` profiles in config-server renamed to `dev` and activated by default
+- Existing `docker` profiles in config-server remain for Docker Compose deployment
 - Flyway migrations already PostgreSQL-compatible
 - Testcontainers PostgreSQL module already in root BOM
 

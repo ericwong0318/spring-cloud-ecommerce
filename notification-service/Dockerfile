@@ -12,6 +12,6 @@ WORKDIR /app
 
 COPY target/*.jar app.jar
 
-EXPOSE 8085
+EXPOSE 8087
 
 ENTRYPOINT ["sh", "-c", "if [ \"$ENABLE_SPLUNK_AGENT\" = \"true\" ]; then java -javaagent:/app/splunk-otel-javaagent.jar -jar app.jar; else java -jar app.jar; fi"]

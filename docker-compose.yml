@@ -463,7 +463,7 @@ services:
       args:
         ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
-      - "8085:8085"
+      - "8087:8087"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
@@ -489,7 +489,7 @@ services:
       postgres-notification:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -504,7 +504,7 @@ services:
       args:
         ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
-      - "8086:8085"
+      - "8086:8086"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
@@ -529,7 +529,7 @@ services:
       rabbitmq:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5

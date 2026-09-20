@@ -67,10 +67,10 @@ This platform is a distributed E-Commerce system demonstrating modern microservi
           └────────┬───────────┘
                    │ Reactive
                    ▼
-          ┌─────────────────────────────────────┐
-          │  Payment Svc :8085  │ Inventory :8084│
-          │ (WebFlux + R2DBC)   │ (WebFlux+R2DBC) │
-          └────────┬────────────┴────────┬───────┘
+┌─────────────────────────────────────┐
+           │  Payment Svc :8086  │ Inventory :8084│
+           │ (WebFlux + JPA)     │ (WebFlux+R2DBC) │
+           └────────┬────────────┴────────┬───────┘
                    │                     │
           ┌────────┴────────────┐        │
           ▼                     ▼        ▼
@@ -197,18 +197,18 @@ A decoupled, event-driven architecture where:
 | **eureka-server** | 8761 | Netflix Eureka | — | Service discovery & registration |
 | **gateway** | 8080 | Spring Cloud Gateway | — | API routing + OAuth2 resource server |
 | **auth-server** | 9000 | Spring Authorization Server | PostgreSQL (oauth2_db) | OAuth2 token issuance (JWT) |
-| **product** | 8081 | WebFlux + JPA | PostgreSQL (product_db) | Product catalog CRUD |
-| **category** | 8082 | WebMVC + JPA | PostgreSQL (category_db) | Category management CRUD |
-| **order-service** | 8083 | WebFlux + R2DBC | PostgreSQL (order_db) | Reactive order processing |
-| **inventory-service** | 8084 | WebFlux + R2DBC | PostgreSQL (inventory_db) | Inventory management, stock reservation |
-| **payment-service** | 8085 | WebFlux + R2DBC | PostgreSQL (payment_db) | Payment authorization, capture, refunds |
-| **notification-service** | 8086 | WebFlux + JPA | PostgreSQL (notification_db) | Email notifications via RabbitMQ |
+| **product** | 8081 | WebFlux + MongoDB Reactive | MongoDB (product_db) | Product catalog CRUD |
+| **category** | 8082 | WebMVC + JPA | H2 (dev) / PostgreSQL (docker) | Category management CRUD |
+| **order-service** | 8083 | WebFlux + R2DBC | H2 (dev) / PostgreSQL (docker) | Reactive order processing |
+| **inventory-service** | 8084 | WebFlux + R2DBC | H2 (dev) / PostgreSQL (docker) | Inventory management, stock reservation |
+| **payment-service** | 8086 | WebFlux + JPA | H2 (dev) / PostgreSQL (docker) | Payment processing service |
+| **notification-service** | 8087 | WebFlux + JPA | H2 (dev) / PostgreSQL (docker) | Email notifications via RabbitMQ |
 
 ### Service Dependencies & Start Order
 
 ```
 config-server  →  eureka-server  →  auth-server  →  gateway  →  business services
-     (8888)          (8761)           (9000)         (8080)    (8081/8082/8083/8084/8085/8086)
+     (8888)          (8761)           (9000)         (8080)    (8081/8082/8083/8084/8086/8087)
 ```
 
 ---
@@ -220,7 +220,7 @@ config-server  →  eureka-server  →  auth-server  →  gateway  →  business
 | **Language** | Java 21 |
 | **Framework** | Spring Boot 3.3.5, Spring Cloud 2023.0.4 |
 | **Build** | Maven (multi-module), Maven Wrapper |
-| **Databases** | PostgreSQL 16, H2 (test only) |
+| **Databases** | PostgreSQL 16 (docker/prod), H2 (dev profile), MongoDB (product service) |
 | **Persistence** | Spring Data JPA, Spring Data R2DBC (reactive) |
 | **Migrations** | Flyway |
 | **Service Discovery** | Netflix Eureka |
@@ -263,8 +263,8 @@ curl http://localhost:8081/actuator/health   # product
 curl http://localhost:8082/actuator/health   # category
 curl http://localhost:8083/actuator/health   # order
 curl http://localhost:8084/actuator/health   # inventory
-curl http://localhost:8085/actuator/health   # payment
-curl http://localhost:8086/actuator/health   # notification
+curl http://localhost:8086/actuator/health   # payment
+curl http://localhost:8087/actuator/health   # notification
 ```
 
 ### Local Development (without Docker)
@@ -330,8 +330,8 @@ Each service exposes OpenAPI/Swagger documentation:
 | Category | http://localhost:8082/swagger-ui.html | http://localhost:8082/v3/api-docs |
 | Order | http://localhost:8083/swagger-ui.html | http://localhost:8083/v3/api-docs |
 | Inventory | http://localhost:8084/swagger-ui.html | http://localhost:8084/v3/api-docs |
-| Payment | http://localhost:8085/swagger-ui.html | http://localhost:8085/v3/api-docs |
-| Notification | http://localhost:8086/swagger-ui.html | http://localhost:8086/v3/api-docs |
+| Payment | http://localhost:8086/swagger-ui.html | http://localhost:8086/v3/api-docs |
+| Notification | http://localhost:8087/swagger-ui.html | http://localhost:8087/v3/api-docs |
 | Auth | http://localhost:9000/swagger-ui.html | http://localhost:9000/v3/api-docs |
 
 ### Validation Rules Reference
@@ -411,24 +411,24 @@ curl -X POST http://localhost:9000/oauth2/token \
 
 ## Database Schema
 
-### product_db
-| Column | Type | Description |
-|--------|------|-------------|
-| id | BIGSERIAL PK | Product ID |
-| name | VARCHAR(255) | Product name |
-| description | TEXT | Description |
-| price | DECIMAL(10,2) | Price |
-| category_id | BIGINT | FK → category |
-| created_at | TIMESTAMP | Creation time |
+### product_db (MongoDB)
+| Field | Type | Description |
+|-------|------|-------------|
+| id | ObjectId PK | Product ID |
+| name | String | Product name |
+| description | String | Description |
+| price | Decimal128 | Price |
+| category_id | ObjectId | FK → category |
+| created_at | DateTime | Creation time |
 
-### category_db
+### category_db (H2/PostgreSQL)
 | Column | Type | Description |
 |--------|------|-------------|
 | id | BIGSERIAL PK | Category ID |
 | name | VARCHAR(255) | Category name |
 | description | TEXT | Description |
 
-### order_db
+### order_db (H2/PostgreSQL)
 | Column | Type | Description |
 |--------|------|-------------|
 | id | BIGSERIAL PK | Order ID |
@@ -438,7 +438,7 @@ curl -X POST http://localhost:9000/oauth2/token \
 | created_at | TIMESTAMP | Creation time |
 | updated_at | TIMESTAMP | Last update |
 
-### oauth2_db
+### oauth2_db (H2/PostgreSQL)
 Standard Spring Authorization Server schema (clients, users, tokens, etc.)
 
 ---
@@ -582,20 +582,22 @@ mvn exec:java -pl ci/validation -Dexec.mainClass=com.example.validation.Validati
 
 ## Testing
 
-| Module | Unit Tests | Integration Tests |
-|--------|-----------|-------------------|
-| config-server | 0 | 0 |
-| eureka-server | 0 | 0 |
-| gateway | 0 | 0 |
-| product | 1 | 1 |
-| category | 1 | 2 |
-| auth-server | 0 | 0 |
-| order-service | 12 | 0 |
-| inventory-service | 14 | 0 |
-| payment-service | 0 | 8 |
-| notification-service | 7 | 0 |
-| system-test | 0 | 4 (Testcontainers) |
-| **Total** | **35** | **15** |
+| Module | Test Files | Types |
+|--------|-----------|-------|
+| config-server | 0 | — |
+| eureka-server | 0 | — |
+| gateway | 0 | — |
+| auth-server | 2 | Unit |
+| product | 10 | Unit, Integration, Pact (consumer + provider) |
+| category | 4 | Unit, Integration, Pact (provider) |
+| order-service | 24 | Unit, Integration, Pact (consumer + provider) |
+| inventory-service | 14 | Unit, Integration, Pact (provider) |
+| payment-service | 8 | Integration, Pact (provider) |
+| notification-service | 6 | Unit, Integration |
+| common | 7 | Unit |
+| system-test | 16 | Integration, Fuzz, Tracing (Testcontainers) |
+| architecture-tests | 5 | Architecture (ArchUnit) |
+| **Total** | **96** | — |
 
 Test patterns:
 - **Unit** — `@SpringBootTest` with mocked dependencies (Mockito)
@@ -707,8 +709,8 @@ config-server (8888)
     → category (8082) 
     → order-service (8083) 
     → inventory-service (8084) 
-    → payment-service (8085) 
-    → notification-service (8086)
+    → payment-service (8086) 
+    → notification-service (8087)
 ```
 
 ### Why This Order?
@@ -760,8 +762,8 @@ curl http://localhost:8081/actuator/health   # product
 curl http://localhost:8082/actuator/health   # category
 curl http://localhost:8083/actuator/health   # order-service
 curl http://localhost:8084/actuator/health   # inventory-service
-curl http://localhost:8085/actuator/health   # payment-service
-curl http://localhost:8086/actuator/health   # notification-service
+curl http://localhost:8086/actuator/health   # payment-service
+curl http://localhost:8087/actuator/health   # notification-service
 ```
 
 ### Common Startup Issues

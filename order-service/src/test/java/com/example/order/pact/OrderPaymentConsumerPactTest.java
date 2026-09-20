@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(PactConsumerTestExt.class)
-@PactTestFor(providerName = "payment-service", port = "8085")
+@PactTestFor(providerName = "payment-service", port = "8086")
 class OrderPaymentConsumerPactTest {
 
     @Pact(consumer = "order-service")
@@ -640,7 +640,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "validAuthorizeRequest")
     void testValidAuthorizeRequest() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -665,7 +665,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "validCaptureRequest")
     void testValidCaptureRequest() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -685,7 +685,7 @@ class OrderPaymentConsumerPactTest {
     @PactTestFor(pactMethod = "validRefundRequest")
     @Test
     void testValidRefundRequest() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -706,7 +706,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "authorizeRequestOrderIdNull")
     void testAuthorizeRequestOrderIdNull() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -730,7 +730,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "authorizeRequestAmountNull")
     void testAuthorizeRequestAmountNull() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -754,7 +754,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "authorizeRequestCurrencyBlank")
     void testAuthorizeRequestCurrencyBlank() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -778,7 +778,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "authorizeRequestCurrencyInvalidLength")
     void testAuthorizeRequestCurrencyInvalidLength() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -802,7 +802,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "authorizeRequestCustomerIdBlank")
     void testAuthorizeRequestCustomerIdBlank() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -826,7 +826,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "authorizeRequestCustomerIdTooLong")
     void testAuthorizeRequestCustomerIdTooLong() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String longCustomerId = "A".repeat(256);
         String requestBody = """
@@ -851,7 +851,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "authorizeRequestCustomerEmailBlank")
     void testAuthorizeRequestCustomerEmailBlank() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -875,7 +875,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "authorizeRequestCustomerEmailTooLong")
     void testAuthorizeRequestCustomerEmailTooLong() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String longEmail = "A".repeat(256);
         String requestBody = """
@@ -900,7 +900,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "authorizeRequestIdempotencyKeyBlank")
     void testAuthorizeRequestIdempotencyKeyBlank() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -924,7 +924,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "authorizeRequestIdempotencyKeyTooLong")
     void testAuthorizeRequestIdempotencyKeyTooLong() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String longKey = "A".repeat(101);
         String requestBody = """
@@ -949,7 +949,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "captureRequestGatewayTransactionIdBlank")
     void testCaptureRequestGatewayTransactionIdBlank() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -968,7 +968,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "captureRequestGatewayTransactionIdTooLong")
     void testCaptureRequestGatewayTransactionIdTooLong() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String longTxnId = "A".repeat(101);
         String requestBody = """
@@ -988,7 +988,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "refundRequestAmountNull")
     void testRefundRequestAmountNull() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
@@ -1008,7 +1008,7 @@ class OrderPaymentConsumerPactTest {
     @Test
     @PactTestFor(pactMethod = "refundRequestReasonTooLong")
     void testRefundRequestReasonTooLong() throws Exception {
-        String mockServerUrl = "http://localhost:8085";
+        String mockServerUrl = "http://localhost:8086";
         HttpClient client = HttpClient.newHttpClient();
         String longReason = "A".repeat(501);
         String requestBody = """

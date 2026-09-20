@@ -12,7 +12,7 @@ WORKDIR /app
 
 COPY target/payment-service-*.jar app.jar
 
-EXPOSE 8085
+EXPOSE 8086
 
 ENV JAVA_OPTS="-Xms256m -Xmx512m"
 
