@@ -146,7 +146,7 @@ jobs:
       SPLUNK_INGEST_URL: https://ingest.sg0.splunkcloud.com
       SPLUNK_REALM: sg0
       SPLUNK_ENVIRONMENT: spring-cloud-ecommerce
-      POSTGRES_PRODUCT_PASSWORD: localdev
+      POSTGRES_AUTH_PASSWORD: localdev
       POSTGRES_CATEGORY_PASSWORD: localdev
       POSTGRES_ORDER_PASSWORD: localdev
       POSTGRES_INVENTORY_PASSWORD: localdev
@@ -285,7 +285,7 @@ jobs:
       SPLUNK_INGEST_URL: https://ingest.sg0.splunkcloud.com
       SPLUNK_REALM: sg0
       SPLUNK_ENVIRONMENT: spring-cloud-ecommerce
-      POSTGRES_PRODUCT_PASSWORD: localdev
+      POSTGRES_AUTH_PASSWORD: localdev
       POSTGRES_CATEGORY_PASSWORD: localdev
       POSTGRES_ORDER_PASSWORD: localdev
       POSTGRES_INVENTORY_PASSWORD: localdev

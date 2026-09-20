@@ -2,7 +2,7 @@
 
 SERVICES = config-server eureka-server gateway product category auth-server order-service inventory-service notification-service payment-service
 
-INFRA = mongodb kafka zookeeper kafka-connect otel-collector rabbitmq postgres-product postgres-category postgres-order postgres-payment postgres-inventory postgres-notification
+INFRA = mongodb kafka zookeeper kafka-connect otel-collector rabbitmq postgres-auth postgres-category postgres-order postgres-payment postgres-inventory postgres-notification
 
 build:
 	docker compose build $(filter-out $@,$(MAKECMDGOALS))

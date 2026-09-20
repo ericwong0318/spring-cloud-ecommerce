@@ -11,7 +11,7 @@ global:
     host: postgres
     port: 5432
     username: postgres
-    productPassword: "${POSTGRES_PRODUCT_PASSWORD}"
+    authPassword: "${POSTGRES_AUTH_PASSWORD}"
     categoryPassword: "${POSTGRES_CATEGORY_PASSWORD}"
     orderPassword: "${POSTGRES_ORDER_PASSWORD}"
     inventoryPassword: "${POSTGRES_INVENTORY_PASSWORD}"

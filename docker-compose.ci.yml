@@ -215,27 +215,6 @@ services:
       timeout: 5s
       retries: 5
 
-  postgres-product:
-    image: postgres:16-alpine
-    container_name: postgres-product
-    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
-    environment:
-      - POSTGRES_DB=product_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PRODUCT_PASSWORD}
-    ports:
-      - "5435:5432"
-    volumes:
-      - product-db-data:/var/lib/postgresql/data
-    networks:
-      - spring-cloud-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   postgres-category:
     image: postgres:16-alpine
     container_name: postgres-category
@@ -437,7 +416,6 @@ volumes:
   rabbitmq-data:
   inventory-db-data:
   notification-db-data:
-  product-db-data:
   category-db-data:
   order-db-data:
   payment-db-data:

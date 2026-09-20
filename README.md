@@ -36,95 +36,22 @@ This platform is a distributed E-Commerce system demonstrating modern microservi
 
 ## Architecture
 
-### High-Level System Diagram
+See [docs/architecture.md](docs/architecture.md) for the complete architecture diagrams, request flows, service technology matrix, and communication patterns.
 
-```
-┌──────────────────────────┐
-      │      Client (Browser)    │
-      └────────────┬─────────────┘
-                   │ HTTPS
-                   ▼
-      ┌──────────────────────────┐
-      │   API Gateway :8080      │
-      │  (Spring Cloud Gateway)  │
-      │  + OAuth2 Resource Srv   │
-      └────┬─────────┬───────┬───┘
-           │         │       │
-   ┌───────┘         │       └───────────┐
-   │   Auth Check    │                   │
-   ▼                 ▼                   ▼
-┌────────────┐ ┌─────────────┐   ┌────────────────┐
-│ Auth Srv :9000│ │Product Svc :8081│   │Category Svc:8082│
-│ (OAuth2/JWT)  │ │ (WebFlux+JPA) │   │ (WebMVC+JPA)   │
-└────────────┘ └──────┬────────┘   └───────┬────────┘
-                     │                    │
-                     │   ┌────────────────┘
-                     │   │
-                     ▼   ▼
-          ┌────────────────────┐
-          │  Order Svc :8083   │
-          │ (WebFlux + R2DBC)  │
-          └────────┬───────────┘
-                   │ Reactive
-                   ▼
-┌─────────────────────────────────────┐
-           │  Payment Svc :8086  │ Inventory :8084│
-           │ (WebFlux + JPA)     │ (WebFlux+R2DBC) │
-           └────────┬────────────┴────────┬───────┘
-                   │                     │
-          ┌────────┴────────────┐        │
-          ▼                     ▼        ▼
-   ┌───────────────┐    ┌─────────────────┐
-   │ RabbitMQ      │    │ PostgreSQL DBs  │
-   │ (Event Bus)   │    │ product_db,     │
-   └───────────────┘    │ category_db,    │
-                        │ order_db,       │
-                        │ payment_db,     │
-                        │ inventory_db,   │
-                        │ notification_db,│
-                        │ oauth2_db       │
-                        └─────────────────┘
+### Quick Reference
 
-┌─────────────────────────────────────────────────────────────────┐
-    │                    INFRASTRUCTURE LAYER                          │
-    │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────┐   │
-    │  │ Config Srv :8888 │  │ Eureka Srv :8761 │  │ Splunk OTel  │   │
-    │  │ (Git backend)    │  │ (Service Reg.)   │  │  Collector   │   │
-    │  └──────────────────┘  └──────────────────┘  └──────────────┘   │
-    └─────────────────────────────────────────────────────────────────┘
-```
-
-### Request Flow (Authenticated Order Placement)
-
-```
-1. Client → POST /api/v1/orders (Bearer Token)
-       │
-       ▼
-2. Gateway validates JWT (via Auth Server public key)
-       │
-       ▼
-3. Gateway routes via lb://order-service
-       │
-       ▼
-4. Order Service → R2DBC → PostgreSQL (order_db)
-       │
-       ▼
-5. (Optional) Order Service → Product Service (HTTP)
-       │
-       ▼
-6. Response → Client
-```
-
-### Service Interaction Patterns
-
-| Pattern | Implementation |
-|---------|----------------|
-| **Synchronous** | `WebClient` / `RestClient` between services |
-| **Asynchronous** | RabbitMQ for event-driven flows (order events, product events, payment events, inventory events) |
-| **Service Discovery** | Eureka + `@LoadBalanced` `RestClient` |
-| **Configuration** | `bootstrap.yml` → Config Server → Git repo |
-| **Security** | OAuth2 JWT validated at Gateway; propagated downstream |
-| **Database per Service** | Each service owns its PostgreSQL schema (no shared DB) |
+| Service | Port | Framework | Database | Reactive | Circuit Breaker |
+|---------|------|-----------|----------|----------|-----------------|
+| Gateway | 8080 | Spring Cloud Gateway (WebFlux) | Redis | ✅ | Resilience4j |
+| Auth Server | 9000 | Spring Auth Server (WebMVC) | PostgreSQL | ❌ | - |
+| Product | 8081 | WebFlux | MongoDB | ✅ | - |
+| Category | 8082 | WebMVC | PostgreSQL | ❌ | - |
+| Order | 8083 | WebFlux | PostgreSQL (R2DBC) | ✅ | Resilience4j |
+| Inventory | 8084 | WebMVC | PostgreSQL | ❌ | Resilience4j |
+| Payment | 8086 | WebFlux | PostgreSQL (R2DBC) | ✅ | Resilience4j |
+| Notification | 8087 | WebMVC | PostgreSQL | ❌ | - |
+| Config Server | 8888 | Spring Cloud Config | - | - | - |
+| Eureka | 8761 | Netflix Eureka | - | - | - |
 
 ---
 

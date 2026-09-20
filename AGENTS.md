@@ -4,14 +4,14 @@
 Multi-module Maven project with 11 services:
 - `config-server` - Spring Cloud Config Server (Git backend)
 - `eureka-server` - Service discovery (Netflix Eureka)
-- `gateway` - Spring Cloud Gateway (routes + OAuth2 resource server)
-- `product` - Product domain service (WebFlux + JPA)
+- `gateway` - Spring Cloud Gateway (routes + OAuth2 resource server + Redis + Resilience4j)
+- `product` - Product domain service (WebFlux + MongoDB Reactive)
 - `category` - Category domain service (WebMVC + JPA)
-- `auth-server` - Spring Authorization Server (OAuth2/JWT)
-- `order-service` - Order domain service (WebFlux + R2DBC)
-- `inventory-service` - Inventory domain service (WebFlux + R2DBC)
-- `notification-service` - Notification service (WebFlux + JPA)
-- `payment-service` - Payment processing service (WebFlux + R2DBC)
+- `auth-server` - Spring Authorization Server (OAuth2/JWT, WebMVC + JPA + PostgreSQL)
+- `order-service` - Order domain service (WebFlux + R2DBC + PostgreSQL)
+- `inventory-service` - Inventory domain service (WebMVC + JPA + PostgreSQL)
+- `notification-service` - Notification service (WebMVC + JPA + PostgreSQL + Mail)
+- `payment-service` - Payment processing service (WebFlux + R2DBC + PostgreSQL)
 - `system-test` - System-level integration tests (Testcontainers)
 
 ## Build & Test Commands
@@ -88,7 +88,8 @@ mvn spring-boot:run -pl payment-service
 4. **OpenAPI docs**: `/swagger-ui.html` on each service, `/v3/api-docs` for JSON
 5. **Actuator endpoints**: `/actuator/health`, `/actuator/prometheus`, `/actuator/info`
 6. **Testcontainers** requires Docker/OrbStack running; uses `docker-java` 3.4+ for Docker API 1.40+
-7. **Default profile uses H2** — `docker` profile uses PostgreSQL; product service uses MongoDB
+7. **Database per service**: Product uses MongoDB; Category, Order, Inventory, Payment, Notification, Auth Server use dedicated PostgreSQL instances
+8. **Gateway** uses Redis Reactive for rate limiting/session; Resilience4j CircuitBreaker enabled
 
 ## Development Workflow
 1. Modify code in module
