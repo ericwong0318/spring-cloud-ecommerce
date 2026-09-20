@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -35,34 +36,63 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 @SpringBootTest(classes = InventoryServiceApplication.class, webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Testcontainers
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@Import(EventPublishingTestConfig.class)
+@Import({EventPublishingTestConfig.class, TestJpaConfig.class, TestOutboxPublisherConfig.class})
+@EnableAutoConfiguration(exclude = {
+    org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration.class,
+    org.springframework.boot.autoconfigure.r2dbc.R2dbcTransactionManagerAutoConfiguration.class
+})
 class EventPublishingIntegrationTest {
 
-    @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("inventory_db")
             .withUsername("test")
             .withPassword("test");
 
-    @Container
     static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management")
             .withExposedPorts(5672);
+
+    static {
+        postgres.start();
+        rabbitmq.start();
+    }
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+        registry.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.PostgreSQLDialect");
+        registry.add("spring.jpa.show-sql", () -> "false");
+        registry.add("spring.jpa.properties.hibernate.format_sql", () -> "true");
         registry.add("spring.flyway.enabled", () -> "false");
         registry.add("spring.rabbitmq.host", rabbitmq::getHost);
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
+        registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);
+        registry.add("spring.rabbitmq.password", rabbitmq::getAdminPassword);
+        registry.add("spring.rabbitmq.virtual-host", () -> "/");
+        registry.add("spring.rabbitmq.publisher-confirm-type", () -> "correlated");
+        registry.add("spring.rabbitmq.publisher-returns", () -> "true");
+        registry.add("rabbitmq.exchange.product", () -> "product.exchange");
+        registry.add("rabbitmq.exchange.order", () -> "order.exchange");
+        registry.add("rabbitmq.exchange.inventory", () -> "inventory.exchange");
+        registry.add("rabbitmq.queue.inventory-events", () -> "inventory.events.queue");
+        registry.add("rabbitmq.routing-key.product-created", () -> "product.created");
+        registry.add("rabbitmq.routing-key.product-updated", () -> "product.updated");
+        registry.add("rabbitmq.routing-key.product-deleted", () -> "product.deleted");
+        registry.add("rabbitmq.routing-key.order-created", () -> "order.created");
+        registry.add("rabbitmq.routing-key.order-cancelled", () -> "order.cancelled");
+        registry.add("rabbitmq.routing-key.reservation-expired", () -> "reservation.expired");
         registry.add("eureka.client.enabled", () -> "false");
     }
 
@@ -83,6 +113,8 @@ class EventPublishingIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    private static final Logger log = LoggerFactory.getLogger(EventPublishingIntegrationTest.class);
 
     @Value("${rabbitmq.exchange.inventory}")
     private String inventoryExchange;
@@ -123,6 +155,9 @@ class EventPublishingIntegrationTest {
 
     private InventoryEvent consumeAndDeserializeEvent(Queue queue, long timeoutSeconds) {
         try {
+            // Small delay to allow message to be routed
+            Thread.sleep(500);
+            
             Object message = rabbitTemplate.receiveAndConvert(queue.getName(), timeoutSeconds * 1000);
             assertThat(message).as("No message received").isNotNull();
 
@@ -144,7 +179,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldPublishReservedEventWithCorrectSchema() {
-        Queue queue = createAndBindTestQueue("reserved");
+        Queue queue = createAndBindTestQueue("inventory.reserved");
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
 
@@ -168,7 +203,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldPublishReleasedEventWithCorrectSchema() {
-        Queue queue = createAndBindTestQueue("released");
+        Queue queue = createAndBindTestQueue("inventory.released");
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
         inventoryService.releaseReservation(testVariantId, 10, testOrderItemId);
@@ -191,7 +226,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldPublishConfirmedEventWithCorrectSchema() {
-        Queue queue = createAndBindTestQueue("confirmed");
+        Queue queue = createAndBindTestQueue("inventory.confirmed");
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
         inventoryService.confirmStock(testVariantId, 10);
@@ -215,7 +250,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldPublishLowStockEventWithCorrectSchema() {
-        Queue queue = createAndBindTestQueue("low_stock");
+        Queue queue = createAndBindTestQueue("inventory.low_stock");
 
         Inventory testInventory = inventoryRepository.findByVariantId(testVariantId).orElseThrow();
         testInventory.setQuantity(15);
@@ -243,7 +278,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldPublishReservedEventWithBackorderWhenInsufficientStock() {
-        Queue queue = createAndBindTestQueue("reserved");
+        Queue queue = createAndBindTestQueue("inventory.reserved");
 
         Inventory testInventory = inventoryRepository.findByVariantId(testVariantId).orElseThrow();
         testInventory.setQuantity(5);
@@ -265,28 +300,28 @@ class EventPublishingIntegrationTest {
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldDeserializePublishedEventsCorrectly() {
         // Test reserved event
-        Queue reservedQueue = createAndBindTestQueue("reserved");
+        Queue reservedQueue = createAndBindTestQueue("inventory.reserved");
         inventoryService.reserveStock(testVariantId, 5, testOrderItemId);
         InventoryEvent reservedEvent = consumeAndDeserializeEvent(reservedQueue, 5);
         assertThat(reservedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.RESERVED.name());
         assertThat(reservedEvent.getVariantId()).isEqualTo(testVariantId);
 
         // Test released event
-        Queue releasedQueue = createAndBindTestQueue("released");
+        Queue releasedQueue = createAndBindTestQueue("inventory.released");
         inventoryService.releaseReservation(testVariantId, 5, testOrderItemId);
         InventoryEvent releasedEvent = consumeAndDeserializeEvent(releasedQueue, 5);
         assertThat(releasedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.RELEASED.name());
         assertThat(releasedEvent.getVariantId()).isEqualTo(testVariantId);
 
         // Test second reserved event
-        Queue reservedQueue2 = createAndBindTestQueue("reserved");
+        Queue reservedQueue2 = createAndBindTestQueue("inventory.reserved");
         inventoryService.reserveStock(testVariantId, 5, testOrderItemId + 1);
         InventoryEvent secondReservedEvent = consumeAndDeserializeEvent(reservedQueue2, 5);
         assertThat(secondReservedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.RESERVED.name());
         assertThat(secondReservedEvent.getVariantId()).isEqualTo(testVariantId);
 
         // Test confirmed event
-        Queue confirmedQueue = createAndBindTestQueue("confirmed");
+        Queue confirmedQueue = createAndBindTestQueue("inventory.confirmed");
         inventoryService.confirmStock(testVariantId, 5);
         InventoryEvent confirmedEvent = consumeAndDeserializeEvent(confirmedQueue, 5);
         assertThat(confirmedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.CONFIRMED.name());
@@ -296,7 +331,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldHandleDuplicateReservedEventsIdempotently() {
-        Queue queue = createAndBindTestQueue("reserved");
+        Queue queue = createAndBindTestQueue("inventory.reserved");
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
         InventoryEvent firstEvent = consumeAndDeserializeEvent(queue, 5);
@@ -317,7 +352,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldHandleDuplicateReleasedEventsIdempotently() {
-        Queue queue = createAndBindTestQueue("released");
+        Queue queue = createAndBindTestQueue("inventory.released");
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
         inventoryService.releaseReservation(testVariantId, 10, testOrderItemId);
@@ -339,7 +374,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldHandleDuplicateLowStockEventsIdempotently() {
-        Queue queue = createAndBindTestQueue("low_stock");
+        Queue queue = createAndBindTestQueue("inventory.low_stock");
 
         Inventory testInventory = inventoryRepository.findByVariantId(testVariantId).orElseThrow();
         testInventory.setQuantity(15);
@@ -373,7 +408,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldVerifyEventTimestampIsPresentAndValid() {
-        Queue queue = createAndBindTestQueue("reserved");
+        Queue queue = createAndBindTestQueue("inventory.reserved");
 
         LocalDateTime beforePublish = LocalDateTime.now().minusSeconds(1);
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
@@ -389,7 +424,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldVerifyEventIdIsUniquePerEvent() {
-        Queue queue = createAndBindTestQueue("reserved");
+        Queue queue = createAndBindTestQueue("inventory.reserved");
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
         InventoryEvent event1 = consumeAndDeserializeEvent(queue, 5);
@@ -405,7 +440,7 @@ class EventPublishingIntegrationTest {
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     void shouldVerifyEventJsonStructureMatchesInventoryEventClass() {
-        Queue queue = createAndBindTestQueue("reserved");
+        Queue queue = createAndBindTestQueue("inventory.reserved");
 
         inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
         InventoryEvent event = consumeAndDeserializeEvent(queue, 5);
