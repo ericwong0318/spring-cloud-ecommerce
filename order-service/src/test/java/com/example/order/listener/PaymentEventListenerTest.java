@@ -1,97 +1,40 @@
 package com.example.order.listener;
 
 import com.example.common.event.BaseEvent;
-import com.example.common.event.OrderEvent;
 import com.example.common.event.PaymentEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
-import com.example.common.exception.ResourceNotFoundException;
-import com.example.order.model.Order;
-import com.example.order.model.OrderItem;
-import com.example.order.repository.OrderItemRepository;
-import com.example.order.repository.OrderRepository;
-import com.example.order.service.OrderService;
+import com.example.order.service.OrderSagaOrchestrator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 import reactor.core.publisher.Mono;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentEventListenerTest {
 
     @Mock
-    private OrderRepository orderRepository;
-
-    @Mock
-    private OrderItemRepository orderItemRepository;
-
-    @Mock
     private ReactiveIdempotentEventProcessor idempotentEventProcessor;
 
     @Mock
-    private OrderService orderService;
+    private OrderSagaOrchestrator sagaOrchestrator;
 
     private PaymentEventListener listener;
 
-    private Order order;
-    private OrderItem item1;
-    private OrderItem item2;
-
     @BeforeEach
     void setUp() {
-        listener = new PaymentEventListener(idempotentEventProcessor, orderService);
-
-        order = new Order();
-        ReflectionTestUtils.setField(order, "id", 1L);
-        ReflectionTestUtils.setField(order, "customerId", "CUST-001");
-        ReflectionTestUtils.setField(order, "status", "PENDING");
-        ReflectionTestUtils.setField(order, "totalAmount", new BigDecimal("1999.98"));
-
-        item1 = new OrderItem();
-        ReflectionTestUtils.setField(item1, "id", 1L);
-        ReflectionTestUtils.setField(item1, "orderId", 1L);
-        ReflectionTestUtils.setField(item1, "productId", 1L);
-        ReflectionTestUtils.setField(item1, "variantId", 1L);
-        ReflectionTestUtils.setField(item1, "skuCode", "LAPTOP-13-SILVER");
-        ReflectionTestUtils.setField(item1, "productName", "Laptop 13 Silver");
-        ReflectionTestUtils.setField(item1, "quantityOrdered", 2);
-        ReflectionTestUtils.setField(item1, "quantityShipped", 0);
-        ReflectionTestUtils.setField(item1, "unitPrice", new BigDecimal("999.99"));
-        ReflectionTestUtils.setField(item1, "status", OrderItem.OrderItemStatus.PENDING);
-        ReflectionTestUtils.setField(item1, "reservedAt", LocalDateTime.now());
-
-        item2 = new OrderItem();
-        ReflectionTestUtils.setField(item2, "id", 2L);
-        ReflectionTestUtils.setField(item2, "orderId", 1L);
-        ReflectionTestUtils.setField(item2, "productId", 2L);
-        ReflectionTestUtils.setField(item2, "variantId", 2L);
-        ReflectionTestUtils.setField(item2, "skuCode", "MOUSE-WIRELESS");
-        ReflectionTestUtils.setField(item2, "productName", "Wireless Mouse");
-        ReflectionTestUtils.setField(item2, "quantityOrdered", 1);
-        ReflectionTestUtils.setField(item2, "quantityShipped", 0);
-        ReflectionTestUtils.setField(item2, "unitPrice", new BigDecimal("49.99"));
-        ReflectionTestUtils.setField(item2, "status", OrderItem.OrderItemStatus.PENDING);
-        ReflectionTestUtils.setField(item2, "reservedAt", LocalDateTime.now());
-
-        order.getItems().add(item1);
-        order.getItems().add(item2);
+        listener = new PaymentEventListener(idempotentEventProcessor, sagaOrchestrator);
     }
 
     private PaymentEvent createPaymentEvent(String eventType, PaymentEvent.PaymentStatus status) {
@@ -113,100 +56,96 @@ class PaymentEventListenerTest {
     private void mockIdempotentProcessor(PaymentEvent event) {
         doAnswer(invocation -> {
             @SuppressWarnings("unchecked")
-            java.util.function.Function<PaymentEvent, reactor.core.publisher.Mono<Void>> handler = invocation.getArgument(1);
+            Function<PaymentEvent, reactor.core.publisher.Mono<Void>> handler = invocation.getArgument(1);
             return handler.apply(event);
         }).when(idempotentEventProcessor).process(any(), any());
     }
 
     @Test
-    void handlePaymentCaptured_shouldTransitionOrderToConfirmedAndItemsToReserved() {
+    void handlePaymentEvent_shouldDelegateToSagaOrchestrator_whenCaptured() {
         PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
 
-        when(orderService.handlePaymentCaptured(1L, event.getAmount())).thenReturn(Mono.empty());
+        when(sagaOrchestrator.handlePaymentCaptured(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(orderService).handlePaymentCaptured(1L, event.getAmount());
+        verify(sagaOrchestrator).handlePaymentCaptured(event);
     }
 
     @Test
-    void handlePaymentFailed_shouldCallOrderServiceHandlePaymentFailed() {
+    void handlePaymentEvent_shouldDelegateToSagaOrchestrator_whenFailed() {
         PaymentEvent event = createPaymentEvent("FAILED", PaymentEvent.PaymentStatus.FAILED);
 
-        when(orderService.handlePaymentFailed(1L)).thenReturn(Mono.empty());
+        when(sagaOrchestrator.handlePaymentFailed(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(orderService).handlePaymentFailed(1L);
+        verify(sagaOrchestrator).handlePaymentFailed(event);
     }
 
     @Test
-    void handlePaymentRefunded_shouldCallOrderServiceHandlePaymentRefunded() {
+    void handlePaymentEvent_shouldDelegateToSagaOrchestrator_whenRefunded() {
         PaymentEvent event = createPaymentEvent("REFUNDED", PaymentEvent.PaymentStatus.REFUNDED);
 
-        when(orderService.handlePaymentRefunded(1L)).thenReturn(Mono.empty());
+        when(sagaOrchestrator.handlePaymentRefunded(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(orderService).handlePaymentRefunded(1L);
+        verify(sagaOrchestrator).handlePaymentRefunded(event);
     }
 
     @Test
-    void handlePartiallyRefunded_shouldCallOrderServiceHandlePaymentPartiallyRefunded() {
+    void handlePaymentEvent_shouldDelegateToSagaOrchestrator_whenPartiallyRefunded() {
         PaymentEvent event = createPaymentEvent("REFUNDED", PaymentEvent.PaymentStatus.PARTIALLY_REFUNDED);
 
-        when(orderService.handlePaymentPartiallyRefunded(1L)).thenReturn(Mono.empty());
+        when(sagaOrchestrator.handlePaymentPartiallyRefunded(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(orderService).handlePaymentPartiallyRefunded(1L);
+        verify(sagaOrchestrator).handlePaymentPartiallyRefunded(event);
     }
 
     @Test
-    void handlePaymentAuthorized_shouldCallOrderServiceHandlePaymentAuthorized() {
+    void handlePaymentEvent_shouldDelegateToSagaOrchestrator_whenAuthorized() {
         PaymentEvent event = createPaymentEvent("AUTHORIZED", PaymentEvent.PaymentStatus.AUTHORIZED);
 
-        when(orderService.handlePaymentAuthorized(1L)).thenReturn(Mono.empty());
+        when(sagaOrchestrator.handlePaymentAuthorized(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(orderService).handlePaymentAuthorized(1L);
+        verify(sagaOrchestrator).handlePaymentAuthorized(event);
     }
 
     @Test
     void handlePaymentEvent_shouldSkipDuplicateEvent() {
         PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
 
-        doAnswer(invocation -> {
-            return Mono.empty();
-        }).when(idempotentEventProcessor).process(any(), any());
+        doAnswer(invocation -> Mono.empty()).when(idempotentEventProcessor).process(any(), any());
 
         listener.handlePaymentEvent(event);
 
-        verify(orderService, never()).handlePaymentCaptured(anyLong(), any());
+        verify(sagaOrchestrator, never()).handlePaymentCaptured(any());
     }
 
     @Test
-    void handlePaymentEvent_shouldProcessEventWithoutIdempotency_whenEventIdMissing() {
+    void handlePaymentEvent_shouldSkip_whenOrderIdMissing() {
         PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
-        ReflectionTestUtils.setField(event, "eventId", null);
+        ReflectionTestUtils.setField(event, "orderId", null);
 
-        when(orderService.handlePaymentCaptured(1L, event.getAmount())).thenReturn(Mono.empty());
-
-        mockIdempotentProcessor(event);
+        doAnswer(invocation -> Mono.empty()).when(idempotentEventProcessor).process(any(), any());
 
         listener.handlePaymentEvent(event);
 
-        verify(orderService).handlePaymentCaptured(1L, event.getAmount());
+        verify(sagaOrchestrator, never()).handlePaymentCaptured(any());
     }
 }

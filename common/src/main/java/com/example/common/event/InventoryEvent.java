@@ -19,6 +19,9 @@ public class InventoryEvent implements BaseEvent {
     private Integer availableQuantity;
     private BigDecimal costPrice;
     private LocalDateTime timestamp;
+    private Long orderId;
+    private String customerId;
+    private String customerEmail;
 
     public InventoryEvent() {
     }
@@ -149,6 +152,30 @@ public class InventoryEvent implements BaseEvent {
         this.timestamp = timestamp;
     }
 
+    public Long getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(Long orderId) {
+        this.orderId = orderId;
+    }
+
+    public String getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(String customerId) {
+        this.customerId = customerId;
+    }
+
+    public String getCustomerEmail() {
+        return customerEmail;
+    }
+
+    public void setCustomerEmail(String customerEmail) {
+        this.customerEmail = customerEmail;
+    }
+
     public static InventoryEvent created(Long productId, String productName) {
         InventoryEvent event = new InventoryEvent();
         event.setEventType(EventType.CREATED.name());
@@ -173,6 +200,14 @@ public class InventoryEvent implements BaseEvent {
         event.setReserved(reservedQuantity);
         event.setBackordered(backorderedQuantity);
         event.setTimestamp(LocalDateTime.now());
+        return event;
+    }
+
+    public static InventoryEvent reserved(Long variantId, Long productId, Integer reservedQuantity, Integer backorderedQuantity, Long orderId, String customerId, String customerEmail) {
+        InventoryEvent event = reserved(variantId, productId, reservedQuantity, backorderedQuantity);
+        event.setOrderId(orderId);
+        event.setCustomerId(customerId);
+        event.setCustomerEmail(customerEmail);
         return event;
     }
 

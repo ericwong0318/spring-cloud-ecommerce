@@ -40,6 +40,13 @@ public class InventoryService {
     @Retry(name = "inventory-service")
     @Transactional
     public ReservationResult reserveStock(Long variantId, Integer quantity, Long orderItemId) {
+        return reserveStock(variantId, quantity, orderItemId, null, null, null);
+    }
+
+    @CircuitBreaker(name = "inventory-service", fallbackMethod = "reserveStockFallback")
+    @Retry(name = "inventory-service")
+    @Transactional
+    public ReservationResult reserveStock(Long variantId, Integer quantity, Long orderItemId, Long orderId, String customerId, String customerEmail) {
         Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantIdWithLock(variantId);
         if (inventoryOpt.isPresent()) {
             Inventory inventory = inventoryOpt.get();
@@ -49,7 +56,7 @@ public class InventoryService {
                 inventory.setReservedQuantity(inventory.getReservedQuantity() + quantity);
                 inventoryRepository.save(inventory);
                 log.info("Reserved {} units for variant {}", quantity, variantId);
-                publishInventoryEvent(InventoryEvent.reserved(variantId, inventory.getProductId(), quantity, 0));
+                publishInventoryEvent(InventoryEvent.reserved(variantId, inventory.getProductId(), quantity, 0, orderId, customerId, customerEmail));
                 createOrUpdateReservation(orderItemId, variantId, quantity);
                 checkAndPublishLowStock(inventory);
                 return new ReservationResult(quantity, 0);
@@ -58,13 +65,13 @@ public class InventoryService {
                 inventory.setReservedQuantity(inventory.getReservedQuantity() + available);
                 inventoryRepository.save(inventory);
                 log.info("Partially reserved {} units for variant {}, backordered {}", available, variantId, backordered);
-                publishInventoryEvent(InventoryEvent.reserved(variantId, inventory.getProductId(), available, backordered));
+                publishInventoryEvent(InventoryEvent.reserved(variantId, inventory.getProductId(), available, backordered, orderId, customerId, customerEmail));
                 createOrUpdateReservation(orderItemId, variantId, available);
                 checkAndPublishLowStock(inventory);
                 return new ReservationResult(available, backordered);
             } else {
                 log.warn("No stock available for variant {}: requested={}", variantId, quantity);
-                publishInventoryEvent(InventoryEvent.reserved(variantId, inventory.getProductId(), 0, quantity));
+                publishInventoryEvent(InventoryEvent.reserved(variantId, inventory.getProductId(), 0, quantity, orderId, customerId, customerEmail));
                 return new ReservationResult(0, quantity);
             }
         } else {
