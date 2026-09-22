@@ -12,9 +12,13 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MongoDBContainer;
+
+import com.example.common.event.JpaOutboxEventPublisher;
+import com.example.common.event.ReactiveOutboxEventPublisher;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -115,7 +119,10 @@ public abstract class ValidationFuzzTest {
 
         // Disable security for tests
         registry.add("spring.autoconfigure.exclude", () -> "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration," +
-                "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration");
+                "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration," +
+                "org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration," +
+                "org.springframework.security.config.annotation.web.configuration.WebSecurityConfiguration," +
+                "com.example.common.event.ReactiveOutboxEventPublisherAutoConfiguration");
     }
 
     @BeforeEach
@@ -259,15 +266,16 @@ public abstract class ValidationFuzzTest {
 
     @Configuration
     @SpringBootApplication
-    @ComponentScan(basePackages = {
-        "com.example.category",
-        "com.example.product",
-        "com.example.order",
-        "com.example.inventory",
-        "com.example.payment",
-        "com.example.notification",
-        "com.example.common"
-    })
+    @ComponentScan(
+        basePackages = {
+            "com.example.category",
+            "com.example.product",
+            "com.example.order",
+            "com.example.inventory",
+            "com.example.payment",
+            "com.example.notification"
+        }
+    )
     static class TestConfig {
     }
 }
