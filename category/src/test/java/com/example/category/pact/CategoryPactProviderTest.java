@@ -2,6 +2,9 @@ package com.example.category.pact;
 
 import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
+import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
+import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
+import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.State;
 import com.example.category.Category;
 import com.example.category.CategoryRepository;
@@ -37,7 +40,9 @@ import java.util.Map;
 @ActiveProfiles("test")
 @EnableAutoConfiguration(exclude = {SecurityAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class, org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration.class})
 @Import({TestSecurityConfig.class, CategoryPactProviderTest.TestConfig.class})
-@ExtendWith(CategoryPactExtension.class)
+@PactFolder("target/pacts")
+@ExtendWith(PactVerificationInvocationContextProvider.class)
+@Provider("category-service")
 class CategoryPactProviderTest {
 
     @LocalServerPort

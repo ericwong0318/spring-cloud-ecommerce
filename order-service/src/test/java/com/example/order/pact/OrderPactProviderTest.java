@@ -3,6 +3,8 @@ package com.example.order.pact;
 import au.com.dius.pact.provider.junit5.HttpTestTarget;
 import au.com.dius.pact.provider.junit5.PactVerificationContext;
 import au.com.dius.pact.provider.junitsupport.Provider;
+import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvider;
+import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import au.com.dius.pact.provider.junitsupport.State;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
@@ -15,8 +17,9 @@ import java.util.Map;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@ExtendWith(OrderPactExtension.class)
+@ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("order-service")
+@PactFolder("target/pacts")
 class OrderPactProviderTest {
 
     @LocalServerPort

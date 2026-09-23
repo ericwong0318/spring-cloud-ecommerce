@@ -26,7 +26,7 @@ import java.util.Map;
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("inventory-service")
-@PactFolder("../order-service/target/pacts")
+@PactFolder("target/pacts")
 class InventoryPactProviderTest {
 
     @Container
@@ -45,6 +45,9 @@ class InventoryPactProviderTest {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+        registry.add("spring.r2dbc.url", () -> "r2dbc:postgresql://" + postgres.getHost() + ":" + postgres.getFirstMappedPort() + "/" + postgres.getDatabaseName());
+        registry.add("spring.r2dbc.username", postgres::getUsername);
+        registry.add("spring.r2dbc.password", postgres::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("spring.flyway.enabled", () -> "false");
         registry.add("spring.rabbitmq.host", rabbitmq::getHost);
