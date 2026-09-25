@@ -10,13 +10,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.context.ApplicationContextInitializer;
-import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.core.env.PropertiesPropertySource;
-import java.util.Properties;
 
 import java.util.Map;
 
@@ -24,16 +20,16 @@ import java.util.Map;
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     classes = com.example.payment.config.PaymentPactTestConfig.class,
     properties = {
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration,org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration,org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration,org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration",
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfig.security.servlet.ManagementWebSecurityAutoConfiguration,org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration,org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration,org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration",
         "spring.main.web-application-type=reactive",
         "spring.security.oauth2.resourceserver.enabled=false",
         "management.security.enabled=false"
     })
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
+@Import(com.example.payment.controller.PaymentController.class)
 @Provider("payment-service")
 @PactFolder("target/pacts")
-@ContextConfiguration(initializers = PaymentPactProviderTest.SecurityExclusionInitializer.class)
 class PaymentPactProviderTest {
 
     @LocalServerPort
@@ -116,30 +112,5 @@ class PaymentPactProviderTest {
 
     @State("refund request - reason too long")
     void refundRequestReasonTooLong(Map<String, Object> params) {
-    }
-
-    // Debug: print security filter chains
-    @State("debug security")
-    void debugSecurity(Map<String, Object> params) {
-    }
-
-    static final class SecurityExclusionInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
-        @Override
-        public void initialize(ConfigurableApplicationContext applicationContext) {
-            applicationContext.getEnvironment().getPropertySources().addFirst(
-                new PropertiesPropertySource("securityExclusions", 
-                    new Properties() {{
-                        put("spring.autoconfigure.exclude", 
-                            "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration," +
-                            "org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration," +
-                            "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration," +
-                            "org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration," +
-                            "org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration," +
-                            "org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration");
-                        put("spring.main.web-application-type", "reactive");
-                        put("spring.security.enabled", "false");
-                        put("management.security.enabled", "false");
-                    }}));
-        }
     }
 }
