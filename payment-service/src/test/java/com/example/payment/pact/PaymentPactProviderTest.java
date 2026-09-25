@@ -9,7 +9,6 @@ import au.com.dius.pact.provider.junitsupport.State;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
@@ -27,15 +26,11 @@ import java.util.Map;
     properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration,org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration,org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration,org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration,org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration",
         "spring.main.web-application-type=reactive",
-        "spring.security.enabled=false",
+        "spring.security.oauth2.resourceserver.enabled=false",
         "management.security.enabled=false"
     })
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
-@EnableAutoConfiguration(exclude = {
-    org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration.class
-})
 @Provider("payment-service")
 @PactFolder("target/pacts")
 @ContextConfiguration(initializers = PaymentPactProviderTest.SecurityExclusionInitializer.class)

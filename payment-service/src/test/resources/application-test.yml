@@ -1,4 +1,8 @@
 spring:
+  security:
+    oauth2:
+      resourceserver:
+        enabled: false
   application:
     name: payment-service
   datasource:

@@ -1,6 +1,8 @@
 package com.example.payment;
 
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.SpringBootConfiguration;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -9,11 +11,14 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-@SpringBootApplication(exclude = {
+@SpringBootConfiguration
+@EnableAutoConfiguration(exclude = {
     org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class,
     org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration.class,
     org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class
+    org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration.class,
+    org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration.class,
+    org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration.class
 })
 // Only scan payment package (main and test) to avoid Servlet security config from common
 @ComponentScan(basePackages = {"com.example.payment"})
