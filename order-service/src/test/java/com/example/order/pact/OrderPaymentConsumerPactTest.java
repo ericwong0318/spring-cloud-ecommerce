@@ -181,7 +181,6 @@ class OrderPaymentConsumerPactTest {
                                                     .method("POST")
                                                     .path("/payments/authorize")
                                                     .body(new PactDslJsonBody()
-                                                            .integerType("orderId", 1L)
                                                             .decimalType("amount", new BigDecimal("99.99"))
                                                             .stringType("currency", "USD")
                                                             .stringType("customerId", "cust-123")
@@ -217,7 +216,6 @@ class OrderPaymentConsumerPactTest {
                                                     .path("/payments/authorize")
                                                     .body(new PactDslJsonBody()
                                                             .integerType("orderId", 1L)
-                                                            .decimalType("amount", new BigDecimal("99.99"))
                                                             .stringType("currency", "USD")
                                                             .stringType("customerId", "cust-123")
                                                             .stringType("customerEmail", "customer@example.com")
@@ -591,7 +589,6 @@ class OrderPaymentConsumerPactTest {
                                                     .method("POST")
                                                     .path("/payments/1/refund")
                                                     .body(new PactDslJsonBody()
-                                                            .decimalType("amount", new BigDecimal("50.00"))
                                                             .stringType("reason", "Customer requested refund"));
                                         }
                                     })
@@ -710,7 +707,6 @@ class OrderPaymentConsumerPactTest {
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
-                    "orderId": 1,
                     "amount": 99.99,
                     "currency": "USD",
                     "customerId": "cust-123",
@@ -735,7 +731,6 @@ class OrderPaymentConsumerPactTest {
         String requestBody = """
                 {
                     "orderId": 1,
-                    "amount": 99.99,
                     "currency": "USD",
                     "customerId": "cust-123",
                     "customerEmail": "customer@example.com",
@@ -992,7 +987,6 @@ class OrderPaymentConsumerPactTest {
         HttpClient client = HttpClient.newHttpClient();
         String requestBody = """
                 {
-                    "amount": 50.00,
                     "reason": "Customer requested refund"
                 }
                 """;

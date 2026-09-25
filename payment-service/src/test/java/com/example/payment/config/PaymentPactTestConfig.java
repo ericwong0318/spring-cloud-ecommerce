@@ -1,5 +1,6 @@
 package com.example.payment.config;
 
+import com.example.payment.WebFluxValidationExceptionHandler;
 import com.example.payment.controller.PaymentController;
 import com.example.payment.gateway.MockPaymentGateway;
 import com.example.payment.repository.PaymentRepository;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.transaction.reactive.TransactionalOperator;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import reactor.core.publisher.Mono;
 
 @Configuration
@@ -23,7 +25,7 @@ import reactor.core.publisher.Mono;
     org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration.class,
     org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration.class
 })
-@Import({TestSecurityConfig.class, PaymentController.class})
+@Import({TestSecurityConfig.class, PaymentController.class, WebFluxValidationExceptionHandler.class})
 public class PaymentPactTestConfig {
 
     @Bean
