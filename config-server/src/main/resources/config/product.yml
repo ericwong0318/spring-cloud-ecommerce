@@ -9,6 +9,21 @@ spring:
       uri: mongodb://localhost:27017
       database: product_db
       auto-index-creation: true
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 5s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 3
+        max-concurrency: 10
+        prefetch: 10
   cloud:
     config:
       import: optional:configserver:http://localhost:8888
@@ -17,7 +32,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,circuitbreakers,ratelimiters
   endpoint:
     health:
       show-details: always
@@ -35,6 +50,30 @@ spring:
       uri: mongodb://mongodb:27017
       database: product_db
       auto-index-creation: true
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 5s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 3
+        max-concurrency: 10
+        prefetch: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,circuitbreakers,ratelimiters
+  endpoint:
+    health:
+      show-details: always
 
 ---
 spring:
@@ -46,3 +85,27 @@ spring:
       uri: ${MONGODB_URI}
       database: ${MONGODB_DATABASE:product_db}
       auto-index-creation: true
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: /
+    connection-timeout: 5s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 3
+        max-concurrency: 10
+        prefetch: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,circuitbreakers,ratelimiters
+  endpoint:
+    health:
+      show-details: always
