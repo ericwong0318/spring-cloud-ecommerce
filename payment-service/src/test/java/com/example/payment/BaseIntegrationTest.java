@@ -19,7 +19,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import javax.sql.DataSource;
 
 @Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = {PaymentServiceApplication.class, TestSecurityConfig.class, BaseIntegrationTest.TestDataSourceConfig.class, BaseIntegrationTest.TestFlywayRunner.class})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = {PaymentServiceTestApplication.class, com.example.payment.config.TestSecurityConfig.class, BaseIntegrationTest.TestDataSourceConfig.class, BaseIntegrationTest.TestFlywayRunner.class})
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class BaseIntegrationTest {
