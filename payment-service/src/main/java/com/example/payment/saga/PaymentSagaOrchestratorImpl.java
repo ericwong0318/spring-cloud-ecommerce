@@ -1,5 +1,6 @@
 package com.example.payment.saga;
 
+import com.example.commonsaga.PaymentSagaHandler;
 import com.example.common.event.InventoryEvent;
 import com.example.common.event.PaymentEvent;
 import com.example.payment.service.PaymentService;
@@ -11,7 +12,7 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 
 @Service
-public class PaymentSagaOrchestratorImpl implements PaymentSagaOrchestrator {
+public class PaymentSagaOrchestratorImpl implements PaymentSagaOrchestrator, PaymentSagaHandler {
 
     private static final Logger log = LoggerFactory.getLogger(PaymentSagaOrchestratorImpl.class);
 
@@ -87,6 +88,12 @@ public class PaymentSagaOrchestratorImpl implements PaymentSagaOrchestrator {
     @Override
     public Mono<Void> handlePaymentRefunded(PaymentEvent event) {
         log.info("Payment saga orchestrator handling PAYMENT_REFUNDED for payment: {}", event.getPaymentId());
+        return Mono.empty();
+    }
+
+    @Override
+    public Mono<Void> handlePaymentPartiallyRefunded(PaymentEvent event) {
+        log.info("Payment saga orchestrator handling PAYMENT_PARTIALLY_REFUNDED for payment: {}", event.getPaymentId());
         return Mono.empty();
     }
 }

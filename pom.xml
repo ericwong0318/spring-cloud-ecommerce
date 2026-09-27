@@ -25,6 +25,7 @@
 
 <modules>
         <module>common</module>
+        <module>common-saga</module>
         <module>config-server</module>
         <module>eureka-server</module>
         <module>gateway</module>
@@ -157,6 +158,11 @@
             <dependency>
                 <groupId>org.example</groupId>
                 <artifactId>common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.example</groupId>
+                <artifactId>common-saga</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

@@ -1,5 +1,6 @@
 package com.example.inventory.saga;
 
+import com.example.commonsaga.InventorySagaHandler;
 import com.example.common.event.OrderEvent;
 import com.example.inventory.service.InventoryService;
 import org.slf4j.Logger;
@@ -8,7 +9,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
-public class InventorySagaOrchestratorImpl implements InventorySagaOrchestrator {
+public class InventorySagaOrchestratorImpl implements InventorySagaOrchestrator, InventorySagaHandler {
 
     private static final Logger log = LoggerFactory.getLogger(InventorySagaOrchestratorImpl.class);
 
