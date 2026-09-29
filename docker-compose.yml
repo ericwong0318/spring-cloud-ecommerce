@@ -100,6 +100,7 @@ services:
       - "9000:9000"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_APPLICATION_NAME=auth-server
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
