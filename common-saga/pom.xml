@@ -21,11 +21,16 @@
     </properties>
 
     <dependencies>
-        <!-- Only compile-time deps: event classes from common -->
+        <!-- Only compile-time deps: event classes from common-event -->
         <dependency>
             <groupId>org.example</groupId>
-            <artifactId>common</artifactId>
+            <artifactId>common-event</artifactId>
             <version>${project.version}</version>
+        </dependency>
+        <!-- Reactor for Mono return types in saga handlers -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
         </dependency>
     </dependencies>
 

@@ -25,7 +25,12 @@
 
 <modules>
         <module>common</module>
+        <module>common-dto</module>
+        <module>common-event</module>
+        <module>common-exception</module>
         <module>common-saga</module>
+        <module>common-outbox</module>
+        <module>common-config</module>
         <module>config-server</module>
         <module>eureka-server</module>
         <module>gateway</module>

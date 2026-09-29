@@ -1,8 +1,5 @@
 package com.example.common.event;
 
-import org.springframework.stereotype.Component;
-
-@Component
 public interface RoutingKeyStrategy {
 
     String determineRoutingKey(String aggregateType, String eventType);
