@@ -4,6 +4,13 @@ server:
 spring:
   application:
     name: payment-service
+  main:
+    allow-bean-definition-overriding: true
+    web-application-type: reactive
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
   datasource:
     url: jdbc:h2:mem:paymentdb
     driver-class-name: org.h2.Driver
@@ -40,6 +47,24 @@ spring:
   config:
     activate:
       on-profile: docker
+  main:
+    web-application-type: reactive
+    allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
+  r2dbc:
+    url: r2dbc:postgresql://postgres:5432/payment_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    pool:
+      enabled: true
+      max-size: 20
+      initial-size: 5
+      max-idle-time: 600s
+      max-life-time: 1800s
+      validation-query: SELECT 1
   datasource:
     url: jdbc:postgresql://postgres:5432/payment_db
     driver-class-name: org.postgresql.Driver
