@@ -1,6 +1,5 @@
 package com.example.common.event;
 
-import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
 
 public interface OutboxEventPublisher {

@@ -17,12 +17,27 @@
     <dependencies>
         <dependency>
             <groupId>org.example</groupId>
-            <artifactId>common</artifactId>
+            <artifactId>common-dto</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>common-event</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.example</groupId>
             <artifactId>common-saga</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>common-outbox</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>common-exception</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

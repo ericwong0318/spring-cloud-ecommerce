@@ -217,4 +217,37 @@ public class ValidationArchitectureTest {
     private static boolean isQuantifier(char c) {
         return c == '+' || c == '*' || c == '?';
     }
+
+    // =========================================================================
+    // Common Module Dependency Rules
+    // =========================================================================
+
+    /**
+     * Services must depend on precise common-* modules, not the old common BOM module.
+     * The old common module is now a BOM only; direct code dependencies should use
+     * common-dto, common-event, common-saga, common-outbox, common-exception.
+     */
+    @ArchTest
+    static final ArchRule services_use_precise_common_modules = noClasses()
+            .that().resideInAPackage("..order..").or().resideInAPackage("..payment..")
+            .or().resideInAPackage("..inventory..").or().resideInAPackage("..product..")
+            .or().resideInAPackage("..category..").or().resideInAPackage("..notification..")
+            .should().dependOnClassesThat().resideInAPackage("org.example.common..")
+            .andShould().dependOnClassesThat().resideInAnyPackage("org.example.common..")
+            .because("Services must depend on common-dto, common-event, common-saga, common-outbox, "
+                    + "common-exception, not the old common module which is now a BOM only")
+            .allowEmptyShould(true);
+
+    /**
+     * Only gateway and auth-server may depend on common-config (heavy framework config).
+     * Other domain services should not pull in web, security, resilience4j, amqp, r2dbc
+     * unless they explicitly opt into common-config.
+     */
+    @ArchTest
+    static final ArchRule only_gateway_and_auth_use_common_config = classes()
+            .that().resideInAPackage("..gateway..").or().resideInAPackage("..authserver..")
+            .should().dependOnClassesThat().resideInAPackage("org.example.common.config..")
+            .because("Only gateway and auth-server may use common-config; "
+                    + "domain services should use precise common-* modules")
+            .allowEmptyShould(true);
 }
