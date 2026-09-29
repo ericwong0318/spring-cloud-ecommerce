@@ -5,6 +5,8 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -51,7 +53,7 @@ public class AuthorizationServerConfig {
     @Value("${spring.security.oauth2.authorizationserver.issuer-uri:http://localhost:9000}")
     private String issuerUri;
 
-@Bean
+    @Bean
     @Order(1)
     @SuppressWarnings("deprecation")
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -87,64 +89,76 @@ public class AuthorizationServerConfig {
 
     @Bean
     public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
-        JdbcRegisteredClientRepository repository = new JdbcRegisteredClientRepository(jdbcTemplate);
-        
-        if (repository.findByClientId("gateway-client") == null) {
-            RegisteredClient gatewayClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                    .clientId("gateway-client")
-                    .clientSecret("{noop}secret")
-                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                    .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                    .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                    .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                    .redirectUri("http://localhost:8080/login/oauth2/code/gateway-client")
-                    .redirectUri("http://localhost:8080/authorized")
-                    .postLogoutRedirectUri("http://localhost:8080")
-                    .scope(OidcScopes.OPENID)
-                    .scope(OidcScopes.PROFILE)
-                    .scope("read")
-                    .scope("write")
-                    .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
-                    .tokenSettings(TokenSettings.builder()
-                            .accessTokenTimeToLive(Duration.ofHours(1))
-                            .refreshTokenTimeToLive(Duration.ofDays(30))
-                            .reuseRefreshTokens(false)
-                            .build())
-                    .build();
-            repository.save(gatewayClient);
-        }
-        
-        if (repository.findByClientId("product-service") == null) {
-            RegisteredClient productService = RegisteredClient.withId(UUID.randomUUID().toString())
-                    .clientId("product-service")
-                    .clientSecret("{noop}secret")
-                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                    .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                    .scope("read")
-                    .scope("write")
-                    .tokenSettings(TokenSettings.builder()
-                            .accessTokenTimeToLive(Duration.ofHours(1))
-                            .build())
-                    .build();
-            repository.save(productService);
-        }
-        
-        if (repository.findByClientId("category-service") == null) {
-            RegisteredClient categoryService = RegisteredClient.withId(UUID.randomUUID().toString())
-                    .clientId("category-service")
-                    .clientSecret("{noop}secret")
-                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                    .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                    .scope("read")
-                    .scope("write")
-                    .tokenSettings(TokenSettings.builder()
-                            .accessTokenTimeToLive(Duration.ofHours(1))
-                            .build())
-                    .build();
-            repository.save(categoryService);
-        }
-        
-        return repository;
+        return new JdbcRegisteredClientRepository(jdbcTemplate);
+    }
+
+    @Bean
+    public ApplicationRunner registeredClientInitializer(JdbcTemplate jdbcTemplate) {
+        return args -> {
+            // Use direct SQL to insert clients - check if exists first
+            String checkSql = "SELECT COUNT(*) FROM oauth2_registered_client WHERE client_id = ?";
+            String insertSql = """
+                INSERT INTO oauth2_registered_client (id, client_id, client_id_issued_at, client_secret, client_secret_expires_at, client_name, client_authentication_methods, authorization_grant_types, redirect_uris, post_logout_redirect_uris, scopes, client_settings, token_settings)
+                VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+            
+            // Gateway client
+            if (jdbcTemplate.queryForObject(checkSql, Integer.class, "gateway-client") == 0) {
+                String gatewayClientId = UUID.randomUUID().toString();
+                jdbcTemplate.update(insertSql,
+                    gatewayClientId,
+                    "gateway-client",
+                    "{noop}secret",
+                    null,
+                    "gateway-client",
+                    "CLIENT_SECRET_BASIC",
+                    "AUTHORIZATION_CODE,REFRESH_TOKEN,CLIENT_CREDENTIALS",
+                    "[\"http://localhost:8080/login/oauth2/code/gateway-client\",\"http://localhost:8080/authorized\"]",
+                    "[\"http://localhost:8080\"]",
+                    "[\"openid\",\"profile\",\"read\",\"write\"]",
+                    "{\"@class\":\"org.springframework.security.oauth2.server.authorization.settings.ClientSettings\",\"requireAuthorizationConsent\":true,\"requireProofKey\":false}",
+                    "{\"@class\":\"org.springframework.security.oauth2.server.authorization.settings.TokenSettings\",\"accessTokenTimeToLive\":\"PT1H\",\"refreshTokenTimeToLive\":\"P30D\",\"reuseRefreshTokens\":false,\"idTokenTimeToLive\":\"PT30M\"}"
+                );
+            }
+            
+            // Product service client
+            if (jdbcTemplate.queryForObject(checkSql, Integer.class, "product-service") == 0) {
+                String productClientId = UUID.randomUUID().toString();
+                jdbcTemplate.update(insertSql,
+                    productClientId,
+                    "product-service",
+                    "{noop}secret",
+                    null,
+                    "product-service",
+                    "CLIENT_SECRET_BASIC",
+                    "CLIENT_CREDENTIALS",
+                    null,
+                    null,
+                    "[\"read\",\"write\"]",
+                    "{\"@class\":\"org.springframework.security.oauth2.server.authorization.settings.ClientSettings\",\"requireAuthorizationConsent\":false,\"requireProofKey\":false}",
+                    "{\"@class\":\"org.springframework.security.oauth2.server.authorization.settings.TokenSettings\",\"accessTokenTimeToLive\":\"PT1H\",\"refreshTokenTimeToLive\":\"P30D\",\"reuseRefreshTokens\":false,\"idTokenTimeToLive\":\"PT30M\"}"
+                );
+            }
+            
+            // Category service client
+            if (jdbcTemplate.queryForObject(checkSql, Integer.class, "category-service") == 0) {
+                String categoryClientId = UUID.randomUUID().toString();
+                jdbcTemplate.update(insertSql,
+                    categoryClientId,
+                    "category-service",
+                    "{noop}secret",
+                    null,
+                    "category-service",
+                    "CLIENT_SECRET_BASIC",
+                    "CLIENT_CREDENTIALS",
+                    null,
+                    null,
+                    "[\"read\",\"write\"]",
+                    "{\"@class\":\"org.springframework.security.oauth2.server.authorization.settings.ClientSettings\",\"requireAuthorizationConsent\":false,\"requireProofKey\":false}",
+                    "{\"@class\":\"org.springframework.security.oauth2.server.authorization.settings.TokenSettings\",\"accessTokenTimeToLive\":\"PT1H\",\"refreshTokenTimeToLive\":\"P30D\",\"reuseRefreshTokens\":false,\"idTokenTimeToLive\":\"PT30M\"}"
+                );
+            }
+        };
     }
 
     @Bean
