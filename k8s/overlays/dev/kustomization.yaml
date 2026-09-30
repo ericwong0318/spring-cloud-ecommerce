@@ -27,6 +27,9 @@ patches:
                   requests:
                     memory: "128Mi"
                     cpu: "100m"
+                env:
+                  - name: SPRING_PROFILES_ACTIVE
+                    value: "native"
     target:
       kind: Deployment
       labelSelector: app=config-server
