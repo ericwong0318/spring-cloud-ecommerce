@@ -17,3 +17,21 @@ resources:
   - payment-service.yaml
   - notification-service.yaml
   - ingress.yaml
+
+patches:
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: config-server
+      spec:
+        template:
+          spec:
+            containers:
+              - name: config-server
+                env:
+                  - name: SPRING_PROFILES_ACTIVE
+                    value: "native"
+    target:
+      kind: Deployment
+      labelSelector: app=config-server

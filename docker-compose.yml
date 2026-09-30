@@ -33,40 +33,42 @@ services:
     networks:
       - spring-cloud-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:13133/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   config-server:
     build:
       context: ./config-server
       dockerfile: Dockerfile
-      args:
-        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8888:8888"
     environment:
       - SPRING_PROFILES_ACTIVE=native
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_SERVICE_NAME=config-server
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=config-server
+      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
+      - profiler.enabled=true
+      - profiler.interval=60s
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8888/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - spring-cloud-network
+    depends_on:
+      - otel-collector
 
   eureka-server:
     build:
       context: ./eureka-server
       dockerfile: Dockerfile
-      args:
-        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8761:8761"
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
@@ -82,7 +84,7 @@ services:
       config-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8761/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -94,13 +96,10 @@ services:
     build:
       context: ./auth-server
       dockerfile: Dockerfile
-      args:
-        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "9000:9000"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_APPLICATION_NAME=auth-server
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
@@ -113,16 +112,13 @@ services:
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
       - profiler.enabled=true
       - profiler.interval=60s
-      - POSTGRES_AUTH_PASSWORD=${POSTGRES_AUTH_PASSWORD}
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
-      postgres-auth:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -134,8 +130,6 @@ services:
     build:
       context: ./gateway
       dockerfile: Dockerfile
-      args:
-        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8080:8080"
     environment:
@@ -160,7 +154,7 @@ services:
       auth-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -172,8 +166,6 @@ services:
     build:
       context: ./product
       dockerfile: Dockerfile
-      args:
-        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8081:8081"
     environment:
@@ -198,7 +190,7 @@ services:
       mongodb:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -210,8 +202,6 @@ services:
     build:
       context: ./category
       dockerfile: Dockerfile
-      args:
-        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8082:8082"
     environment:
@@ -234,7 +224,7 @@ services:
       eureka-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -246,8 +236,6 @@ services:
     build:
       context: ./order-service
       dockerfile: Dockerfile
-      args:
-        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8083:8083"
     environment:
@@ -270,7 +258,7 @@ services:
       eureka-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8083/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -298,7 +286,26 @@ services:
       timeout: 5s
       retries: 5
 
-  
+  postgres-product:
+    image: postgres:16-alpine
+    container_name: postgres-product
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
+    environment:
+      - POSTGRES_DB=product_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PRODUCT_PASSWORD}
+    ports:
+      - "5435:5432"
+    volumes:
+      - product-db-data:/var/lib/postgresql/data
+    networks:
+      - spring-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   postgres-category:
     image: postgres:16-alpine
@@ -403,33 +410,10 @@ services:
       timeout: 5s
       retries: 5
 
-  postgres-auth:
-    image: postgres:16-alpine
-    container_name: postgres-auth
-    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=10", "-c", "max_wal_senders=10"]
-    environment:
-      - POSTGRES_DB=auth_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_AUTH_PASSWORD}
-    ports:
-      - "5432:5432"
-    volumes:
-      - auth-db-data:/var/lib/postgresql/data
-    networks:
-      - spring-cloud-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   inventory-service:
     build:
       context: ./inventory-service
       dockerfile: Dockerfile
-      args:
-        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
       - "8084:8084"
     environment:
@@ -454,7 +438,7 @@ services:
       postgres-inventory:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8084/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -466,10 +450,8 @@ services:
     build:
       context: ./notification-service
       dockerfile: Dockerfile
-      args:
-        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
-      - "8087:8087"
+      - "8085:8085"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
@@ -495,7 +477,7 @@ services:
       postgres-notification:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8085/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -507,10 +489,8 @@ services:
     build:
       context: ./payment-service
       dockerfile: Dockerfile
-      args:
-        ENABLE_SPLUNK_AGENT: ${ENABLE_SPLUNK_AGENT:-true}
     ports:
-      - "8086:8086"
+      - "8086:8085"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
@@ -535,7 +515,7 @@ services:
       rabbitmq:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8085/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -552,7 +532,7 @@ volumes:
   rabbitmq-data:
   inventory-db-data:
   notification-db-data:
+  product-db-data:
   category-db-data:
   order-db-data:
   payment-db-data:
-  auth-db-data:
