@@ -457,6 +457,10 @@
                             <exclude>**/*PactProviderTest.java</exclude>
                             <exclude>**/*PactConsumerTest.java</exclude>
                         </excludes>
+                        <environmentVariables>
+                            <!-- Testcontainers only reads Ryuk toggle from env var, not system property -->
+                            <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+                        </environmentVariables>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -467,6 +471,9 @@
                         <includes>
                             <include>**/*IntegrationTest.java</include>
                         </includes>
+                        <environmentVariables>
+                            <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+                        </environmentVariables>
                     </configuration>
                 </plugin>
                 <plugin>

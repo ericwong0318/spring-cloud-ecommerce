@@ -1,62 +1,75 @@
-package com.example.system.fuzz;
+package com.example.product.fuzz;
 
+import com.example.product.ProductApplication;
+import com.example.product.TestSecurityConfig;
+import com.example.product.config.RabbitMQConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration;
+import org.springframework.context.annotation.Import;
 import org.testcontainers.containers.MongoDBContainer;
-
-import com.example.common.event.JpaOutboxEventPublisher;
-import com.example.common.event.ReactiveOutboxEventPublisher;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.util.List;
 import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Base class for JQF validation fuzz tests.
+ * Base class for JQF validation fuzz tests for Product service.
  * Provides common setup for fuzzing controller endpoints with malformed JSON
  * and asserting RFC 7807 400 responses.
  */
 @Testcontainers
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = {
-        ValidationFuzzTest.TestConfig.class
-    }
+    classes = {ProductApplication.class, TestSecurityConfig.class, RabbitMQConfig.class}
 )
+@ActiveProfiles("test")
+@Import({TestSecurityConfig.class, RabbitMQConfig.class, ValidationFuzzTest.FuzzTestConfig.class})
+@EnableAutoConfiguration(exclude = {
+    ReactiveSecurityAutoConfiguration.class,
+    ReactiveOAuth2ResourceServerAutoConfiguration.class,
+    ReactiveManagementWebSecurityAutoConfiguration.class
+})
+@ComponentScan(
+    basePackages = {"com.example.product", "com.example.common.exception"},
+    excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.product.pact.*")
+)
+@EnableMongoRepositories(basePackages = "com.example.product")
 public abstract class ValidationFuzzTest {
 
     @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("ecommerce_fuzz_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @Container
-    static final MongoDBContainer MONGODB = new MongoDBContainer("mongo:7.0")
-            .withReuse(true);
+    static final MongoDBContainer MONGO = new MongoDBContainer("mongo:7.0");
 
     @Container
     static final RabbitMQContainer RABBITMQ = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
             .withExposedPorts(5672, 15672);
+
+    static {
+        MONGO.start();
+        RABBITMQ.start();
+    }
 
     @LocalServerPort
     protected int port;
@@ -64,72 +77,16 @@ public abstract class ValidationFuzzTest {
     @Autowired
     protected ObjectMapper objectMapper;
 
-    @Value("${local.server.port}")
-    protected int localServerPort;
-
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        // PostgreSQL
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-        registry.add("spring.flyway.enabled", () -> "false");
-
-        // R2DBC
-        registry.add("spring.r2dbc.url", () -> String.format("r2dbc:postgresql://%s:%d/%s",
-                POSTGRES.getHost(), POSTGRES.getFirstMappedPort(), POSTGRES.getDatabaseName()));
-        registry.add("spring.r2dbc.username", POSTGRES::getUsername);
-        registry.add("spring.r2dbc.password", POSTGRES::getPassword);
-
-        // MongoDB (for product service)
-        registry.add("spring.data.mongodb.uri", MONGODB::getReplicaSetUrl);
-        registry.add("spring.data.mongodb.database", () -> "product_fuzz_test_db");
-        registry.add("spring.data.mongodb.auto-index-creation", () -> "true");
-
-        // RabbitMQ
+        registry.add("spring.data.mongodb.uri", MONGO::getConnectionString);
         registry.add("spring.rabbitmq.host", RABBITMQ::getHost);
         registry.add("spring.rabbitmq.port", RABBITMQ::getAmqpPort);
         registry.add("spring.rabbitmq.username", RABBITMQ::getAdminUsername);
         registry.add("spring.rabbitmq.password", RABBITMQ::getAdminPassword);
-
-        // RabbitMQ properties for order service
-        registry.add("rabbitmq.exchange.order", () -> "order.exchange");
-        registry.add("rabbitmq.exchange.payment", () -> "payment.exchange");
-        registry.add("rabbitmq.exchange.inventory", () -> "inventory.exchange");
-        registry.add("rabbitmq.exchange.ecommerce", () -> "ecommerce.exchange");
-        registry.add("rabbitmq.queue.order-events", () -> "order.events.queue");
-        registry.add("rabbitmq.queue.payment-events", () -> "payment.events.queue");
-        registry.add("rabbitmq.queue.inventory-events", () -> "inventory.events.queue");
-        registry.add("rabbitmq.queue.reservation-expired", () -> "reservation.expired.queue");
-        registry.add("rabbitmq.routing-key.order-created", () -> "order.created");
-        registry.add("rabbitmq.routing-key.order-updated", () -> "order.updated");
-        registry.add("rabbitmq.routing-key.order-cancelled", () -> "order.cancelled");
-        registry.add("rabbitmq.routing-key.payment-authorized", () -> "payment.authorized");
-        registry.add("rabbitmq.routing-key.payment-captured", () -> "payment.captured");
-        registry.add("rabbitmq.routing-key.payment-refunded", () -> "payment.refunded");
-        registry.add("rabbitmq.routing-key.payment-failed", () -> "payment.failed");
-        registry.add("rabbitmq.routing-key.inventory-reserved", () -> "inventory.reserved");
-        registry.add("rabbitmq.routing-key.reservation-expired", () -> "reservation.expired");
-
-        // Disable service discovery and config server
+        registry.add("spring.rabbitmq.publisher-confirm-type", () -> "correlated");
+        registry.add("spring.rabbitmq.publisher-returns", () -> "true");
         registry.add("eureka.client.enabled", () -> "false");
-        registry.add("spring.config.import", () -> "optional:configserver:");
-
-        // Disable security for tests.
-        // Only auto-configuration classes may be listed here: Boot throws
-        // "The following classes could not be excluded because they are not
-        // auto-configuration classes" for anything else. WebSecurityConfiguration
-        // is a user @Configuration from spring-security-config, not an
-        // auto-configuration, so it is excluded via a component-scan filter below.
-        // ManagementWebSecurityAutoConfiguration must go too: it needs the
-        // HttpSecurity prototype bean that SecurityAutoConfiguration provides.
-        registry.add("spring.autoconfigure.exclude", () -> "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration," +
-                "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration," +
-                "org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration," +
-                "org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration," +
-                "com.example.common.event.ReactiveOutboxEventPublisherAutoConfiguration");
     }
 
     @BeforeEach
@@ -139,9 +96,17 @@ public abstract class ValidationFuzzTest {
     }
 
     /**
+     * Test configuration - no outbox publisher needed for product service.
+     */
+    @Configuration
+    static class FuzzTestConfig {
+        // Product service doesn't use outbox publisher
+    }
+
+    /**
      * Sends a POST request with the given JSON payload and asserts RFC 7807 400 response.
      *
-     * @param endpoint the endpoint path (e.g., "/categories")
+     * @param endpoint the endpoint path (e.g., "/products")
      * @param jsonPayload the JSON payload to send
      */
     protected void assertValidationError(String endpoint, String jsonPayload) {
@@ -161,7 +126,7 @@ public abstract class ValidationFuzzTest {
     /**
      * Sends a PUT request with the given JSON payload and asserts RFC 7807 400 response.
      *
-     * @param endpoint the endpoint path (e.g., "/categories/1")
+     * @param endpoint the endpoint path (e.g., "/products/1")
      * @param jsonPayload the JSON payload to send
      */
     protected void assertValidationErrorPut(String endpoint, String jsonPayload) {
@@ -196,18 +161,6 @@ public abstract class ValidationFuzzTest {
 
         Map<String, Object> problemDetails = response.jsonPath().getMap("$");
         assertThat(problemDetails.get("status")).isEqualTo(400);
-    }
-
-    /**
-     * Generates a malformed JSON payload by applying mutations to the valid payload.
-     * This method can be overridden by subclasses to provide service-specific mutations.
-     *
-     * @param validPayload the valid JSON payload
-     * @return a mutated JSON payload
-     */
-    protected String mutatePayload(String validPayload) {
-        // Default implementation - subclasses should override
-        return validPayload;
     }
 
     /**
@@ -269,20 +222,5 @@ public abstract class ValidationFuzzTest {
     protected String generateRegexBypassPayload(String basePayload, String fieldName, String maliciousValue) {
         return basePayload.replaceAll("\"" + fieldName + "\"\\s*:\\s*\"[^\"]*\"",
                 "\"" + fieldName + "\":\"" + maliciousValue + "\"");
-    }
-
-    @Configuration
-    @SpringBootApplication
-    @ComponentScan(
-        basePackages = {
-            "com.example.category",
-            "com.example.product",
-            "com.example.order",
-            "com.example.inventory",
-            "com.example.payment",
-            "com.example.notification"
-        }
-    )
-    static class TestConfig {
     }
 }

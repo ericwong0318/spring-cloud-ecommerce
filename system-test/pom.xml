@@ -156,9 +156,16 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <systemPropertyVariables>
-                        <testcontainers.ryuk.disabled>true</testcontainers.ryuk.disabled>
-                    </systemPropertyVariables>
+                    <!--
+                        Testcontainers only reads the Ryuk toggle from the environment
+                        variable TESTCONTAINERS_RYUK_DISABLED, never from a system
+                        property. Setting "testcontainers.ryuk.disabled" as a system
+                        property had no effect, so Ryuk still started and the fuzz
+                        tests died on "Could not connect to Ryuk at host.docker.internal".
+                    -->
+                    <environmentVariables>
+                        <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+                    </environmentVariables>
                 </configuration>
             </plugin>
             <plugin>

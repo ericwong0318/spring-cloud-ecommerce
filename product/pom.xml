@@ -126,6 +126,23 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- JQF Fuzz Testing -->
+        <dependency>
+            <groupId>edu.berkeley.cs.jqf</groupId>
+            <artifactId>jqf-fuzz</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>edu.berkeley.cs.jqf</groupId>
+            <artifactId>jqf-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>edu.berkeley.cs.jqf</groupId>
+            <artifactId>jqf-generator-quickcheck</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Pact Provider Verification -->
         <dependency>
             <groupId>au.com.dius.pact.provider</groupId>
