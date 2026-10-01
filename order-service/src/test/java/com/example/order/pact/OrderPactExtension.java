@@ -19,7 +19,8 @@ public class OrderPactExtension extends PactVerificationInvocationContextProvide
     private static final Map<String, String> CONSUMER_TO_MODULE = Map.of(
         "product-service", "product",
         "payment-service", "payment-service",
-        "inventory-service", "inventory-service"
+        "inventory-service", "inventory-service",
+        "notification-service", "notification-service"
     );
 
     @Override

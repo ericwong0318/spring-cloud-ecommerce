@@ -1,5 +1,6 @@
 package com.example.common.saga;
 
+import com.example.common.dto.CreateOrderRequest;
 import com.example.common.dto.OrderDto;
 import com.example.common.event.BaseEvent;
 import com.example.common.event.InventoryEvent;
@@ -10,7 +11,7 @@ import reactor.core.publisher.Mono;
 
 public interface SagaOrchestrator {
 
-    Mono<OrderDto> createOrder(OrderDto orderDto);
+    Mono<OrderDto> createOrder(CreateOrderRequest request);
 
     Mono<Void> handleOrderCreated(OrderEvent event);
 

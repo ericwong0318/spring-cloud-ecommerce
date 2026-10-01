@@ -1,5 +1,7 @@
 package com.example.order.service;
 
+import com.example.common.dto.CreateOrderItemRequest;
+import com.example.common.dto.CreateOrderRequest;
 import com.example.common.dto.OrderDto;
 import com.example.common.dto.OrderItemDto;
 import com.example.common.event.InventoryEvent;
@@ -92,26 +94,25 @@ public class OrderSagaOrchestratorImpl implements OrderSagaOrchestrator {
     }
 
     @Override
-    public Mono<OrderDto> createOrder(OrderDto orderDto) {
-        log.info("Creating order for customer: {}", orderDto.customerId());
-        Order order = orderMapper.toEntity(orderDto);
+    public Mono<OrderDto> createOrder(CreateOrderRequest request) {
+        log.info("Creating order for customer: {}", request.customerId());
+        Order order = new Order();
+        order.setCustomerId(request.customerId());
+        order.setCustomerEmail(request.customerEmail());
         order.setStatus(OrderEvent.OrderStatus.PENDING.name());
-        if (order.getTotalAmount() == null) {
-            order.setTotalAmount(BigDecimal.ZERO);
-        }
+        order.setTotalAmount(BigDecimal.ZERO);
 
         LocalDateTime now = LocalDateTime.now();
 
-        if (orderDto.items() != null) {
-            for (OrderItemDto itemDto : orderDto.items()) {
+        if (request.items() != null) {
+            for (CreateOrderItemRequest itemDto : request.items()) {
                 OrderItem item = new OrderItem();
                 item.setProductId(itemDto.productId());
                 item.setVariantId(itemDto.variantId());
-                item.setSkuCode(itemDto.skuCode());
-                item.setProductName(itemDto.productName());
                 item.setQuantityOrdered(itemDto.quantity());
                 item.setQuantityShipped(0);
-                item.setUnitPrice(itemDto.price());
+                // Price will be fetched from product service
+                item.setUnitPrice(BigDecimal.ZERO);
                 item.setStatus(OrderItem.OrderItemStatus.PENDING);
                 item.setReservedAt(now);
                 order.addItem(item);
@@ -122,7 +123,7 @@ public class OrderSagaOrchestratorImpl implements OrderSagaOrchestrator {
                 .flatMap(saved -> {
                     List<OrderEvent.OrderItem> eventItems = toEventItems(saved.getItems());
                     OrderEvent event = OrderEvent.created(saved.getId(), saved.getCustomerId(),
-                            orderDto.customerEmail(), saved.getTotalAmount(), eventItems);
+                            request.customerEmail(), saved.getTotalAmount(), eventItems);
                     return outboxPublisher.saveEvent("Order", saved.getId().toString(),
                             "ORDER_CREATED", event)
                             .then(Mono.just(saved));

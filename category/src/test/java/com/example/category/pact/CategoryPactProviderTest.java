@@ -40,7 +40,7 @@ import java.util.Map;
 @ActiveProfiles("test")
 @EnableAutoConfiguration(exclude = {SecurityAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class, org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration.class})
 @Import({TestSecurityConfig.class, CategoryPactProviderTest.TestConfig.class})
-@PactFolder("target/pacts")
+@PactFolder("../product/target/pacts")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("category-service")
 class CategoryPactProviderTest {

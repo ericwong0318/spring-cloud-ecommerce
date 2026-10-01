@@ -17,6 +17,8 @@ import org.springframework.context.annotation.FilterType;
     "com.example.common.exception",
     "com.example.common.util"
 }, excludeFilters = {
+    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*TestConfig"),
+    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.BaseIntegrationTest.*"),
     @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
         com.example.common.event.OutboxEventRepository.class,
         com.example.common.event.ReactiveOutboxEventPublisher.class,

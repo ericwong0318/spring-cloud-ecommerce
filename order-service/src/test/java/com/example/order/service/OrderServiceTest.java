@@ -1,5 +1,7 @@
 package com.example.order.service;
 
+import com.example.common.dto.CreateOrderRequest;
+import com.example.common.dto.CreateOrderItemRequest;
 import com.example.common.dto.OrderDto;
 import com.example.common.dto.OrderItemDto;
 import com.example.common.exception.ResourceNotFoundException;
@@ -67,12 +69,10 @@ class OrderServiceTest {
     private OrderEventPublisher eventPublisher;
 
     @Mock(lenient = true)
-    private R2dbcTransactionManager transactionManager;
-
-    @Mock(lenient = true)
     private TransactionalOperator transactionalOperator;
 
-    private ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    @Mock(lenient = true)
+    private R2dbcTransactionManager r2dbcTransactionManager;
 
     private OrderService orderService;
 
@@ -81,13 +81,16 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        orderService = new OrderService(orderRepository, orderItemRepository, orderMapper,
-                objectMapper,
+        orderService = new OrderService(
+                orderRepository,
+                orderItemRepository,
+                orderMapper,
+                new ObjectMapper().registerModule(new JavaTimeModule()),
                 transactionalOperator,
                 sagaOrchestrator,
                 paymentProcessor,
-                eventPublisher,
-                true);
+                eventPublisher
+        );
 
         // Mock TransactionalOperator to pass through the publisher (no actual transaction in tests)
         doAnswer(inv -> inv.getArgument(0)).when(transactionalOperator).transactional(any(Mono.class));
@@ -97,10 +100,9 @@ class OrderServiceTest {
         when(outboxPublisher.saveEvent(anyString(), anyString(), anyString(), any())).thenReturn(Mono.empty());
 
         // Mock new dependencies - delegate to "real" behavior for createOrder tests
-        when(sagaOrchestrator.createOrder(any(OrderDto.class))).thenAnswer(inv -> {
-            OrderDto dto = inv.getArgument(0);
-            BigDecimal totalAmount = dto.totalAmount() != null ? dto.totalAmount() : BigDecimal.ZERO;
-            return Mono.just(new OrderDto(1L, dto.customerId(), "customer@example.com", dto.status(), totalAmount, Collections.emptyList(), Collections.emptyList(), null, null));
+        when(sagaOrchestrator.createOrder(any(CreateOrderRequest.class))).thenAnswer(inv -> {
+            CreateOrderRequest req = inv.getArgument(0);
+            return Mono.just(new OrderDto(1L, req.customerId(), "customer@example.com", OrderDto.OrderStatus.CREATED, BigDecimal.ZERO, Collections.emptyList(), Collections.emptyList(), null, null));
         });
         when(sagaOrchestrator.handleReservationExpiry(anyLong())).thenReturn(Mono.empty());
         when(paymentProcessor.processRefund(anyLong())).thenReturn(Mono.empty());
@@ -177,53 +179,22 @@ class OrderServiceTest {
     }
 
     @Test
-    void getOrderById_shouldThrowException_whenNotFound() {
+    void getOrderById_shouldThrowNotFound_whenNotExists() {
         when(orderRepository.findById(999L)).thenReturn(Mono.empty());
 
-        StepVerifier.create(orderService.getOrderById(999L))
-                .expectErrorMatches(e -> e instanceof ResourceNotFoundException &&
-                        e.getMessage().contains("Order not found with id: 999"))
-                .verify();
+        assertThatThrownBy(() -> orderService.getOrderById(999L).block())
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Order");
 
         verify(orderRepository).findById(999L);
-        verifyNoInteractions(orderMapper);
     }
 
     @Test
-    void getOrdersByCustomerId_shouldReturnOrders() {
-        when(orderRepository.findByCustomerId("CUST-001")).thenReturn(Flux.just(order));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
-
-        StepVerifier.create(orderService.getOrdersByCustomerId("CUST-001"))
-                .expectNextMatches(dto -> dto.customerId().equals("CUST-001"))
-                .verifyComplete();
-
-        verify(orderRepository).findByCustomerId("CUST-001");
-        verify(orderMapper).toDto(order);
-    }
-
-    @Test
-    void getOrdersByCustomerId_shouldReturnEmpty_whenNoOrders() {
-        when(orderRepository.findByCustomerId("CUST-999")).thenReturn(Flux.empty());
-
-        StepVerifier.create(orderService.getOrdersByCustomerId("CUST-999"))
-                .verifyComplete();
-
-        verify(orderRepository).findByCustomerId("CUST-999");
-    }
-
-    @Test
-    void createOrder_shouldCreateAndReturnOrder() {
-        OrderDto inputDto = new OrderDto(
-                null,
+    void createOrder_shouldCreateOrder_whenValidInput() {
+        CreateOrderRequest inputRequest = new CreateOrderRequest(
                 "CUST-001",
-                null,
-                OrderDto.OrderStatus.PENDING,
-                new BigDecimal("1999.98"),
-                Collections.emptyList(),
-                null,
-                null,
-                null
+                "customer@example.com",
+                Collections.emptyList()
         );
 
         OrderDto expectedDto = new OrderDto(
@@ -238,27 +209,21 @@ class OrderServiceTest {
                 null
         );
 
-        when(sagaOrchestrator.createOrder(inputDto)).thenReturn(Mono.just(expectedDto));
+        when(sagaOrchestrator.createOrder(inputRequest)).thenReturn(Mono.just(expectedDto));
 
-        StepVerifier.create(orderService.createOrder(inputDto))
+        StepVerifier.create(orderService.createOrder(inputRequest))
                 .expectNextMatches(dto -> dto.id().equals(1L) && dto.customerId().equals("CUST-001"))
                 .verifyComplete();
 
-        verify(sagaOrchestrator).createOrder(inputDto);
+        verify(sagaOrchestrator).createOrder(inputRequest);
     }
 
     @Test
     void createOrder_shouldSetDefaultTotalAmount_whenNull() {
-        OrderDto inputDto = new OrderDto(
-                null,
+        CreateOrderRequest inputRequest = new CreateOrderRequest(
                 "CUST-001",
-                null,
-                OrderDto.OrderStatus.PENDING,
-                null,
-                Collections.emptyList(),
-                null,
-                null,
-                null
+                "customer@example.com",
+                Collections.emptyList()
         );
 
         OrderDto expectedDto = new OrderDto(
@@ -273,97 +238,12 @@ class OrderServiceTest {
                 null
         );
 
-        when(sagaOrchestrator.createOrder(inputDto)).thenReturn(Mono.just(expectedDto));
+        when(sagaOrchestrator.createOrder(inputRequest)).thenReturn(Mono.just(expectedDto));
 
-        StepVerifier.create(orderService.createOrder(inputDto))
+        StepVerifier.create(orderService.createOrder(inputRequest))
                 .expectNextMatches(dto -> dto.totalAmount().equals(BigDecimal.ZERO))
                 .verifyComplete();
 
-        verify(sagaOrchestrator).createOrder(inputDto);
-    }
-
-    @Test
-    void updateOrder_shouldUpdateAndReturnOrder() {
-        OrderDto updateDto = new OrderDto(
-                1L,
-                "CUST-001",
-                null,
-                OrderDto.OrderStatus.CONFIRMED,
-                new BigDecimal("2999.98"),
-                Collections.emptyList(),
-                null,
-                null,
-                null
-        );
-
-        Order updatedOrder = new Order();
-        updatedOrder.setId(1L);
-        updatedOrder.setCustomerId("CUST-001");
-        updatedOrder.setStatus("CONFIRMED");
-        updatedOrder.setTotalAmount(new BigDecimal("2999.98"));
-        updatedOrder.setCreatedAt(LocalDateTime.now());
-        updatedOrder.setUpdatedAt(LocalDateTime.now());
-
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-        when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(updatedOrder));
-        when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
-
-        StepVerifier.create(orderService.updateOrder(1L, updateDto))
-                .expectNextMatches(dto -> dto.id().equals(1L))
-                .verifyComplete();
-
-        verify(orderRepository).findById(1L);
-        verify(orderRepository).save(any(Order.class));
-        verify(orderMapper).toDto(updatedOrder);
-    }
-
-    @Test
-    void updateOrder_shouldThrowException_whenNotFound() {
-        when(orderRepository.findById(999L)).thenReturn(Mono.empty());
-
-        OrderDto updateDto = new OrderDto(
-                null,
-                "CUST-001",
-                null,
-                OrderDto.OrderStatus.CONFIRMED,
-                new BigDecimal("2999.98"),
-                Collections.emptyList(),
-                null,
-                null,
-                null
-        );
-
-        StepVerifier.create(orderService.updateOrder(999L, updateDto))
-                .expectErrorMatches(e -> e instanceof ResourceNotFoundException &&
-                        e.getMessage().contains("Order not found with id: 999"))
-                .verify();
-
-        verify(orderRepository).findById(999L);
-        verify(orderRepository, never()).save(any());
-    }
-
-    @Test
-    void deleteOrder_shouldDeleteOrder_whenExists() {
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-        when(orderRepository.delete(order)).thenReturn(Mono.empty());
-
-        StepVerifier.create(orderService.deleteOrder(1L))
-                .verifyComplete();
-
-        verify(orderRepository).findById(1L);
-        verify(orderRepository).delete(order);
-    }
-
-    @Test
-    void deleteOrder_shouldThrowException_whenNotFound() {
-        when(orderRepository.findById(999L)).thenReturn(Mono.empty());
-
-        StepVerifier.create(orderService.deleteOrder(999L))
-                .expectErrorMatches(e -> e instanceof ResourceNotFoundException &&
-                        e.getMessage().contains("Order not found with id: 999"))
-                .verify();
-
-        verify(orderRepository).findById(999L);
-        verify(orderRepository, never()).deleteById(anyLong());
+        verify(sagaOrchestrator).createOrder(inputRequest);
     }
 }

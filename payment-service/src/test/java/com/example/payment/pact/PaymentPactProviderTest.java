@@ -49,7 +49,7 @@ import java.util.Map;
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("payment-service")
-@PactFolder("target/pacts")
+@PactFolder("../order-service/target/pacts")
 @Import({TestSecurityConfig.class, PaymentController.class})
 @ControllerAdvice
 class PaymentPactProviderTest {

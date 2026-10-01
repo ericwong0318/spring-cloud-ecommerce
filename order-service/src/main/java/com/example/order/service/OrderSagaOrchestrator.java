@@ -1,5 +1,6 @@
 package com.example.order.service;
 
+import com.example.common.dto.CreateOrderRequest;
 import com.example.common.dto.OrderDto;
 import com.example.common.event.InventoryEvent;
 import com.example.common.event.OrderEvent;
@@ -11,7 +12,7 @@ import reactor.core.publisher.Mono;
 public interface OrderSagaOrchestrator extends SagaOrchestrator {
 
     @Override
-    Mono<OrderDto> createOrder(OrderDto orderDto);
+    Mono<OrderDto> createOrder(CreateOrderRequest request);
 
     @Override
     Mono<Void> handleOrderCreated(OrderEvent event);

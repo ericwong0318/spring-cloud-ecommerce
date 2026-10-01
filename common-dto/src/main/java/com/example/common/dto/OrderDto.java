@@ -43,7 +43,7 @@ public record OrderDto(
     LocalDateTime updatedAt
 ) {
     public enum OrderStatus {
-        PENDING, RESERVED, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
+        PENDING, CREATED, RESERVED, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
     }
 
     public OrderDto withStatus(OrderStatus status) {

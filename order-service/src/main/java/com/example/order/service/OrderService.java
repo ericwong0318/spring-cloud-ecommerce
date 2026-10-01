@@ -1,5 +1,6 @@
 package com.example.order.service;
 
+import com.example.common.dto.CreateOrderRequest;
 import com.example.common.dto.OrderDto;
 import com.example.common.dto.OrderItemDto;
 import com.example.common.event.OrderEvent;
@@ -76,8 +77,8 @@ public class OrderService {
         this.eventPublisher = eventPublisher;
     }
 
-    public Mono<OrderDto> createOrder(OrderDto orderDto) {
-        return sagaOrchestrator.createOrder(orderDto);
+    public Mono<OrderDto> createOrder(CreateOrderRequest request) {
+        return sagaOrchestrator.createOrder(request);
     }
 
     public Mono<OrderDto> updateOrder(Long id, OrderDto orderDto) {

@@ -1,5 +1,6 @@
 package com.example.order.controller;
 
+import com.example.common.dto.CreateOrderRequest;
 import com.example.common.dto.OrderDto;
 import com.example.common.exception.ResourceNotFoundException;
 import com.example.order.service.OrderService;
@@ -20,8 +21,8 @@ public class OrderController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<OrderDto>> createOrder(@Valid @RequestBody OrderDto orderDto) {
-        return orderService.createOrder(orderDto)
+    public Mono<ResponseEntity<OrderDto>> createOrder(@Valid @RequestBody CreateOrderRequest request) {
+        return orderService.createOrder(request)
                 .map(ResponseEntity::ok);
     }
 

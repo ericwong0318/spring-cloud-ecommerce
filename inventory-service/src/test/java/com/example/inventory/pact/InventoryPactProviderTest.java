@@ -6,9 +6,12 @@ import au.com.dius.pact.provider.junit5.PactVerificationInvocationContextProvide
 import au.com.dius.pact.provider.junitsupport.Provider;
 import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import au.com.dius.pact.provider.junitsupport.State;
+import com.example.inventory.model.Inventory;
+import com.example.inventory.repository.InventoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
@@ -19,6 +22,8 @@ import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Testcontainers
@@ -26,7 +31,7 @@ import java.util.Map;
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("inventory-service")
-@PactFolder("target/pacts")
+@PactFolder("../order-service/target/pacts")
 class InventoryPactProviderTest {
 
     @Container
@@ -38,6 +43,9 @@ class InventoryPactProviderTest {
     @Container
     static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management")
             .withExposedPorts(5672);
+
+    @Autowired
+    private InventoryRepository inventoryRepository;
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
@@ -73,10 +81,34 @@ class InventoryPactProviderTest {
 
     @State("valid reserve stock request")
     void validReserveStockRequest(Map<String, Object> params) {
+        Inventory inventory = new Inventory();
+        inventory.setId(1L);
+        inventory.setVariantId(1L);
+        inventory.setProductId(1L);
+        inventory.setProductName("Laptop Pro 15");
+        inventory.setQuantity(100);
+        inventory.setReservedQuantity(0);
+        inventory.setReorderLevel(10);
+        inventory.setCostPrice(new BigDecimal("500.00"));
+        inventory.setCreatedAt(LocalDateTime.parse("2024-01-15T10:30:00"));
+        inventory.setUpdatedAt(LocalDateTime.parse("2024-01-15T10:30:00"));
+        inventoryRepository.save(inventory);
     }
 
     @State("valid confirm stock request")
     void validConfirmStockRequest(Map<String, Object> params) {
+        Inventory inventory = new Inventory();
+        inventory.setId(1L);
+        inventory.setVariantId(1L);
+        inventory.setProductId(1L);
+        inventory.setProductName("Laptop Pro 15");
+        inventory.setQuantity(95);
+        inventory.setReservedQuantity(5);
+        inventory.setReorderLevel(10);
+        inventory.setCostPrice(new BigDecimal("500.00"));
+        inventory.setCreatedAt(LocalDateTime.parse("2024-01-15T10:30:00"));
+        inventory.setUpdatedAt(LocalDateTime.parse("2024-01-15T10:30:00"));
+        inventoryRepository.save(inventory);
     }
 
     @State("reserve stock request - variantId null")
