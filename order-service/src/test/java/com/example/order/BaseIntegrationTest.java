@@ -32,7 +32,8 @@ import java.util.function.Function;
         "org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration," +
         "org.springframework.boot.autoconfigure.orm.jpa.JpaRepositoriesAutoConfiguration," +
         "org.springframework.boot.autoconfigure.data.r2dbc.R2dbcRepositoriesAutoConfiguration," +
-        "spring.main.allow-bean-definition-overriding=true"
+        "spring.main.allow-bean-definition-overriding=true",
+        "spring.component.scan.exclude-filters=com.example.order.pact.*;com.example.order.*PactProviderTest.*;com.example.order.*PactConsumerTest.*;com.example.order.*PactTestConfig.*"
     }
 )
 @ActiveProfiles("test")

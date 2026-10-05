@@ -6,7 +6,6 @@ import com.example.order.model.OrderItem;
 import com.example.order.model.Shipment;
 import com.example.order.model.ShipmentItem;
 import com.example.common.event.OutboxEventPublisher;
-import com.example.common.event.ReactiveOutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentItemRepository;
@@ -42,17 +41,19 @@ import reactor.core.publisher.Mono;
         com.example.common.event.IdempotentEventProcessor.class,
         com.example.order.service.ShipmentService.class,
         com.example.order.service.OrderService.class
-    })
+    }),
+    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.pact.*"),
+    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*PactProviderTest.*"),
+    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*PactConsumerTest.*"),
+    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*PactTestConfig.*"),
+    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*TestConfig.*"),
+    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.BaseIntegrationTest.*")
 })
 public class MinimalTestConfig {
     @Bean
+    @Primary
     public OutboxEventPublisher outboxEventPublisher() {
         return Mockito.mock(OutboxEventPublisher.class);
-    }
-
-    @Bean
-    public ReactiveOutboxEventPublisher reactiveOutboxEventPublisher() {
-        return Mockito.mock(ReactiveOutboxEventPublisher.class);
     }
 
     @Bean
