@@ -3,7 +3,7 @@ package com.example.order.listener;
 import com.example.common.event.InventoryEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.common.listener.BaseReactiveSagaListener;
-import com.example.order.service.OrderSagaOrchestrator;
+import com.example.commonsaga.OrderSagaHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -15,12 +15,12 @@ public class InventoryEventListener extends BaseReactiveSagaListener<InventoryEv
 
     private static final Logger log = LoggerFactory.getLogger(InventoryEventListener.class);
 
-    private final OrderSagaOrchestrator sagaOrchestrator;
+    private final OrderSagaHandler sagaHandler;
 
     public InventoryEventListener(ReactiveIdempotentEventProcessor idempotentEventProcessor,
-                                   OrderSagaOrchestrator sagaOrchestrator) {
+                                   OrderSagaHandler sagaHandler) {
         super(idempotentEventProcessor);
-        this.sagaOrchestrator = sagaOrchestrator;
+        this.sagaHandler = sagaHandler;
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.inventory-events}")
@@ -39,8 +39,8 @@ public class InventoryEventListener extends BaseReactiveSagaListener<InventoryEv
         }
 
         return switch (InventoryEvent.EventType.valueOf(event.getEventType())) {
-            case RESERVED -> sagaOrchestrator.handleInventoryReserved(event);
-            case RELEASED -> sagaOrchestrator.handleInventoryReleased(event);
+            case RESERVED -> sagaHandler.handleInventoryReserved(event);
+            case RELEASED -> sagaHandler.handleInventoryReleased(event);
             case CONFIRMED -> {
                 log.info("Stock confirmed for variant: {}", event.getVariantId());
                 yield Mono.empty();

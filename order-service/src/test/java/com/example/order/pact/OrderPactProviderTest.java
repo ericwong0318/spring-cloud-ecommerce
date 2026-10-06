@@ -9,7 +9,7 @@ import au.com.dius.pact.provider.junitsupport.State;
 import com.example.order.service.OrderService;
 import com.example.order.service.ShipmentService;
 import com.example.order.service.PaymentProcessor;
-import com.example.order.service.OrderSagaOrchestrator;
+import com.example.order.service.OrderSagaOrchestratorImpl;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.ShipmentRepository;
@@ -97,7 +97,7 @@ class OrderPactProviderTest {
     PaymentProcessor paymentProcessor;
 
     @MockBean
-    OrderSagaOrchestrator orderSagaOrchestrator;
+    OrderSagaOrchestratorImpl orderSagaOrchestrator;
 
     @MockBean
     OrderRepository orderRepository;

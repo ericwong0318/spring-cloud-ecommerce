@@ -13,7 +13,6 @@ import com.example.common.event.OutboxEventPublisher;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.service.OrderEventPublisher;
-import com.example.order.service.OrderSagaOrchestrator;
 import com.example.order.service.PaymentProcessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -60,7 +59,7 @@ class OrderServiceTest {
     private OutboxEventPublisher outboxPublisher;
 
     @Mock(lenient = true)
-    private OrderSagaOrchestrator sagaOrchestrator;
+    private OrderSagaOrchestratorImpl sagaOrchestrator;
 
     @Mock(lenient = true)
     private PaymentProcessor paymentProcessor;

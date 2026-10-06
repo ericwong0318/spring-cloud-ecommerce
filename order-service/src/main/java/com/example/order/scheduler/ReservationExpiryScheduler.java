@@ -6,7 +6,7 @@ import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
-import com.example.order.service.OrderSagaOrchestrator;
+import com.example.order.service.OrderSagaOrchestratorImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -26,12 +26,12 @@ public class ReservationExpiryScheduler {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final OrderSagaOrchestrator sagaOrchestrator;
+    private final OrderSagaOrchestratorImpl sagaOrchestrator;
     private final OutboxEventPublisher outboxPublisher;
 
     public ReservationExpiryScheduler(OrderRepository orderRepository,
                                       OrderItemRepository orderItemRepository,
-                                      OrderSagaOrchestrator sagaOrchestrator,
+                                      OrderSagaOrchestratorImpl sagaOrchestrator,
                                       OutboxEventPublisher outboxPublisher) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;

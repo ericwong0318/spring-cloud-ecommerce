@@ -4,7 +4,7 @@ import com.example.common.event.BaseEvent;
 import com.example.common.event.ReservationExpiredEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.common.listener.BaseReactiveSagaListener;
-import com.example.order.service.OrderSagaOrchestrator;
+import com.example.commonsaga.OrderSagaHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -16,12 +16,12 @@ public class ReservationExpiredEventListener extends BaseReactiveSagaListener<Re
 
     private static final Logger log = LoggerFactory.getLogger(ReservationExpiredEventListener.class);
 
-    private final OrderSagaOrchestrator sagaOrchestrator;
+    private final OrderSagaHandler sagaHandler;
 
     public ReservationExpiredEventListener(ReactiveIdempotentEventProcessor idempotentEventProcessor,
-                                            OrderSagaOrchestrator sagaOrchestrator) {
+                                            OrderSagaHandler sagaHandler) {
         super(idempotentEventProcessor);
-        this.sagaOrchestrator = sagaOrchestrator;
+        this.sagaHandler = sagaHandler;
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.reservation-expired}")
@@ -34,6 +34,6 @@ public class ReservationExpiredEventListener extends BaseReactiveSagaListener<Re
         log.info("Received ReservationExpiredEvent: eventId={}, orderItemId={}, variantId={}, quantityReleased={}",
                 event.getEventId(), event.getOrderItemId(), event.getVariantId(), event.getQuantityReleased());
 
-        return sagaOrchestrator.handleReservationExpired(event);
+        return sagaHandler.handleReservationExpired(event);
     }
 }

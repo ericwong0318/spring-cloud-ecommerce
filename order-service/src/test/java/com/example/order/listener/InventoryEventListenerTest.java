@@ -3,7 +3,7 @@ package com.example.order.listener;
 import com.example.common.event.BaseEvent;
 import com.example.common.event.InventoryEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
-import com.example.order.service.OrderSagaOrchestrator;
+import com.example.commonsaga.OrderSagaHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,13 +27,13 @@ class InventoryEventListenerTest {
     private ReactiveIdempotentEventProcessor idempotentEventProcessor;
 
     @Mock
-    private OrderSagaOrchestrator sagaOrchestrator;
+    private OrderSagaHandler sagaHandler;
 
     private InventoryEventListener listener;
 
     @BeforeEach
     void setUp() {
-        listener = new InventoryEventListener(idempotentEventProcessor, sagaOrchestrator);
+        listener = new InventoryEventListener(idempotentEventProcessor, sagaHandler);
     }
 
     private InventoryEvent createInventoryEvent(String eventType, Long variantId, int reserved, int backordered) {
@@ -58,41 +58,41 @@ class InventoryEventListenerTest {
     }
 
     @Test
-    void handleInventoryEvent_shouldDelegateToSagaOrchestrator_whenReserved() {
+    void handleInventoryEvent_shouldDelegateToSagaHandler_whenReserved() {
         InventoryEvent event = createInventoryEvent("RESERVED", 1L, 2, 0);
 
-        when(sagaOrchestrator.handleInventoryReserved(event)).thenReturn(Mono.empty());
+        when(sagaHandler.handleInventoryReserved(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handleInventoryEvent(event);
 
-        verify(sagaOrchestrator).handleInventoryReserved(event);
+        verify(sagaHandler).handleInventoryReserved(event);
     }
 
     @Test
-    void handleInventoryEvent_shouldDelegateToSagaOrchestrator_whenReleased() {
+    void handleInventoryEvent_shouldDelegateToSagaHandler_whenReleased() {
         InventoryEvent event = createInventoryEvent("RELEASED", 1L, 2, 0);
 
-        when(sagaOrchestrator.handleInventoryReleased(event)).thenReturn(Mono.empty());
+        when(sagaHandler.handleInventoryReleased(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handleInventoryEvent(event);
 
-        verify(sagaOrchestrator).handleInventoryReleased(event);
+        verify(sagaHandler).handleInventoryReleased(event);
     }
 
     @Test
-    void handleInventoryEvent_shouldDelegateToSagaOrchestrator_whenConfirmed() {
+    void handleInventoryEvent_shouldDelegateToSagaHandler_whenConfirmed() {
         InventoryEvent event = createInventoryEvent("CONFIRMED", 1L, 2, 0);
 
         mockIdempotentProcessor(event);
 
         listener.handleInventoryEvent(event);
 
-        verify(sagaOrchestrator, never()).handleInventoryReserved(any());
-        verify(sagaOrchestrator, never()).handleInventoryReleased(any());
+        verify(sagaHandler, never()).handleInventoryReserved(any());
+        verify(sagaHandler, never()).handleInventoryReleased(any());
     }
 
     @Test
@@ -103,8 +103,8 @@ class InventoryEventListenerTest {
 
         listener.handleInventoryEvent(event);
 
-        verify(sagaOrchestrator, never()).handleInventoryReserved(any());
-        verify(sagaOrchestrator, never()).handleInventoryReleased(any());
+        verify(sagaHandler, never()).handleInventoryReserved(any());
+        verify(sagaHandler, never()).handleInventoryReleased(any());
     }
 
     @Test
@@ -115,6 +115,6 @@ class InventoryEventListenerTest {
 
         listener.handleInventoryEvent(event);
 
-        verify(sagaOrchestrator, never()).handleInventoryReserved(any());
+        verify(sagaHandler, never()).handleInventoryReserved(any());
     }
 }

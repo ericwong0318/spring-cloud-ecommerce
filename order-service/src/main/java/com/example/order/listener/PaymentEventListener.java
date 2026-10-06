@@ -3,7 +3,7 @@ package com.example.order.listener;
 import com.example.common.event.PaymentEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.common.listener.BaseReactiveSagaListener;
-import com.example.order.service.OrderSagaOrchestrator;
+import com.example.commonsaga.OrderSagaHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -15,12 +15,12 @@ public class PaymentEventListener extends BaseReactiveSagaListener<PaymentEvent>
 
     private static final Logger log = LoggerFactory.getLogger(PaymentEventListener.class);
 
-    private final OrderSagaOrchestrator sagaOrchestrator;
+    private final OrderSagaHandler sagaHandler;
 
     public PaymentEventListener(ReactiveIdempotentEventProcessor idempotentEventProcessor,
-                                 OrderSagaOrchestrator sagaOrchestrator) {
+                                 OrderSagaHandler sagaHandler) {
         super(idempotentEventProcessor);
-        this.sagaOrchestrator = sagaOrchestrator;
+        this.sagaHandler = sagaHandler;
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.payment-events}")
@@ -39,18 +39,18 @@ public class PaymentEventListener extends BaseReactiveSagaListener<PaymentEvent>
         }
 
         return switch (PaymentEvent.EventType.valueOf(event.getEventType())) {
-            case CAPTURED -> sagaOrchestrator.handlePaymentCaptured(event);
-            case FAILED -> sagaOrchestrator.handlePaymentFailed(event);
+            case CAPTURED -> sagaHandler.handlePaymentCaptured(event);
+            case FAILED -> sagaHandler.handlePaymentFailed(event);
             case REFUNDED -> {
                 if (event.getStatus() == PaymentEvent.PaymentStatus.PARTIALLY_REFUNDED) {
-                    yield sagaOrchestrator.handlePaymentPartiallyRefunded(event);
+                    yield sagaHandler.handlePaymentPartiallyRefunded(event);
                 } else {
-                    yield sagaOrchestrator.handlePaymentRefunded(event);
+                    yield sagaHandler.handlePaymentRefunded(event);
                 }
             }
             case AUTHORIZED -> {
                 log.info("Payment authorized for order: {}", event.getOrderId());
-                yield sagaOrchestrator.handlePaymentAuthorized(event);
+                yield sagaHandler.handlePaymentAuthorized(event);
             }
             default -> {
                 log.debug("Unhandled payment event type: {}", event.getEventType());

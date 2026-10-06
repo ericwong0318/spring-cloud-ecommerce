@@ -35,7 +35,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final ObjectMapper objectMapper;
     private final TransactionalOperator transactionalOperator;
-    private final OrderSagaOrchestrator sagaOrchestrator;
+    private final OrderSagaOrchestratorImpl sagaOrchestrator;
     private final PaymentProcessor paymentProcessor;
     private final OrderEventPublisher eventPublisher;
 
@@ -44,7 +44,7 @@ public class OrderService {
                         OrderMapper orderMapper,
                         ObjectMapper objectMapper,
                         TransactionalOperator transactionalOperator,
-                        OrderSagaOrchestrator sagaOrchestrator,
+                        OrderSagaOrchestratorImpl sagaOrchestrator,
                         PaymentProcessor paymentProcessor,
                         OrderEventPublisher eventPublisher) {
         this.orderRepository = orderRepository;
@@ -63,7 +63,7 @@ public class OrderService {
                  OrderMapper orderMapper,
                  ObjectMapper objectMapper,
                  TransactionalOperator transactionalOperator,
-                 OrderSagaOrchestrator sagaOrchestrator,
+                 OrderSagaOrchestratorImpl sagaOrchestrator,
                  PaymentProcessor paymentProcessor,
                  OrderEventPublisher eventPublisher,
                  boolean testMode) {

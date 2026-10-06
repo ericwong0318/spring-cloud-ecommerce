@@ -3,7 +3,7 @@ package com.example.order.listener;
 import com.example.common.event.BaseEvent;
 import com.example.common.event.ReservationExpiredEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
-import com.example.order.service.OrderSagaOrchestrator;
+import com.example.commonsaga.OrderSagaHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,13 +27,13 @@ class ReservationExpiredEventListenerTest {
     private ReactiveIdempotentEventProcessor idempotentEventProcessor;
 
     @Mock
-    private OrderSagaOrchestrator sagaOrchestrator;
+    private OrderSagaHandler sagaHandler;
 
     private ReservationExpiredEventListener listener;
 
     @BeforeEach
     void setUp() {
-        listener = new ReservationExpiredEventListener(idempotentEventProcessor, sagaOrchestrator);
+        listener = new ReservationExpiredEventListener(idempotentEventProcessor, sagaHandler);
     }
 
     private ReservationExpiredEvent createReservationExpiredEvent(Long orderItemId, Long variantId) {
@@ -56,16 +56,16 @@ class ReservationExpiredEventListenerTest {
     }
 
     @Test
-    void handleReservationExpiredEvent_shouldDelegateToSagaOrchestrator() {
+    void handleReservationExpiredEvent_shouldDelegateToSagaHandler() {
         ReservationExpiredEvent event = createReservationExpiredEvent(1L, 1L);
 
-        when(sagaOrchestrator.handleReservationExpired(event)).thenReturn(Mono.empty());
+        when(sagaHandler.handleReservationExpired(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handleReservationExpiredEvent(event);
 
-        verify(sagaOrchestrator).handleReservationExpired(event);
+        verify(sagaHandler).handleReservationExpired(event);
     }
 
     @Test
@@ -76,6 +76,6 @@ class ReservationExpiredEventListenerTest {
 
         listener.handleReservationExpiredEvent(event);
 
-        verify(sagaOrchestrator, never()).handleReservationExpired(any());
+        verify(sagaHandler, never()).handleReservationExpired(any());
     }
 }

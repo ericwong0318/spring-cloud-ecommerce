@@ -13,7 +13,6 @@ import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentItemRepository;
 import com.example.order.repository.ShipmentRepository;
-import com.example.order.service.OrderSagaOrchestrator;
 import com.example.order.service.OrderSagaOrchestratorImpl;
 import com.example.order.service.OrderService;
 import com.example.order.service.PaymentProcessor;
@@ -98,7 +97,7 @@ public class OrderPactTestConfig {
 
     @Bean
     @Primary
-    public OrderSagaOrchestrator orderSagaOrchestrator() {
+    public OrderSagaOrchestratorImpl orderSagaOrchestrator() {
         return Mockito.mock(OrderSagaOrchestratorImpl.class);
     }
 

@@ -3,7 +3,7 @@ package com.example.order.listener;
 import com.example.common.event.BaseEvent;
 import com.example.common.event.PaymentEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
-import com.example.order.service.OrderSagaOrchestrator;
+import com.example.commonsaga.OrderSagaHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,13 +28,13 @@ class PaymentEventListenerTest {
     private ReactiveIdempotentEventProcessor idempotentEventProcessor;
 
     @Mock
-    private OrderSagaOrchestrator sagaOrchestrator;
+    private OrderSagaHandler sagaHandler;
 
     private PaymentEventListener listener;
 
     @BeforeEach
     void setUp() {
-        listener = new PaymentEventListener(idempotentEventProcessor, sagaOrchestrator);
+        listener = new PaymentEventListener(idempotentEventProcessor, sagaHandler);
     }
 
     private PaymentEvent createPaymentEvent(String eventType, PaymentEvent.PaymentStatus status) {
@@ -62,68 +62,68 @@ class PaymentEventListenerTest {
     }
 
     @Test
-    void handlePaymentEvent_shouldDelegateToSagaOrchestrator_whenCaptured() {
+    void handlePaymentEvent_shouldDelegateToSagaHandler_whenCaptured() {
         PaymentEvent event = createPaymentEvent("CAPTURED", PaymentEvent.PaymentStatus.CAPTURED);
 
-        when(sagaOrchestrator.handlePaymentCaptured(event)).thenReturn(Mono.empty());
+        when(sagaHandler.handlePaymentCaptured(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(sagaOrchestrator).handlePaymentCaptured(event);
+        verify(sagaHandler).handlePaymentCaptured(event);
     }
 
     @Test
-    void handlePaymentEvent_shouldDelegateToSagaOrchestrator_whenFailed() {
+    void handlePaymentEvent_shouldDelegateToSagaHandler_whenFailed() {
         PaymentEvent event = createPaymentEvent("FAILED", PaymentEvent.PaymentStatus.FAILED);
 
-        when(sagaOrchestrator.handlePaymentFailed(event)).thenReturn(Mono.empty());
+        when(sagaHandler.handlePaymentFailed(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(sagaOrchestrator).handlePaymentFailed(event);
+        verify(sagaHandler).handlePaymentFailed(event);
     }
 
     @Test
-    void handlePaymentEvent_shouldDelegateToSagaOrchestrator_whenRefunded() {
+    void handlePaymentEvent_shouldDelegateToSagaHandler_whenRefunded() {
         PaymentEvent event = createPaymentEvent("REFUNDED", PaymentEvent.PaymentStatus.REFUNDED);
 
-        when(sagaOrchestrator.handlePaymentRefunded(event)).thenReturn(Mono.empty());
+        when(sagaHandler.handlePaymentRefunded(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(sagaOrchestrator).handlePaymentRefunded(event);
+        verify(sagaHandler).handlePaymentRefunded(event);
     }
 
     @Test
-    void handlePaymentEvent_shouldDelegateToSagaOrchestrator_whenPartiallyRefunded() {
+    void handlePaymentEvent_shouldDelegateToSagaHandler_whenPartiallyRefunded() {
         PaymentEvent event = createPaymentEvent("REFUNDED", PaymentEvent.PaymentStatus.PARTIALLY_REFUNDED);
 
-        when(sagaOrchestrator.handlePaymentPartiallyRefunded(event)).thenReturn(Mono.empty());
+        when(sagaHandler.handlePaymentPartiallyRefunded(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(sagaOrchestrator).handlePaymentPartiallyRefunded(event);
+        verify(sagaHandler).handlePaymentPartiallyRefunded(event);
     }
 
     @Test
-    void handlePaymentEvent_shouldDelegateToSagaOrchestrator_whenAuthorized() {
+    void handlePaymentEvent_shouldDelegateToSagaHandler_whenAuthorized() {
         PaymentEvent event = createPaymentEvent("AUTHORIZED", PaymentEvent.PaymentStatus.AUTHORIZED);
 
-        when(sagaOrchestrator.handlePaymentAuthorized(event)).thenReturn(Mono.empty());
+        when(sagaHandler.handlePaymentAuthorized(event)).thenReturn(Mono.empty());
 
         mockIdempotentProcessor(event);
 
         listener.handlePaymentEvent(event);
 
-        verify(sagaOrchestrator).handlePaymentAuthorized(event);
+        verify(sagaHandler).handlePaymentAuthorized(event);
     }
 
     @Test
@@ -134,7 +134,7 @@ class PaymentEventListenerTest {
 
         listener.handlePaymentEvent(event);
 
-        verify(sagaOrchestrator, never()).handlePaymentCaptured(any());
+        verify(sagaHandler, never()).handlePaymentCaptured(any());
     }
 
     @Test
@@ -146,6 +146,6 @@ class PaymentEventListenerTest {
 
         listener.handlePaymentEvent(event);
 
-        verify(sagaOrchestrator, never()).handlePaymentCaptured(any());
+        verify(sagaHandler, never()).handlePaymentCaptured(any());
     }
 }
