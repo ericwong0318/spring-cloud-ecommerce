@@ -39,11 +39,11 @@ configServer:
   enabled: true
   replicaCount: 2
   image: config-server
-  tag: latest
+  tag: 1.0.0
   port: 8888
   resources:
     limits:
-      memory: 1Gi
+      memory: 1536Mi
       cpu: 1000m
     requests:
       memory: 512Mi
@@ -54,11 +54,11 @@ eurekaServer:
   enabled: true
   replicaCount: 2
   image: eureka-server
-  tag: latest
+  tag: 1.0.0
   port: 8761
   resources:
     limits:
-      memory: 1Gi
+      memory: 1536Mi
       cpu: 1000m
     requests:
       memory: 512Mi
@@ -69,12 +69,12 @@ authServer:
   enabled: true
   replicaCount: 2
   image: auth-server
-  tag: latest
+  tag: 1.0.0
   port: 9000
   database: oauth2_db
   resources:
     limits:
-      memory: 2Gi
+      memory: 1536Mi
       cpu: 2000m
     requests:
       memory: 1Gi
@@ -85,11 +85,11 @@ gateway:
   enabled: true
   replicaCount: 3
   image: gateway
-  tag: latest
+  tag: 1.0.0
   port: 8080
   resources:
     limits:
-      memory: 1Gi
+      memory: 1536Mi
       cpu: 1000m
     requests:
       memory: 512Mi
@@ -100,12 +100,12 @@ product:
   enabled: true
   replicaCount: 3
   image: product
-  tag: latest
+  tag: 1.0.0
   port: 8081
   database: product_db
   resources:
     limits:
-      memory: 1Gi
+      memory: 1536Mi
       cpu: 1000m
     requests:
       memory: 512Mi
@@ -116,12 +116,12 @@ category:
   enabled: true
   replicaCount: 3
   image: category
-  tag: latest
+  tag: 1.0.0
   port: 8082
   database: category_db
   resources:
     limits:
-      memory: 1Gi
+      memory: 1536Mi
       cpu: 1000m
     requests:
       memory: 512Mi
@@ -132,12 +132,12 @@ orderService:
   enabled: true
   replicaCount: 3
   image: order-service
-  tag: latest
+  tag: 1.0.0
   port: 8083
   database: order_db
   resources:
     limits:
-      memory: 1Gi
+      memory: 1536Mi
       cpu: 1000m
     requests:
       memory: 512Mi
@@ -148,12 +148,12 @@ inventoryService:
   enabled: true
   replicaCount: 3
   image: inventory-service
-  tag: latest
+  tag: 1.0.0
   port: 8084
   database: inventory_db
   resources:
     limits:
-      memory: 1Gi
+      memory: 1536Mi
       cpu: 1000m
     requests:
       memory: 512Mi
@@ -164,12 +164,12 @@ notificationService:
   enabled: true
   replicaCount: 3
   image: notification-service
-  tag: latest
+  tag: 1.0.0
   port: 8087
   database: notification_db
   resources:
     limits:
-      memory: 1Gi
+      memory: 1536Mi
       cpu: 1000m
     requests:
       memory: 512Mi

@@ -440,7 +440,7 @@ jobs:
 
       - name: Upload Docker image
         run: |
-          docker save spring-cloud-project/payment-service:1.0.0-SNAPSHOT | gzip > payment-service-image.tar.gz
+          docker save payment-service:1.0.0 | gzip > payment-service-image.tar.gz
           ls -lh payment-service-image.tar.gz
 
   sonarqube:

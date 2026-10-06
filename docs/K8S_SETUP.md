@@ -96,8 +96,22 @@ kubectl apply -f k8s/deployments.yaml
 
 This creates:
 - A `ConfigMap` named `otel-config` with OTel environment variables
-- 7 `Deployments` (config-server, eureka-server, gateway, product, category, auth-server, order-service)
-- 7 `Services` (one per deployment)
+- 10 `Deployments` (config-server, eureka-server, auth-server, gateway, product, category, order-service, inventory-service, payment-service, notification-service)
+- 10 `Services` (one per deployment)
+
+### Alternative Packaging Paths
+
+All Kubernetes packaging paths reference the same `<service>:1.0.0` images built by
+`mvn spring-boot:build-image -Pdocker` — pick one per cluster, do not mix:
+
+| Path | Command | When to use |
+|------|---------|-------------|
+| Raw manifests | `kubectl apply -f k8s/deployments.yaml` | Canonical quick deploy (namespace + config + deployments + services in one file) |
+| Kustomize | `kubectl apply -k k8s/overlays/dev` | Layered dev/prod deploys with base + patches |
+| Helm / helmfile | `helmfile -e dev apply` | Packaged multi-env deploys (chart `k8s/helm/spring-cloud-project` + `environments/<env>/values.yaml`) |
+
+The Dockerfile + `docker compose` stack is for local development only — those
+images carry compose-project names and are never referenced by Kubernetes.
 
 ### Verify Deployments
 
@@ -111,15 +125,25 @@ kubectl get svc -n ecommerce
 Build all service images with the OpenTelemetry Java agent:
 
 ```bash
-# Build all images
-docker compose build
+# Build all service images with Cloud Native Buildpacks.
+# Images are tagged <service>:1.0.0, matching k8s/deployments.yaml, and are
+# available to OrbStack's Kubernetes cluster without a registry push.
+mvn spring-boot:build-image -Pdocker
 
 # Build a single service
-docker compose build config-server
+mvn spring-boot:build-image -Pdocker -pl config-server
+
+# Alternatively, build the Dockerfile-based images used by docker compose
+# (compose names those images after the compose project, not <service>:1.0.0)
+docker compose build
 
 # Use the Makefile
 make build-all
 ```
+
+The buildpack build uses the `docker` Maven profile, which pins
+`spring-boot-maven-plugin` to 3.4.12 (Docker API version negotiation) and uses the
+multi-architecture `paketobuildpacks/builder-noble-java-tiny` builder with a Java 21 JRE.
 
 The Dockerfiles include a `wget --timeout=30` with `mkdir -p /app` pre-created to handle OrbStack network limitations.
 

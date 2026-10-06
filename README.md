@@ -219,7 +219,8 @@ mvn spring-boot:run -pl notification-service
 # Build all modules
 mvn clean install -DskipTests
 
-# Build all Docker images
+# Build all Docker images (Cloud Native Buildpacks).
+# Images are tagged <service>:1.0.0 so they match k8s/deployments.yaml.
 mvn spring-boot:build-image -Pdocker
 
 # Run unit tests
@@ -234,8 +235,11 @@ mvn jacoco:report
 
 #### Makefile targets
 ```bash
-make build-all    # build all service images with --network=host
-make build <svc>  # build a specific service image
+make build-all    # build all service images (docker compose / Dockerfiles — local dev stack)
+make build <svc>  # build a specific service image (docker compose / Dockerfiles)
+make images       # build <service>:1.0.0 buildpack images (canonical, consumed by k8s)
+make k8s-apply    # apply k8s/deployments.yaml to the cluster
+make k8s-delete   # remove the resources applied from k8s/deployments.yaml
 make test         # run unit tests
 make verify       # run integration tests
 make up           # docker-compose up -d
@@ -327,12 +331,13 @@ All public API routes are **versioned at the gateway** using a path-based scheme
 # Client credentials flow
 curl -X POST http://localhost:9000/oauth2/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=client_credentials&client_id=product-service&client_secret=secret&scope=read,write"
+  -d "grant_type=client_credentials&client_id=product-service&client_secret=product-secret-2026&scope=read,write"
 ```
 
 ### Registered Clients
-- `product-service` / `secret` (scope: read, write)
-- `category-service` / `secret` (scope: read, write)
+- `product-service` / `product-secret-2026` (scope: read, write)
+- `category-service` / `category-secret-2026` (scope: read, write)
+- `gateway-client` / `gateway-secret-2026` (scopes: openid, profile, read, write)
 
 ---
 
@@ -371,6 +376,20 @@ Standard Spring Authorization Server schema (clients, users, tokens, etc.)
 ---
 
 ## Deployment
+
+### Build & Deployment Paths (Purpose Matrix)
+
+Every Kubernetes packaging path consumes the same canonical images, so build once and deploy anywhere:
+
+| Path | Command | Purpose | Images used |
+|------|---------|---------|-------------|
+| **Buildpacks (canonical)** | `mvn spring-boot:build-image -Pdocker` (or `make images`) | Builds the shared `<service>:1.0.0` images; used by CI's `docker` stage and by every k8s path below | `<service>:1.0.0` |
+| **Dockerfiles + Compose** | `make build` / `docker compose build` | Self-contained local dev stack via `docker-compose.yml` (infra + services). Image names follow the compose project — **not** `<service>:1.0.0` — and are never consumed by Kubernetes | compose project names |
+| **Raw manifests** | `kubectl apply -f k8s/deployments.yaml` (or `make k8s-apply`) | Canonical single-file deploy to the local OrbStack cluster | `<service>:1.0.0` |
+| **Kustomize** | `kubectl apply -k k8s/overlays/<env>` | Layered dev/prod deploys (`k8s/base` + environment patches) | `<service>:1.0.0` |
+| **Helm / helmfile** | `helmfile -e dev apply` | Packaged multi-env deploys (chart `k8s/helm/spring-cloud-project` + `environments/<env>/values.yaml`) | `<service>:1.0.0` |
+
+Do not mix paths in one cluster: the compose images and the buildpack images are built from different bases and only the buildpack tags match the k8s references.
 
 ### Docker Images
 Each service has a multi-stage Dockerfile with OpenTelemetry Java agent (v2.8.0).
@@ -439,11 +458,18 @@ kubectl get svc -n ecommerce
 
 #### Build & Load Images into OrbStack
 ```bash
-# Build all images with host networking (required for OrbStack)
-./build-images.sh
+# Build all service images with Cloud Native Buildpacks.
+# Services are tagged <service>:1.0.0, matching the images referenced by
+# k8s/deployments.yaml, and land directly in OrbStack's image store.
+# No registry push is needed for local development.
+mvn spring-boot:build-image -Pdocker
 
-# Images are now available in OrbStack's Docker daemon
-# No registry push needed for local dev
+# Build a single service
+mvn spring-boot:build-image -Pdocker -pl gateway
+
+# Alternatively, build the Dockerfile-based images used by docker compose
+# (compose names those images after the compose project, not <service>:1.0.0)
+docker compose build
 ```
 
 #### Access Services

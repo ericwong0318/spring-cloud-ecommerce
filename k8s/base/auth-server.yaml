@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: auth-server
-          image: auth-server:latest
+          image: auth-server:1.0.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9000
