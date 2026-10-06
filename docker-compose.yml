@@ -477,7 +477,7 @@ services:
       postgres-notification:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8087/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8085/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -515,7 +515,7 @@ services:
       rabbitmq:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8086/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8085/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5

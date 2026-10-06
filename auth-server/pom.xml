@@ -82,9 +82,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>org.example.authserver.AuthServerApplication</mainClass>
-                </configuration>
                 <executions>
                     <execution>
                         <goals>

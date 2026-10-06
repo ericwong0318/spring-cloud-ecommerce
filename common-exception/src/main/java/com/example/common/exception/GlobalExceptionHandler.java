@@ -6,15 +6,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageConversionException;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.net.URI;
 import java.time.Instant;
@@ -22,27 +19,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
-    @ExceptionHandler({HttpMessageNotReadableException.class, HttpMessageConversionException.class})
-    public ResponseEntity<ProblemDetailResponse> handleHttpMessageNotReadable(
-            Exception ex, HttpServletRequest request) {
-
-        log.warn("Malformed JSON request: {}", ex.getMessage());
-
-        ProblemDetailResponse problem = ProblemDetailResponse.builder()
-                .type(URI.create("https://api.example.com/errors/malformed-request"))
-                .title("Malformed Request")
-                .status(HttpStatus.BAD_REQUEST.value())
-                .detail("Request body is malformed or missing: " + ex.getMessage())
-                .instance(URI.create(request.getRequestURI()))
-                .timestamp(Instant.now())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
-    }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ProblemDetailResponse> handleResourceNotFound(
@@ -151,42 +130,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .instance(URI.create(request.getRequestURI()))
                 .timestamp(Instant.now())
                 .addProperty("errors", errors)
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
-    }
-
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ProblemDetailResponse> handleHttpMessageNotReadable(
-            HttpMessageNotReadableException ex, HttpServletRequest request) {
-
-        log.warn("Malformed JSON request: {}", ex.getMessage());
-
-        ProblemDetailResponse problem = ProblemDetailResponse.builder()
-                .type(URI.create("https://api.example.com/errors/malformed-request"))
-                .title("Malformed Request")
-                .status(HttpStatus.BAD_REQUEST.value())
-                .detail("Request body is malformed or missing: " + ex.getMessage())
-                .instance(URI.create(request.getRequestURI()))
-                .timestamp(Instant.now())
-                .build();
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
-    }
-
-    @ExceptionHandler(HttpMessageConversionException.class)
-    public ResponseEntity<ProblemDetailResponse> handleHttpMessageConversion(
-            HttpMessageConversionException ex, HttpServletRequest request) {
-
-        log.warn("Message conversion error: {}", ex.getMessage());
-
-        ProblemDetailResponse problem = ProblemDetailResponse.builder()
-                .type(URI.create("https://api.example.com/errors/malformed-request"))
-                .title("Malformed Request")
-                .status(HttpStatus.BAD_REQUEST.value())
-                .detail("Message conversion failed: " + ex.getMessage())
-                .instance(URI.create(request.getRequestURI()))
-                .timestamp(Instant.now())
                 .build();
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
