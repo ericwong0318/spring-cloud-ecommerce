@@ -6,8 +6,10 @@ import io.swagger.v3.oas.models.info.Contact;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
+@ComponentScan(basePackages = {"com.example.category", "com.example.common.exception"})
 public class CategoryApplication {
 
     public static void main(String[] args) {

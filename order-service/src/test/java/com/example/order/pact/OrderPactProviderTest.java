@@ -66,7 +66,7 @@ import java.util.Map;
 @ContextConfiguration(classes = TestSecurityConfig.class)
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("order-service")
-@PactFolder("../notification-service/target/pacts")
+@PactFolder("target/pacts,../product/target/pacts,../payment-service/target/pacts,../inventory-service/target/pacts,../notification-service/target/pacts")
 class OrderPactProviderTest {
 
     @Configuration
