@@ -73,20 +73,8 @@ mvn spring-boot:run -pl order-service
 
 ### Building Images
 
-There are two image paths with distinct purposes:
-
-- **Buildpacks (canonical)** — `mvn spring-boot:build-image -Pdocker` builds the
-  `<service>:1.0.0` images that every Kubernetes path (`k8s/deployments.yaml`,
-  `k8s/base`, `k8s/helm`) references. Use this when deploying to Kubernetes.
-- **Dockerfiles + Compose** — `docker compose build` builds the images used only
-  by the `docker-compose.yml` local dev stack (image names follow the compose
-  project, not `<service>:1.0.0`).
-
 ```bash
-# Canonical buildpack images for Kubernetes (also: make images)
-mvn spring-boot:build-image -Pdocker
-
-# Local compose stack images (dev only)
+# Standard build (works on most Docker setups)
 docker compose build
 
 # With cache busting

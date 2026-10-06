@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: config-server
-          image: config-server:1.0.0
+          image: config-server:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8888

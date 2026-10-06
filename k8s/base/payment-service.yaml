@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: payment-service
-          image: payment-service:1.0.0
+          image: payment-service:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8086

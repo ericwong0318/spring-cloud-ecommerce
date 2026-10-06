@@ -43,11 +43,11 @@ configServer:
   enabled: true
   replicaCount: 1
   image: config-server
-  tag: 1.0.0
+  tag: latest
   port: 8888
   resources:
     limits:
-      memory: 1536Mi
+      memory: 512Mi
       cpu: 500m
     requests:
       memory: 256Mi
@@ -58,11 +58,11 @@ eurekaServer:
   enabled: true
   replicaCount: 1
   image: eureka-server
-  tag: 1.0.0
+  tag: latest
   port: 8761
   resources:
     limits:
-      memory: 1536Mi
+      memory: 512Mi
       cpu: 500m
     requests:
       memory: 256Mi
@@ -73,12 +73,12 @@ authServer:
   enabled: true
   replicaCount: 1
   image: auth-server
-  tag: 1.0.0
+  tag: latest
   port: 9000
   database: oauth2_db
   resources:
     limits:
-      memory: 1536Mi
+      memory: 768Mi
       cpu: 750m
     requests:
       memory: 384Mi
@@ -89,11 +89,11 @@ gateway:
   enabled: true
   replicaCount: 2
   image: gateway
-  tag: 1.0.0
+  tag: latest
   port: 8080
   resources:
     limits:
-      memory: 1536Mi
+      memory: 512Mi
       cpu: 500m
     requests:
       memory: 256Mi
@@ -104,12 +104,12 @@ product:
   enabled: true
   replicaCount: 2
   image: product
-  tag: 1.0.0
+  tag: latest
   port: 8081
   database: product_db
   resources:
     limits:
-      memory: 1536Mi
+      memory: 512Mi
       cpu: 500m
     requests:
       memory: 256Mi
@@ -120,12 +120,12 @@ category:
   enabled: true
   replicaCount: 2
   image: category
-  tag: 1.0.0
+  tag: latest
   port: 8082
   database: category_db
   resources:
     limits:
-      memory: 1536Mi
+      memory: 512Mi
       cpu: 500m
     requests:
       memory: 256Mi
@@ -136,12 +136,12 @@ orderService:
   enabled: true
   replicaCount: 2
   image: order-service
-  tag: 1.0.0
+  tag: latest
   port: 8083
   database: order_db
   resources:
     limits:
-      memory: 1536Mi
+      memory: 512Mi
       cpu: 500m
     requests:
       memory: 256Mi
@@ -152,12 +152,12 @@ inventoryService:
   enabled: true
   replicaCount: 2
   image: inventory-service
-  tag: 1.0.0
+  tag: latest
   port: 8084
   database: inventory_db
   resources:
     limits:
-      memory: 1536Mi
+      memory: 512Mi
       cpu: 500m
     requests:
       memory: 256Mi
@@ -168,12 +168,12 @@ notificationService:
   enabled: true
   replicaCount: 2
   image: notification-service
-  tag: 1.0.0
+  tag: latest
   port: 8087
   database: notification_db
   resources:
     limits:
-      memory: 1536Mi
+      memory: 512Mi
       cpu: 500m
     requests:
       memory: 256Mi

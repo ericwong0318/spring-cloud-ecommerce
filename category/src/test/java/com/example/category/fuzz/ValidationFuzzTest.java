@@ -4,6 +4,7 @@ import com.example.category.CategoryApplication;
 import com.example.category.TestSecurityConfig;
 import com.example.common.event.OutboxEventPublisher;
 import com.example.common.event.OutboxEventRepository;
+import com.example.common.exception.GlobalExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
@@ -43,7 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
     classes = {CategoryApplication.class, TestSecurityConfig.class}
 )
 @ActiveProfiles("test")
-@Import(TestSecurityConfig.class)
+@Import({TestSecurityConfig.class, GlobalExceptionHandler.class})
 @EnableAutoConfiguration(exclude = {
     SecurityAutoConfiguration.class,
     OAuth2ResourceServerAutoConfiguration.class,

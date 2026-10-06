@@ -176,14 +176,6 @@
                     <excludes>com.example.system.fuzz.FuzzCorpusSeeder</excludes>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <!-- Test-only module: nothing to repackage and no image to build. -->
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 

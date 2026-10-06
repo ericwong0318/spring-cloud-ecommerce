@@ -456,8 +456,6 @@
                             <exclude>**/*IntegrationTest.java</exclude>
                             <exclude>**/*PactProviderTest.java</exclude>
                             <exclude>**/*PactConsumerTest.java</exclude>
-                            <exclude>**/*FuzzTest.java</exclude>
-                            <exclude>**/*VerificationTest.java</exclude>
                         </excludes>
                         <environmentVariables>
                             <!-- Testcontainers only reads Ryuk toggle from env var, not system property -->

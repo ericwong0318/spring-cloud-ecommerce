@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: category
-          image: category:1.0.0
+          image: category:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8082
