@@ -1,5 +1,6 @@
 package com.example.product;
 
+import com.example.common.dto.ProductDto;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -182,7 +182,7 @@ public class ValidationArchitectureTest {
                     }
                 }
             })
-            .because("Nested quantifiers in @Pattern regexes (e.g., (a+)+, (a*)*) cause catastrophic backtracking (ReDoS). "
+            .because("Nested quantifiers in @Pattern regexes (e.g., (a+)+, (a*)*, (a?)+, ((a+)+)+) cause catastrophic backtracking (ReDoS). "
                     + "Use possessive quantifiers or atomic groups instead, or redesign the pattern.")
             .allowEmptyShould(true);
 
@@ -239,15 +239,20 @@ public class ValidationArchitectureTest {
             .allowEmptyShould(true);
 
     /**
-     * Only gateway and auth-server may depend on common-config (heavy framework config).
+     * Only gateway and auth-server modules may depend on common-config (heavy framework config).
      * Other domain services should not pull in web, security, resilience4j, amqp, r2dbc
      * unless they explicitly opt into common-config.
+     * 
+     * This rule ensures domain services (order, payment, inventory, product, category, notification)
+     * do not depend on common-config.
      */
     @ArchTest
-    static final ArchRule only_gateway_and_auth_use_common_config = classes()
-            .that().resideInAPackage("..gateway..").or().resideInAPackage("..authserver..")
+    static final ArchRule only_gateway_and_auth_modules_use_common_config = noClasses()
+            .that().resideInAPackage("..order..").or().resideInAPackage("..payment..")
+            .or().resideInAPackage("..inventory..").or().resideInAPackage("..product..")
+            .or().resideInAPackage("..category..").or().resideInAPackage("..notification..")
             .should().dependOnClassesThat().resideInAPackage("org.example.common.config..")
-            .because("Only gateway and auth-server may use common-config; "
+            .because("Only gateway and auth-server modules may use common-config; "
                     + "domain services should use precise common-* modules")
             .allowEmptyShould(true);
 }
