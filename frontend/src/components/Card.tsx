@@ -111,8 +111,8 @@ export const ProductCardComponent = forwardRef<HTMLDivElement, ProductCardProps>
     };
     
     return (
-      <ProductCard ref={ref} elevation={0} variant="outlined">
-        <ProductImage src={product.thumbnail} />
+      <ProductCard ref={ref} elevation={0} variant="outlined" data-testid="product-card">
+        <ProductImage src={product.thumbnail} data-testid="product-image" alt={product.name} />
         {showWishlist && (
           <WishlistButton
             onClick={() => onWishlistToggle?.(product.id)}
@@ -122,11 +122,15 @@ export const ProductCardComponent = forwardRef<HTMLDivElement, ProductCardProps>
           </WishlistButton>
         )}
         <ProductInfo>
-          <ProductName>{product.name}</ProductName>
-          <ProductPrice>{formatCurrency(product.price, product.currency)}</ProductPrice>
+          <ProductName data-testid="product-name">{product.name}</ProductName>
+          <ProductPrice data-testid="product-price">{formatCurrency(product.price, product.currency)}</ProductPrice>
         </ProductInfo>
         <ProductActions>
-          <AddToCartButton onClick={handleAddToCart} disabled={isSyncing || product.stockQuantity === 0}>
+          <AddToCartButton 
+            onClick={handleAddToCart} 
+            disabled={isSyncing || product.stockQuantity === 0}
+            data-testid="add-to-cart-btn"
+          >
             {product.stockQuantity === 0 ? 'Out of Stock' : 'Add to Cart'}
           </AddToCartButton>
         </ProductActions>

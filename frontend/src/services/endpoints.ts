@@ -108,6 +108,9 @@ export const authApi = {
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post('/auth/change-password', { currentPassword, newPassword }),
 
+  changeEmail: (email: string, password: string) =>
+    api.post<User>('/auth/change-email', { email, password }),
+
   requestPasswordReset: (email: string) =>
     api.post('/auth/forgot-password', { email }),
 
@@ -137,8 +140,11 @@ export const addressApi = {
   deleteAddress: (id: string) =>
     api.delete(`/addresses/${id}`),
 
-  setDefaultAddress: (id: string, type: 'SHIPPING' | 'BILLING') =>
-    api.post(`/addresses/${id}/default`, { type }),
+  setDefaultAddress: (id: string) =>
+    api.post(`/addresses/${id}/default`),
+
+  changeEmail: (email: string, password: string) =>
+    api.post<User>('/auth/change-email', { email, password }),
 };
 
 export const paymentApi = {

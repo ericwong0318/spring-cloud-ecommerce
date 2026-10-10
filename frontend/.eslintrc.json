@@ -4,17 +4,33 @@
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
-    "plugin:react-hooks/recommended"
+    "plugin:react-hooks/recommended",
+    "plugin:jsx-a11y/recommended",
+    "plugin:testing-library/react"
   ],
-  "ignorePatterns": ["dist", ".eslintrc.json"],
+  "ignorePatterns": ["dist", ".eslintrc.json", "e2e", "playwright.config.ts", "vitest.config.ts"],
   "parser": "@typescript-eslint/parser",
-  "plugins": ["react-refresh"],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "plugins": ["react-refresh", "jsx-a11y", "testing-library"],
   "rules": {
     "react-refresh/only-export-components": [
       "warn",
       { "allowConstantExport": true }
     ],
     "@typescript-eslint/no-explicit-any": "warn",
-    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "jsx-a11y/anchor-is-valid": "warn",
+    "jsx-a11y/click-events-have-key-events": "warn",
+    "jsx-a11y/no-noninteractive-element-interactions": "warn",
+    "jsx-a11y/role-has-required-aria-props": "warn",
+    "testing-library/prefer-screen-queries": "warn",
+    "testing-library/no-render-in-setup": "warn",
+    "testing-library/no-unnecessary-act": "warn"
   }
 }

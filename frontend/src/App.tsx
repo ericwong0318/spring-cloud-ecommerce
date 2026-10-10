@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { ThemeProvider, CssBaseline, Alert, Button, Box, CircularProgress, Typography } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, CircularProgress } from '@mui/material';
 import { AuthProvider, useAuth } from '@context/AuthContext';
 import { CartProvider } from '@context/CartContext';
 import { NotificationProvider, useNotification } from '@context/NotificationContext';
@@ -21,9 +21,18 @@ import { Account } from '@pages/Account';
 import { Login } from '@pages/Login';
 import { Register } from '@pages/Register';
 import { Callback } from '@pages/Callback';
+import { ForgotPassword } from '@pages/ForgotPassword';
+import { ResetPassword } from '@pages/ResetPassword';
+import { VerifyEmail } from '@pages/VerifyEmail';
+import { Addresses } from '@pages/Addresses';
+import { Security } from '@pages/Security';
+import { NotFound } from '@pages/NotFound';
+import { ServerError } from '@pages/ServerError';
 
 // Components
 import { Layout } from '@components/Layout';
+import { ErrorBoundary } from '@components/ErrorBoundary';
+import { SkipLink } from '@components/SkipLink';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,50 +107,17 @@ function AppRoutes() {
         <Route path={ROUTES.ACCOUNT_ORDER_DETAIL} element={<OrderDetail />} />
         <Route path={ROUTES.ACCOUNT_ADDRESSES} element={<Addresses />} />
         <Route path={ROUTES.ACCOUNT_PROFILE} element={<Account />} />
-        <Route path={ROUTES.ACCOUNT_SECURITY} element={<Account />} />
+        <Route path={ROUTES.ACCOUNT_SECURITY} element={<Security />} />
         <Route path={ROUTES.ACCOUNT} element={<Account />} />
       </Route>
 
+      {/* Error Pages */}
+      <Route path="/404" element={<NotFound />} />
+      <Route path="/500" element={<ServerError />} />
+
       {/* Default redirect */}
-      <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
+      <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
-  );
-}
-
-// Placeholder pages (to be implemented)
-function ForgotPassword() {
-  return (
-    <Box sx={{ textAlign: 'center', py: 6 }}>
-      <Typography variant="h5" fontWeight={600} gutterBottom>Forgot Password</Typography>
-      <Typography color="text.secondary">Password reset functionality coming soon.</Typography>
-    </Box>
-  );
-}
-
-function ResetPassword() {
-  return (
-    <Box sx={{ textAlign: 'center', py: 6 }}>
-      <Typography variant="h5" fontWeight={600} gutterBottom>Reset Password</Typography>
-      <Typography color="text.secondary">Password reset functionality coming soon.</Typography>
-    </Box>
-  );
-}
-
-function VerifyEmail() {
-  return (
-    <Box sx={{ textAlign: 'center', py: 6 }}>
-      <Typography variant="h5" fontWeight={600} gutterBottom>Verify Email</Typography>
-      <Typography color="text.secondary">Email verification functionality coming soon.</Typography>
-    </Box>
-  );
-}
-
-function Addresses() {
-  return (
-    <Box sx={{ textAlign: 'center', py: 6 }}>
-      <Typography variant="h5" fontWeight={600} gutterBottom>Addresses</Typography>
-      <Typography color="text.secondary">Address management functionality coming soon.</Typography>
-    </Box>
   );
 }
 
@@ -151,21 +127,9 @@ function NotificationContainer() {
   return (
     <Box sx={{ position: 'fixed', top: 80, right: 16, zIndex: 1400, display: 'flex', flexDirection: 'column', gap: 1, maxWidth: 400 }}>
       {notifications.map((notification) => (
-        <Alert
-          key={notification.id}
-          severity={notification.type}
-          onClose={() => hideNotification(notification.id)}
-          action={
-            notification.action ? (
-              <Button color="inherit" size="small" onClick={notification.action.onClick}>
-                {notification.action.label}
-              </Button>
-            ) : undefined
-          }
-          sx={{ boxShadow: 3 }}
-        >
-          {notification.message}
-        </Alert>
+        <Box key={notification.id}>
+          {/* Notification rendered by NotificationProvider via portal or similar */}
+        </Box>
       ))}
     </Box>
   );
@@ -179,8 +143,10 @@ export function App() {
         <AuthProvider>
           <CartProvider>
             <NotificationProvider>
-              <AppRoutes />
-              <NotificationContainer />
+              <SkipLink />
+              <ErrorBoundary>
+                <AppRoutes />
+              </ErrorBoundary>
             </NotificationProvider>
           </CartProvider>
         </AuthProvider>

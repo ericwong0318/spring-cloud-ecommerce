@@ -112,6 +112,9 @@ npm run dev
 # Build for production
 npm run build
 
+# Build with bundle analysis
+npm run analyze
+
 # Preview production build
 npm run preview
 
@@ -123,6 +126,16 @@ npm run format
 
 # Type check
 npm run typecheck
+
+# Test
+npm run test                # Run unit tests
+npm run test:watch          # Run tests in watch mode
+npm run test:coverage       # Run tests with coverage
+npm run test:ui             # Run tests with UI
+
+# E2E Tests
+npm run e2e                 # Run Playwright tests
+npm run e2e:ui              # Run Playwright tests with UI
 ```
 
 ### Environment Variables
@@ -207,6 +220,86 @@ npm run build
 # Output: dist/
 # Serve dist/ with any static file server
 ```
+
+## Testing
+
+### Unit & Integration Tests (Vitest + React Testing Library)
+
+```bash
+# Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests with UI
+npm run test:ui
+```
+
+**Coverage Targets:**
+- Lines: >80%
+- Functions: >70%
+- Branches: >70%
+- Statements: >80%
+
+### E2E Tests (Playwright)
+
+```bash
+# Run all E2E tests
+npm run e2e
+
+# Run with UI
+npm run e2e:ui
+```
+
+**Test Structure:**
+```
+frontend/
+├── src/__tests__/
+│   ├── setup.ts              # Test setup & mocks
+│   ├── hooks/
+│   │   └── useDebounce.test.ts
+│   ├── utils/
+│   │   ├── auth.test.ts
+│   │   └── formatters.test.ts
+│   ├── context/
+│   │   ├── AuthContext.test.tsx
+│   │   └── CartContext.test.tsx
+│   ├── components/
+│   │   └── ProductCard.test.tsx
+│   └── pages/
+│       └── ProductList.test.tsx
+└── e2e/
+    ├── auth.spec.ts
+    ├── cart.spec.ts
+    ├── checkout.spec.ts
+    └── product.spec.ts
+```
+
+### Bundle Analysis
+
+```bash
+# Build with bundle analysis
+npm run analyze
+```
+
+Opens an interactive visualization of bundle sizes at `bundle-analysis.html`.
+
+### Accessibility
+
+Accessibility tests run as part of the E2E suite using axe-core.
+
+### CI/CD Pipeline
+
+The GitHub Actions workflow (`.github/workflows/frontend-ci.yml`) runs:
+1. **Lint & TypeCheck** - ESLint, TypeScript, Prettier
+2. **Unit Tests** - Vitest with coverage thresholds
+3. **E2E Tests** - Playwright across multiple browsers
+4. **Bundle Analysis** - Size budget checks
+5. **Accessibility Audit** - axe-core checks
 
 ## License
 

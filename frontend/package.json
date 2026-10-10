@@ -8,7 +8,14 @@
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx",
     "format": "prettier --write src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "analyze": "vite build --mode analyze"
   },
   "dependencies": {
     "@emotion/react": "^11.13.0",
@@ -29,16 +36,26 @@
     "@hookform/resolvers": "^3.9.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@typescript-eslint/eslint-plugin": "^8.8.0",
     "@typescript-eslint/parser": "^8.8.0",
     "@vitejs/plugin-react": "^4.3.2",
+    "@vitest/coverage-v8": "^2.1.0",
     "eslint": "^9.12.0",
+    "eslint-plugin-jsx-a11y": "^6.10.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.12",
+    "eslint-plugin-testing-library": "^6.5.0",
+    "jsdom": "^25.0.0",
     "prettier": "^3.3.3",
     "typescript": "^5.6.3",
-    "vite": "^5.4.8"
+    "vite": "^5.4.8",
+    "vite-plugin-bundle-analyzer": "^0.10.0",
+    "vitest": "^2.1.0"
   }
 }

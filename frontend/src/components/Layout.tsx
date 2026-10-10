@@ -8,7 +8,7 @@ export function Layout() {
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
       <Header />
-      <Container maxWidth="xl" sx={{ flexGrow: 1, py: 3, width: '100%' }}>
+      <Container id="main-content" maxWidth="xl" sx={{ flexGrow: 1, py: 3, width: '100%' }} tabIndex={-1}>
         <Outlet />
       </Container>
       <Footer />
