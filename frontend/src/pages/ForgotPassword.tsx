@@ -29,9 +29,9 @@ export function ForgotPassword() {
       setLoading(true);
       await authApi.requestPasswordReset(data.email);
       setSubmitted(true);
-      showNotification('success', 'If an account exists, a reset link has been sent.');
+      showNotification({ type: 'success', message: 'If an account exists, a reset link has been sent.' });
     } catch {
-      showNotification('error', 'Failed to send reset email. Please try again.');
+      showNotification({ type: 'error', message: 'Failed to send reset email. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,7 @@ export function ForgotPassword() {
       <Typography color="text.secondary" paragraph align="center">
         Enter your email and we'll send you a link to reset your password.
       </Typography>
-      <form onSubmit={handleSubmit(onSubmit)} sx={{ mt: 3 }}>
+      <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 3 }}>
         <TextField
           fullWidth
           label="Email"
@@ -84,7 +84,7 @@ export function ForgotPassword() {
         >
           {loading ? 'Sending...' : 'Send Reset Link'}
         </Button>
-      </form>
+      </Box>
       <Box sx={{ mt: 3, textAlign: 'center' }}>
         <Link href={ROUTES.LOGIN} variant="body2">
           Back to Login

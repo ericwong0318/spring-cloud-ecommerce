@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import {
   Box, Button, Typography, Paper, TextField, Alert, AlertTitle,
-  Divider, Grid, FormControlLabel, Switch, IconButton, Accordion,
-  AccordionSummary, AccordionDetails, List, ListItem, ListItemText,
-  ListItemIcon, Chip, Dialog, DialogTitle, DialogContent, DialogActions
+  Accordion, AccordionSummary, AccordionDetails, List, ListItem, ListItemText,
+  ListItemIcon, Chip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, IconButton
 } from '@mui/material';
-import { Edit, Visibility, VisibilityOff, Security, Shield, Phone, Email, Key } from '@mui/icons-material';
+import { Edit, Visibility, VisibilityOff, Security as SecurityIcon, Shield, Phone, Email, Key } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '@context/AuthContext';
 import { useNotification } from '@context/NotificationContext';
 import { authApi } from '@services/endpoints';
@@ -33,8 +32,7 @@ const emailSchema = z.object({
 type EmailFormData = z.infer<typeof emailSchema>;
 
 export function Security() {
-  const { user, updateUser } = useAuth();
-  const queryClient = useQueryClient();
+  const { user, updateProfile } = useAuth();
   const { showNotification } = useNotification();
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -54,14 +52,14 @@ export function Security() {
   const changePasswordMutation = useMutation({
     mutationFn: (data: PasswordFormData) => authApi.changePassword(data.currentPassword, data.newPassword),
     onSuccess: () => {
-      showNotification('success', 'Password changed successfully');
+      showNotification({ type: 'success', message: 'Password changed successfully' });
       closePasswordDialog();
     },
     onError: (error: any) => {
       if (error.response?.status === 400) {
-        showNotification('error', 'Current password is incorrect');
+        showNotification({ type: 'error', message: 'Current password is incorrect' });
       } else {
-        showNotification('error', 'Failed to change password');
+        showNotification({ type: 'error', message: 'Failed to change password' });
       }
     },
   });
@@ -69,15 +67,15 @@ export function Security() {
   const changeEmailMutation = useMutation({
     mutationFn: (data: EmailFormData) => authApi.changeEmail(data.email, data.password),
     onSuccess: (data) => {
-      updateUser({ email: data.email });
-      showNotification('success', 'Email changed successfully');
+      updateProfile({ email: data.email });
+      showNotification({ type: 'success', message: 'Email changed successfully' });
       closeEmailDialog();
     },
     onError: (error: any) => {
       if (error.response?.status === 400) {
-        showNotification('error', error.response.data?.message || 'Failed to change email');
+        showNotification({ type: 'error', message: error.response.data?.message || 'Failed to change email' });
       } else {
-        showNotification('error', 'Failed to change email');
+        showNotification({ type: 'error', message: 'Failed to change email' });
       }
     },
   });
@@ -123,7 +121,7 @@ export function Security() {
           </Button>
         </Box>
         <Typography variant="body2" color="text.secondary">
-          Last changed: {user?.passwordChangedAt ? new Date(user.passwordChangedAt).toLocaleDateString() : 'Unknown'}
+          Last changed: {user?.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : 'Unknown'}
         </Typography>
       </Paper>
 
@@ -164,7 +162,7 @@ export function Security() {
           Add an extra layer of security to your account with 2FA.
         </Typography>
         <Accordion sx={{ mt: 2 }}>
-          <AccordionSummary expandIcon={<Security />}>
+          <AccordionSummary expandIcon={<SecurityIcon />}>
             <Typography variant="subtitle1">About Two-Factor Authentication</Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -178,15 +176,15 @@ export function Security() {
             </Typography>
             <List>
               <ListItem disableGutters>
-                <ListItemIcon><Security fontSize="small" /></ListItemIcon>
+                <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Enable/disable 2FA with authenticator apps" />
               </ListItem>
               <ListItem disableGutters>
-                <ListItemIcon><Security fontSize="small" /></ListItemIcon>
+                <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Generate backup codes for account recovery" />
               </ListItem>
               <ListItem disableGutters>
-                <ListItemIcon><Security fontSize="small" /></ListItemIcon>
+                <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="View trusted devices and revoke access" />
               </ListItem>
             </List>
@@ -240,29 +238,29 @@ export function Security() {
           and other security-relevant events here.
         </Alert>
         <Accordion>
-          <AccordionSummary expandIcon={<Security />}>
+          <AccordionSummary expandIcon={<SecurityIcon />}>
             <Typography variant="subtitle1">What will be logged</Typography>
           </AccordionSummary>
           <AccordionDetails>
             <List>
               <ListItem disableGutters>
-                <ListItemIcon><Security fontSize="small" /></ListItemIcon>
+                <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Successful and failed login attempts" />
               </ListItem>
               <ListItem disableGutters>
-                <ListItemIcon><Security fontSize="small" /></ListItemIcon>
+                <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Password changes" />
               </ListItem>
               <ListItem disableGutters>
-                <ListItemIcon><Security fontSize="small" /></ListItemIcon>
+                <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="Email changes" />
               </ListItem>
               <ListItem disableGutters>
-                <ListItemIcon><Security fontSize="small" /></ListItemIcon>
+                <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="2FA enable/disable events" />
               </ListItem>
               <ListItem disableGutters>
-                <ListItemIcon><Security fontSize="small" /></ListItemIcon>
+                <ListItemIcon><SecurityIcon fontSize="small" /></ListItemIcon>
                 <ListItemText primary="New device logins" />
               </ListItem>
             </List>
@@ -367,16 +365,12 @@ export function Security() {
         <form onSubmit={handleSubmitEmail(handleEmailSubmit)}>
           <DialogContent>
             <Box sx={{ p: 2 }}>
-              <Alert severity="info" variant="filled" sx={{ mb: 2 }}>
-                A verification email will be sent to the new address. You must verify it before the change takes effect.
-              </Alert>
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
                     label="New Email Address *"
                     type="email"
-                    autoComplete="email"
                     {...registerEmail('email')}
                     error={!!emailErrors.email}
                     helperText={emailErrors.email?.message}
@@ -387,7 +381,6 @@ export function Security() {
                     fullWidth
                     label="Current Password *"
                     type={showEmailPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
                     {...registerEmail('password')}
                     error={!!emailErrors.password}
                     helperText={emailErrors.password?.message}

@@ -18,13 +18,10 @@ export const ProductCard = styled(MuiCard)`
   }
 `;
 
-export const ProductImage = styled('div')<{ src: string }>`
+export const ProductImage = styled('img')<{ src: string; alt?: string }>`
   width: 100%;
   aspect-ratio: 1;
-  background-image: url(${(props) => props.src});
-  background-size: cover;
-  background-position: center;
-  position: relative;
+  object-fit: cover;
 `;
 
 export const ProductInfo = styled(CardContent)`

@@ -46,10 +46,10 @@ export function ResetPassword() {
     try {
       setLoading(true);
       await authApi.resetPassword(token, data.password);
-      showNotification('success', 'Password has been reset successfully.');
+      showNotification({ type: 'success', message: 'Password has been reset successfully.' });
       navigate(ROUTES.LOGIN);
     } catch {
-      showNotification('error', 'Failed to reset password. The link may have expired.');
+      showNotification({ type: 'error', message: 'Failed to reset password. The link may have expired.' });
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,7 @@ export function ResetPassword() {
       <Typography color="text.secondary" paragraph align="center">
         Enter your new password below.
       </Typography>
-      <form onSubmit={handleSubmit(onSubmit)} sx={{ mt: 3 }}>
+      <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 3 }}>
         <TextField
           fullWidth
           label="New Password"
@@ -114,7 +114,7 @@ export function ResetPassword() {
         >
           {loading ? 'Resetting...' : 'Reset Password'}
         </Button>
-      </form>
+      </Box>
       <Box sx={{ mt: 3, textAlign: 'center' }}>
         <Link href={ROUTES.LOGIN} variant="body2">
           Back to Login

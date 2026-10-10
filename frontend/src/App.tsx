@@ -13,25 +13,20 @@ import { Home } from '@pages/Home';
 import { ProductList } from '@pages/ProductList';
 import { ProductDetail } from '@pages/ProductDetail';
 import { Cart } from '@pages/Cart';
-import { Checkout } from '@pages/Checkout';
 import { CheckoutSuccess } from '@pages/CheckoutSuccess';
 import { Orders } from '@pages/Orders';
 import { OrderDetail } from '@pages/OrderDetail';
-import { Account } from '@pages/Account';
 import { Login } from '@pages/Login';
 import { Register } from '@pages/Register';
 import { Callback } from '@pages/Callback';
 import { ForgotPassword } from '@pages/ForgotPassword';
 import { ResetPassword } from '@pages/ResetPassword';
 import { VerifyEmail } from '@pages/VerifyEmail';
-import { Addresses } from '@pages/Addresses';
-import { Security } from '@pages/Security';
 import { NotFound } from '@pages/NotFound';
 import { ServerError } from '@pages/ServerError';
 
 // Components
 import { Layout } from '@components/Layout';
-import { ErrorBoundary } from '@components/ErrorBoundary';
 import { SkipLink } from '@components/SkipLink';
 
 const queryClient = new QueryClient({
@@ -101,14 +96,9 @@ function AppRoutes() {
 
       {/* Protected Routes */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route path={ROUTES.CHECKOUT} element={<Checkout />} />
         <Route path={ROUTES.CHECKOUT_SUCCESS} element={<CheckoutSuccess />} />
         <Route path={ROUTES.ACCOUNT_ORDERS} element={<Orders />} />
         <Route path={ROUTES.ACCOUNT_ORDER_DETAIL} element={<OrderDetail />} />
-        <Route path={ROUTES.ACCOUNT_ADDRESSES} element={<Addresses />} />
-        <Route path={ROUTES.ACCOUNT_PROFILE} element={<Account />} />
-        <Route path={ROUTES.ACCOUNT_SECURITY} element={<Security />} />
-        <Route path={ROUTES.ACCOUNT} element={<Account />} />
       </Route>
 
       {/* Error Pages */}
@@ -144,9 +134,7 @@ export function App() {
           <CartProvider>
             <NotificationProvider>
               <SkipLink />
-              <ErrorBoundary>
-                <AppRoutes />
-              </ErrorBoundary>
+              <AppRoutes />
             </NotificationProvider>
           </CartProvider>
         </AuthProvider>

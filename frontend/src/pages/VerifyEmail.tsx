@@ -26,7 +26,7 @@ export function VerifyEmail() {
         await authApi.verifyEmail(token);
         setStatus('success');
         setMessage('Your email has been verified successfully!');
-        showNotification('success', 'Email verified successfully!');
+        showNotification({ type: 'success', message: 'Email verified successfully!' });
       } catch (error: any) {
         setStatus('error');
         if (error.response?.status === 400) {
@@ -34,7 +34,7 @@ export function VerifyEmail() {
         } else {
           setMessage('Failed to verify email. Please try again later.');
         }
-        showNotification('error', 'Failed to verify email.');
+        showNotification({ type: 'error', message: 'Failed to verify email.' });
       }
     };
 
