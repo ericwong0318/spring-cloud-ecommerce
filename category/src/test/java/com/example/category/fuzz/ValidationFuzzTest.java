@@ -12,9 +12,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
-import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -47,10 +47,10 @@ import static org.assertj.core.api.Assertions.assertThat;
     org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration.class,
     org.springframework.boot.autoconfigure.data.r2dbc.R2dbcDataAutoConfiguration.class
 })
-@ComponentScan(
-    basePackages = {"com.example.category", "com.example.common.exception"},
-    excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.category.pact.*")
-)
+// Component scanning and JPA repository scanning are already provided by
+// CategoryApplication (the @SpringBootTest configuration class). Declaring them
+// again here registers the same repository beans twice and fails the context
+// with a BeanDefinitionOverrideException.
 public abstract class ValidationFuzzTest {
 
     @LocalServerPort
