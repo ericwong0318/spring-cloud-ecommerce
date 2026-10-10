@@ -244,9 +244,10 @@ public class ValidationArchitectureTest {
      * unless they explicitly opt into common-config.
      */
     @ArchTest
-    static final ArchRule only_gateway_and_auth_use_common_config = classes()
-            .that().resideInAPackage("..gateway..").or().resideInAPackage("..authserver..")
-            .should().dependOnClassesThat().resideInAPackage("org.example.common.config..")
+    static final ArchRule only_gateway_and_auth_use_common_config = noClasses()
+            .that().resideOutsideOfPackages(
+                    "com.example.gateway..", "org.example.authserver..", "com.example.common.config..")
+            .should().dependOnClassesThat().resideInAPackage("com.example.common.config..")
             .because("Only gateway and auth-server may use common-config; "
                     + "domain services should use precise common-* modules")
             .allowEmptyShould(true);
