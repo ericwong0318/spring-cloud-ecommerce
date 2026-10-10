@@ -17,7 +17,9 @@ import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ExtendWith(PactConsumerTestExt.class)
-@PactTestFor(providerName = "product-service", port = "8081")
+// Consumer tests do not need the provider to listen on a fixed port; letting Pact
+// pick a free port avoids collisions with a locally running product-service (8081).
+@PactTestFor(providerName = "product-service")
 class OrderProductConsumerPactTest {
 
     @Pact(consumer = "order-service")
