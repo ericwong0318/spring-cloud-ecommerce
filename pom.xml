@@ -43,6 +43,7 @@
         <module>payment-service</module>
         <module>system-test</module>
         <module>architecture-tests</module>
+        <module>ci/validation</module>
     </modules>
 
     <properties>
