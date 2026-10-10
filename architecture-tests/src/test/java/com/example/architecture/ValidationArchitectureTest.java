@@ -232,8 +232,7 @@ public class ValidationArchitectureTest {
             .that().resideInAPackage("..order..").or().resideInAPackage("..payment..")
             .or().resideInAPackage("..inventory..").or().resideInAPackage("..product..")
             .or().resideInAPackage("..category..").or().resideInAPackage("..notification..")
-            .should().dependOnClassesThat().resideInAPackage("org.example.common..")
-            .andShould().dependOnClassesThat().resideInAnyPackage("org.example.common..")
+            .should().dependOnClassesThat().resideInAPackage("com.example.common")
             .because("Services must depend on common-dto, common-event, common-saga, common-outbox, "
                     + "common-exception, not the old common module which is now a BOM only")
             .allowEmptyShould(true);
