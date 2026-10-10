@@ -12,10 +12,12 @@ import io.swagger.v3.oas.models.info.Contact;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -26,7 +28,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 import jakarta.persistence.EntityManagerFactory;
 
 @SpringBootApplication
-@ComponentScan(basePackages = {"com.example.category", "com.example.common.exception"})
+@ComponentScan(
+    basePackages = {"com.example.category", "com.example.common.exception"},
+    excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.category.pact.*")
+)
 @EnableJpaRepositories(basePackages = {"com.example.category", "com.example.common.event"})
 @EntityScan(basePackages = {"com.example.category", "com.example.common.event"})
 @EnableTransactionManagement
@@ -48,6 +53,7 @@ public class CategoryApplication {
     }
 
     @Bean
+    @ConditionalOnMissingBean
     public OutboxEventPublisher outboxEventPublisher(
             OutboxEventRepository outboxEventRepository,
             RabbitTemplate rabbitTemplate,

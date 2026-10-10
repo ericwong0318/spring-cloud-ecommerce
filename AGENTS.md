@@ -138,3 +138,9 @@ When modifying a class that uses Lombok:
 1. Analyze the target function inputs and outputs.
 2. Identify happy path and edge-case scenarios.
 3. Write clean, isolated test code.
+
+## Git Workflow Rules
+- **Always fetch before rebase**: `git fetch origin` before any `git rebase main` or `git rebase origin/main`
+- Use `git pull --rebase origin main` on feature branches to combine fetch + rebase
+- Verify with `git status` and `git log --oneline -5` after rebase
+- **Merge with `--ff-only`**: `git merge --ff-only feature-branch` to fast-forward main (fails if not clean)

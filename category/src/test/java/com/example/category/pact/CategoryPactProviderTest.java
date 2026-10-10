@@ -27,7 +27,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import reactor.core.publisher.Mono;
-import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -126,7 +125,6 @@ class CategoryPactProviderTest {
     @Configuration
     static class TestConfig {
         @Bean
-        @Primary
         OutboxEventPublisher outboxEventPublisher(OutboxEventRepository outboxEventRepository) {
             return new OutboxEventPublisher() {
                 @Override

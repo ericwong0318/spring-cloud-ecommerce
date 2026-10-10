@@ -9,22 +9,24 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
-import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration;
-import org.springframework.context.annotation.Import;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -46,16 +48,15 @@ import static org.assertj.core.api.Assertions.assertThat;
     classes = {ProductApplication.class, TestSecurityConfig.class, RabbitMQConfig.class}
 )
 @ActiveProfiles("test")
-@Import({TestSecurityConfig.class, RabbitMQConfig.class, ValidationFuzzTest.FuzzTestConfig.class})
+@Import({ValidationFuzzTest.FuzzTestConfig.class})
 @EnableAutoConfiguration(exclude = {
     ReactiveSecurityAutoConfiguration.class,
     ReactiveOAuth2ResourceServerAutoConfiguration.class,
-    ReactiveManagementWebSecurityAutoConfiguration.class
+    ReactiveManagementWebSecurityAutoConfiguration.class,
+    SecurityAutoConfiguration.class,
+    OAuth2ResourceServerAutoConfiguration.class,
+    ManagementWebSecurityAutoConfiguration.class
 })
-@ComponentScan(
-    basePackages = {"com.example.product", "com.example.common.exception"},
-    excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.product.pact.*")
-)
 @EnableMongoRepositories(basePackages = "com.example.product")
 public abstract class ValidationFuzzTest {
 
@@ -186,7 +187,6 @@ public abstract class ValidationFuzzTest {
      * @return payload with overflow value
      */
     protected String generateNumericOverflowPayload(String basePayload, String fieldName) {
-        // Replace the field value with Long.MAX_VALUE + 1 (as string)
         return basePayload.replaceAll("\"" + fieldName + "\"\\s*:\\s*\\d+",
                 "\"" + fieldName + "\": " + (Long.MAX_VALUE + 1L));
     }
