@@ -1,0 +1,77 @@
+spring:
+  config:
+    import: optional:configserver:http://localhost:8888
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:}
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+    import: optional:configserver:http://config-server:8888
+---
+spring:
+  config:
+    activate:
+      on-profile: seed-data
+  application:
+    name: category
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: jdbc:postgresql://postgres-category:5432/category_db
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+  flyway:
+    enabled: false
+    locations: classpath:db/migration/category
+    baseline-on-migrate: true
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:postgresql://localhost:5436/category_db
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: localdev
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+  flyway:
+    enabled: false
+    locations: classpath:db/migration/category
+    baseline-on-migrate: true

@@ -14,4 +14,4 @@ COPY target/*.jar app.jar
 
 EXPOSE 8081
 
-ENTRYPOINT ["sh", "-c", "if [ \"$ENABLE_SPLUNK_AGENT\" = \"true\" ]; then java -javaagent:/app/splunk-otel-javaagent.jar -jar app.jar; else java -jar app.jar; fi"]
+ENTRYPOINT ["sh", "-c", "if [ \"$ENABLE_SPLUNK_AGENT\" = \"true\" ]; then java $JAVA_OPTS -javaagent:/app/splunk-otel-javaagent.jar -jar app.jar; else java $JAVA_OPTS -jar app.jar; fi"]

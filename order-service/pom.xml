@@ -193,6 +193,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.example.order.OrderServiceApplication</mainClass>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -232,13 +235,6 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>com.example.order.OrderServiceApplication</mainClass>
-                </configuration>
             </plugin>
         </plugins>
     </build>

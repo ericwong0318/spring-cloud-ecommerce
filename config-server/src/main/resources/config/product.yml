@@ -36,7 +36,19 @@ management:
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
+  otlp:
+    metrics:
+      export:
+        url: http://otel-collector:4318/v1/metrics
   health:
+    mongodb:
+      enabled: false
+    rabbit:
+      enabled: false
+    elasticsearch:
+      enabled: false
     db:
       enabled: true
 
@@ -45,26 +57,37 @@ spring:
   config:
     activate:
       on-profile: docker
+  application:
+    name: product
   data:
     mongodb:
       uri: mongodb://mongodb:27017
       database: product_db
       auto-index-creation: true
-  rabbitmq:
-    host: rabbitmq
-    port: 5672
-    username: guest
-    password: guest
-    virtual-host: /
-    connection-timeout: 5s
-    publisher-confirm-type: correlated
-    publisher-returns: true
-    listener:
-      simple:
-        acknowledge-mode: manual
-        concurrency: 3
-        max-concurrency: 10
-        prefetch: 10
+
+category-service:
+  url: http://category:8082
+
+rabbitmq:
+  host: rabbitmq
+  port: 5672
+  username: guest
+  password: guest
+  virtual-host: /
+  connection-timeout: 5s
+  publisher-confirm-type: correlated
+  publisher-returns: true
+  listener:
+    simple:
+      acknowledge-mode: manual
+      concurrency: 3
+      max-concurrency: 10
+      prefetch: 10
+  exchange: product.exchange
+  queue: product.events
+  routing-key-created: product.variant.created
+  routing-key-updated: product.variant.updated
+  routing-key-deleted: product.variant.deleted
 
 management:
   endpoints:
@@ -74,6 +97,26 @@ management:
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
+  otlp:
+    metrics:
+      export:
+        url: http://otel-collector:4318/v1/metrics
+  health:
+    mongodb:
+      enabled: false
+    rabbit:
+      enabled: false
+    elasticsearch:
+      enabled: false
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
 
 ---
 spring:
@@ -109,3 +152,16 @@ management:
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
+  otlp:
+    metrics:
+      export:
+        url: http://otel-collector:4318/v1/metrics
+  health:
+    mongodb:
+      enabled: false
+    rabbit:
+      enabled: false
+    elasticsearch:
+      enabled: false

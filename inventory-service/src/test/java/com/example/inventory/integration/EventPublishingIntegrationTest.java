@@ -57,7 +57,7 @@ class EventPublishingIntegrationTest {
             .withUsername("test")
             .withPassword("test");
 
-    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management")
+    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
             .withExposedPorts(5672);
 
     static {

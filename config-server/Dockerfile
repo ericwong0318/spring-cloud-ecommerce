@@ -11,6 +11,7 @@ RUN apk add --no-cache wget curl && \
 WORKDIR /app
 
 COPY target/*.jar app.jar
+COPY src/main/resources/config /app/config
 
 EXPOSE 8888
 

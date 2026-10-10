@@ -2,10 +2,10 @@ package com.example.product;
 
 import com.example.common.dto.ProductVariantDto;
 import com.example.common.event.ProductEvent;
+import com.example.product.config.RabbitMQConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -25,16 +25,16 @@ public class ProductVariantService {
     private final ProductRepository productRepository;
     private final ProductVariantMapper variantMapper;
     private final RabbitTemplate rabbitTemplate;
-    private final String productExchange;
+    private final RabbitMQConfig rabbitMQConfig;
 
     public ProductVariantService(ProductRepository productRepository,
                                  ProductVariantMapper variantMapper,
                                  RabbitTemplate rabbitTemplate,
-                                 @Value("${rabbitmq.exchange.product}") String productExchange) {
+                                 RabbitMQConfig rabbitMQConfig) {
         this.productRepository = productRepository;
         this.variantMapper = variantMapper;
         this.rabbitTemplate = rabbitTemplate;
-        this.productExchange = productExchange;
+        this.rabbitMQConfig = rabbitMQConfig;
     }
 
     private Long toEventId(String mongoId) {
@@ -118,7 +118,7 @@ public class ProductVariantService {
                                 updated.skuCode(),
                                 java.time.LocalDateTime.now()
                         );
-                        rabbitTemplate.convertAndSend(productExchange, "product.variant.created", event);
+                        rabbitTemplate.convertAndSend(rabbitMQConfig.getExchange(), "product.variant.created", event);
                         log.info("Published ProductEvent.VARIANT_CREATED to RabbitMQ for variant: {}", updated.skuCode());
                     } catch (Exception e) {
                         log.error("Failed to publish ProductEvent for variant: {}", updated.skuCode(), e);
@@ -172,7 +172,7 @@ public class ProductVariantService {
                                 saved.skuCode(),
                                 java.time.LocalDateTime.now()
                         );
-                        rabbitTemplate.convertAndSend(productExchange, "product.variant.updated", event);
+                        rabbitTemplate.convertAndSend(rabbitMQConfig.getExchange(), "product.variant.updated", event);
                         log.info("Published ProductEvent.VARIANT_UPDATED to RabbitMQ for variant: {}", saved.skuCode());
                     } catch (Exception e) {
                         log.error("Failed to publish ProductEvent for variant: {}", saved.skuCode(), e);
@@ -210,7 +210,7 @@ public class ProductVariantService {
                                 variant.getSkuCode(),
                                 java.time.LocalDateTime.now()
                         );
-                        rabbitTemplate.convertAndSend(productExchange, "product.variant.deleted", event);
+                        rabbitTemplate.convertAndSend(rabbitMQConfig.getExchange(), "product.variant.deleted", event);
                         log.info("Published ProductEvent.VARIANT_DELETED to RabbitMQ for variant: {}", variant.getSkuCode());
                     } catch (Exception e) {
                         log.error("Failed to publish ProductEvent for variant: {}", variant.getSkuCode(), e);

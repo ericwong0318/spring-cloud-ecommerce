@@ -84,7 +84,7 @@ class OrderPactProviderTest {
             .withPassword("test");
 
     @Container
-    static final RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management")
+    static final RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
             .withExposedPorts(5672);
 
     @MockBean

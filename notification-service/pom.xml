@@ -132,6 +132,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.example.notification.NotificationServiceApplication</mainClass>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -151,13 +154,6 @@
                             <version>1.5.5.Final</version>
                         </path>
                     </annotationProcessorPaths>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>com.example.notification.NotificationServiceApplication</mainClass>
                 </configuration>
             </plugin>
         </plugins>

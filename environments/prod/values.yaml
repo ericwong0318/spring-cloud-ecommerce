@@ -185,7 +185,7 @@ postgres:
 
 rabbitmq:
   enabled: true
-  image: rabbitmq:3.13-management
+  image: rabbitmq:3.13-management-alpine
   persistence:
     enabled: true
     size: 10Gi

@@ -62,8 +62,9 @@ services:
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 15
+      start_period: 30s
     networks:
       - spring-cloud-network
 
@@ -76,6 +77,8 @@ services:
     ports:
       - "8761:8761"
     environment:
+      - EUREKA_CLIENT_REGISTER_WITH_EUREKA=false
+      - EUREKA_CLIENT_FETCH_REGISTRY=false
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
@@ -109,8 +112,6 @@ services:
       - "9000:9000"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_APPLICATION_NAME=auth-server
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
@@ -186,9 +187,8 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_PROFILES_ACTIVE=docker,seed-data
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=product
@@ -199,6 +199,7 @@ services:
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
       - profiler.enabled=true
       - profiler.interval=60s
+      - JAVA_OPTS=-Deureka.client.service-url.defaultZone=http://eureka-server:8761/eureka/
     depends_on:
       config-server:
         condition: service_healthy
@@ -225,7 +226,6 @@ services:
       - "8082:8082"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
@@ -237,10 +237,13 @@ services:
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
       - profiler.enabled=true
       - profiler.interval=60s
+      - DB_PASSWORD=${POSTGRES_CATEGORY_PASSWORD}
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      postgres-category:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
@@ -443,7 +446,6 @@ services:
       - "8084:8084"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc

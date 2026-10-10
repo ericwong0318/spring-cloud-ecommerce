@@ -42,7 +42,7 @@ class IdempotentEventListenerIntegrationTest {
             .withPassword("test");
 
     @Container
-    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management")
+    static RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
             .withExposedPorts(5672);
 
     @DynamicPropertySource

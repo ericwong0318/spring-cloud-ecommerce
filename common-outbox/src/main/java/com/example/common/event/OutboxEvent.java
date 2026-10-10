@@ -1,17 +1,39 @@
 package com.example.common.event;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Entity
+@Table(name = "outbox_events")
 public class OutboxEvent {
 
+    @Id
     private UUID id;
+
+    @Column(name = "aggregate_type", nullable = false)
     private String aggregateType;
+
+    @Column(name = "aggregate_id", nullable = false)
     private String aggregateId;
+
+    @Column(name = "event_type", nullable = false)
     private String eventType;
+
+    @Column(name = "payload", nullable = false, columnDefinition = "TEXT")
     private String payload;
+
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "published_at")
     private LocalDateTime publishedAt;
+
+    @Column(name = "retry_count", nullable = false)
     private int retryCount;
 
     public OutboxEvent() {}
@@ -66,7 +88,7 @@ public class OutboxEvent {
         this.payload = payload;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public java.time.LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
@@ -74,7 +96,7 @@ public class OutboxEvent {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getPublishedAt() {
+    public java.time.LocalDateTime getPublishedAt() {
         return publishedAt;
     }
 

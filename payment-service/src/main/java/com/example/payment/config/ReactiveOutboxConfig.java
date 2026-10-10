@@ -1,7 +1,6 @@
 package com.example.payment.config;
 
 import com.example.common.event.OutboxEvent;
-import com.example.common.event.OutboxEventRepository;
 import com.example.common.event.OutboxPublisherProperties;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.common.event.ReactiveOutboxEventPublisher;
@@ -43,32 +42,6 @@ public class ReactiveOutboxConfig {
                 transactionalOperator,
                 properties,
                 routingKeyStrategy);
-    }
-
-    @Bean
-    @org.springframework.context.annotation.Primary
-    public OutboxEventRepository outboxEventRepository() {
-        return new OutboxEventRepository() {
-            @Override
-            public List<OutboxEvent> findUnpublishedEvents() {
-                return Collections.emptyList();
-            }
-
-            @Override
-            public List<OutboxEvent> findUnpublishedEventsWithRetryLimit(int maxRetries) {
-                return Collections.emptyList();
-            }
-
-            @Override
-            public boolean existsById(UUID id) {
-                return false;
-            }
-
-            @Override
-            public void save(OutboxEvent event) {
-                // No-op for reactive publisher
-            }
-        };
     }
 
     @Bean

@@ -12,50 +12,54 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    @Value("${rabbitmq.exchange.product}")
-    private String productExchange;
+    @Value("${rabbitmq.exchange:product.exchange}")
+    private String exchange;
 
-    @Value("${rabbitmq.queue.product-events}")
-    private String productEventsQueue;
+    @Value("${rabbitmq.queue:product.events}")
+    private String queue;
 
-    @Value("${rabbitmq.routing-key.product-created}")
-    private String productCreatedRoutingKey;
+    @Value("${rabbitmq.routing-key-created:product.variant.created}")
+    private String routingKeyCreated;
 
-    @Value("${rabbitmq.routing-key.product-updated}")
-    private String productUpdatedRoutingKey;
+    @Value("${rabbitmq.routing-key-updated:product.variant.updated}")
+    private String routingKeyUpdated;
 
-    @Value("${rabbitmq.routing-key.product-deleted}")
-    private String productDeletedRoutingKey;
+    @Value("${rabbitmq.routing-key-deleted:product.variant.deleted}")
+    private String routingKeyDeleted;
+
+    public String getExchange() {
+        return exchange;
+    }
 
     @Bean
     public TopicExchange productExchange() {
-        return new TopicExchange(productExchange, true, false);
+        return new TopicExchange(exchange, true, false);
     }
 
     @Bean
     public Queue productEventsQueue() {
-        return new Queue(productEventsQueue, true);
+        return new Queue(queue, true);
     }
 
     @Bean
     public Binding productCreatedBinding() {
         return BindingBuilder.bind(productEventsQueue())
                 .to(productExchange())
-                .with(productCreatedRoutingKey);
+                .with(routingKeyCreated);
     }
 
     @Bean
     public Binding productUpdatedBinding() {
         return BindingBuilder.bind(productEventsQueue())
                 .to(productExchange())
-                .with(productUpdatedRoutingKey);
+                .with(routingKeyUpdated);
     }
 
     @Bean
     public Binding productDeletedBinding() {
         return BindingBuilder.bind(productEventsQueue())
                 .to(productExchange())
-                .with(productDeletedRoutingKey);
+                .with(routingKeyDeleted);
     }
 
     @Bean

@@ -1,0 +1,9 @@
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: jdbc:postgresql://postgres-auth:5432/auth_db
+  jpa:
+    hibernate:
+      ddl-auto: create

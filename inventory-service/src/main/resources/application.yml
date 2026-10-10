@@ -1,3 +1,65 @@
 spring:
   config:
     import: optional:configserver:http://config-server:8888
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:}
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  application:
+    name: inventory-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/inventory_db
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: localdev
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+  flyway:
+    enabled: false
+
+rabbitmq:
+  host: localhost
+  port: 5672
+  username: guest
+  password: guest
+  virtual-host: /
+  exchange:
+    product: product.exchange
+    order: order.exchange
+    inventory: inventory.exchange
+  queue:
+    inventory-events: inventory.events
+  routing-key:
+    product-created: product.variant.created
+    product-updated: product.variant.updated
+    product-deleted: product.variant.deleted
+    order-created: order.created
+    order-cancelled: order.cancelled
+    reservation-expired: inventory.reservation.expired
+
+server:
+  port: 8084
+
+---
+spring:
+  config:
+    activate:
+      on-profile: seed-data
+  application:
+    name: inventory-service
+  flyway:
+    enabled: false
