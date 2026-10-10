@@ -37,7 +37,19 @@
         </dependency>
         <dependency>
             <groupId>org.example</groupId>
-            <artifactId>common</artifactId>
+            <artifactId>common-dto</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>common-event</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.example</groupId>
+            <artifactId>common-outbox</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
