@@ -92,6 +92,26 @@ public class GlobalExceptionHandler {
                 .body(problem);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ProblemDetailResponse> handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+
+        log.warn("Illegal argument: {}", ex.getMessage());
+
+        ProblemDetailResponse problem = ProblemDetailResponse.builder()
+                .type(URI.create("https://api.example.com/errors/validation"))
+                .title("Invalid Argument")
+                .status(HttpStatus.BAD_REQUEST.value())
+                .detail(ex.getMessage())
+                .instance(URI.create(request.getRequestURI()))
+                .timestamp(Instant.now())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .contentType(MediaType.parseMediaType("application/problem+json"))
+                .body(problem);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetailResponse> handleValidationExceptions(
             MethodArgumentNotValidException ex, HttpServletRequest request) {

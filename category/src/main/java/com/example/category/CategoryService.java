@@ -60,6 +60,14 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<CategoryDto> getCategoryChildren(Long parentId) {
+        log.debug("Fetching children for parent id: {}", parentId);
+        return categoryRepository.findByParentId(parentId).stream()
+                .map(categoryMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
     private CategoryDto buildCategoryTree(Category category) {
         CategoryDto dto = categoryMapper.toDto(category);
         if (category.getChildren() != null && !category.getChildren().isEmpty()) {
@@ -173,14 +181,15 @@ public class CategoryService {
                     parent.addChild(child);
                 }
             }
-            categoryRepository.saveAll(children);
+            categoryRepository.saveAllAndFlush(children);
             if (parent != null) {
-                categoryRepository.save(parent);
+                categoryRepository.saveAndFlush(parent);
             }
         }
 
         publishCategoryEvent(ProductEvent.EventType.CATEGORY_DELETED, category);
         categoryRepository.delete(category);
+        categoryRepository.flush();
     }
 
     @Transactional
@@ -189,8 +198,10 @@ public class CategoryService {
         if (!categoryRepository.existsById(id)) {
             throw new ResourceNotFoundException("Category", id);
         }
-        publishCategoryEvent(ProductEvent.EventType.CATEGORY_DELETED, categoryRepository.getReferenceById(id));
+        Category category = categoryRepository.getReferenceById(id);
+        publishCategoryEvent(ProductEvent.EventType.CATEGORY_DELETED, category);
         categoryRepository.deleteById(id);
+        categoryRepository.flush();
     }
 
     private void publishCategoryEvent(ProductEvent.EventType eventType, Category category) {

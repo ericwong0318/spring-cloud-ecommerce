@@ -1,12 +1,14 @@
 package com.example.order;
 
 import org.springframework.boot.SpringApplication;
+import org.springframework.web.reactive.config.EnableWebFlux;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 
+@EnableWebFlux
 @SpringBootApplication(exclude = {
     SecurityAutoConfiguration.class,
     OAuth2ResourceServerAutoConfiguration.class

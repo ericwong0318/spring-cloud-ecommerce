@@ -6,6 +6,8 @@ import com.example.order.model.OrderItem;
 import com.example.order.model.Shipment;
 import com.example.order.model.ShipmentItem;
 import com.example.common.event.OutboxEventPublisher;
+import com.example.order.outbox.R2dbcOutboxEventRepository;
+import com.example.order.outbox.R2dbcOutboxEventRepository;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentItemRepository;
@@ -91,5 +93,11 @@ public class MinimalTestConfig {
     @Bean
     public ShipmentMapper shipmentMapper() {
         return Mockito.mock(ShipmentMapper.class);
+    }
+
+    @Bean
+    @Primary
+    public R2dbcOutboxEventRepository r2dbcOutboxEventRepository() {
+        return Mockito.mock(R2dbcOutboxEventRepository.class);
     }
 }

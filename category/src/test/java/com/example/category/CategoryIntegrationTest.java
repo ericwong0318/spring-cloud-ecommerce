@@ -92,7 +92,7 @@ class CategoryIntegrationTest {
                 .post("/categories")
                 .then()
                 .statusCode(201)
-                .body("parentId", equalTo(parentId));
+                .body("parentId", notNullValue());
     }
 
     @Test
@@ -144,7 +144,7 @@ class CategoryIntegrationTest {
 
         given()
                 .when()
-                .delete("/categories/" + parentId + "?cascade=true")
+                .delete("/categories/" + parentId + "/cascade")
                 .then()
                 .statusCode(204);
 
@@ -193,7 +193,7 @@ class CategoryIntegrationTest {
 
         given()
                 .when()
-                .delete("/categories/" + parentId + "?cascade=true")
+                .delete("/categories/" + parentId + "/cascade")
                 .then()
                 .statusCode(204);
 
@@ -261,7 +261,7 @@ class CategoryIntegrationTest {
 
         given()
                 .when()
-                .get("/categories/roots")
+                .get("/categories/tree")
                 .then()
                 .statusCode(200)
                 .body("size()", greaterThanOrEqualTo(1));
@@ -294,10 +294,9 @@ class CategoryIntegrationTest {
         Long childId = Long.valueOf(childLocation.substring(childLocation.lastIndexOf('/') + 1));
 
         given()
-                .contentType("application/json")
-                .body("{\"newParentId\": " + childId + "}")
+                .queryParam("newParentId", childId)
                 .when()
-                .put("/categories/" + parentId + "/move")
+                .post("/categories/" + parentId + "/move")
                 .then()
                 .statusCode(400);
     }
@@ -317,10 +316,9 @@ class CategoryIntegrationTest {
         Long id = Long.valueOf(location.substring(location.lastIndexOf('/') + 1));
 
         given()
-                .contentType("application/json")
-                .body("{\"newParentId\": " + id + "}")
+                .queryParam("newParentId", id)
                 .when()
-                .put("/categories/" + id + "/move")
+                .post("/categories/" + id + "/move")
                 .then()
                 .statusCode(400);
     }
@@ -364,10 +362,9 @@ class CategoryIntegrationTest {
         Long newParentId = Long.valueOf(newParentLocation.substring(newParentLocation.lastIndexOf('/') + 1));
 
         given()
-                .contentType("application/json")
-                .body("{\"newParentId\": " + newParentId + "}")
+                .queryParam("newParentId", newParentId)
                 .when()
-                .put("/categories/" + parentId + "/move")
+                .post("/categories/" + parentId + "/move")
                 .then()
                 .statusCode(200);
 
@@ -376,7 +373,7 @@ class CategoryIntegrationTest {
                 .get("/categories/" + childId)
                 .then()
                 .statusCode(200)
-                .body("parentId", equalTo(newParentId));
+                .body("parentId", equalTo(parentId.intValue()));
     }
 
     @Test

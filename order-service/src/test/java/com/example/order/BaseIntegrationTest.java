@@ -67,6 +67,25 @@ public abstract class BaseIntegrationTest {
         registry.add("spring.rabbitmq.publisher-returns", () -> "true");
         registry.add("eureka.client.enabled", () -> "false");
         registry.add("spring.flyway.enabled", () -> "false");
+        
+        // RabbitMQ exchange/queue/routing-key configuration
+        registry.add("rabbitmq.exchange.payment", () -> "payment.exchange");
+        registry.add("rabbitmq.exchange.order", () -> "order.exchange");
+        registry.add("rabbitmq.exchange.inventory", () -> "inventory.exchange");
+        registry.add("rabbitmq.exchange.ecommerce", () -> "ecommerce.exchange");
+        registry.add("rabbitmq.queue.order-events", () -> "order.events.queue");
+        registry.add("rabbitmq.queue.payment-events", () -> "payment.events.queue");
+        registry.add("rabbitmq.queue.inventory-events", () -> "inventory.events.queue");
+        registry.add("rabbitmq.queue.reservation-expired", () -> "reservation.expired.queue");
+        registry.add("rabbitmq.routing-key.order-created", () -> "order.created");
+        registry.add("rabbitmq.routing-key.order-updated", () -> "order.updated");
+        registry.add("rabbitmq.routing-key.order-cancelled", () -> "order.cancelled");
+        registry.add("rabbitmq.routing-key.payment-authorized", () -> "payment.authorized");
+        registry.add("rabbitmq.routing-key.payment-captured", () -> "payment.captured");
+        registry.add("rabbitmq.routing-key.payment-refunded", () -> "payment.refunded");
+        registry.add("rabbitmq.routing-key.payment-failed", () -> "payment.failed");
+        registry.add("rabbitmq.routing-key.inventory-reserved", () -> "inventory.reserved");
+        registry.add("rabbitmq.routing-key.reservation-expired", () -> "reservation.expired");
     }
 
     /**
@@ -99,9 +118,9 @@ public abstract class BaseIntegrationTest {
         public ReactiveIdempotentEventProcessor reactiveIdempotentEventProcessor() {
             ReactiveIdempotentEventProcessor mock = Mockito.mock(ReactiveIdempotentEventProcessor.class);
             Mockito.doAnswer(invocation -> {
-                Function<BaseEvent, Mono<Void>> handler = invocation.getArgument(1);
+                Function<com.example.common.event.BaseEvent, reactor.core.publisher.Mono<Void>> handler = invocation.getArgument(1);
                 return handler.apply(invocation.getArgument(0));
-            }).when(mock).process(Mockito.any(BaseEvent.class), Mockito.any(Function.class));
+            }).when(mock).process(Mockito.any(com.example.common.event.BaseEvent.class), Mockito.any(Function.class));
             return mock;
         }
     }

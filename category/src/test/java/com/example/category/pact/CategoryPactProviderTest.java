@@ -23,8 +23,6 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import reactor.core.publisher.Mono;
 import org.springframework.test.context.ActiveProfiles;
@@ -38,7 +36,7 @@ import java.util.Map;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = com.example.category.CategoryApplication.class)
 @ActiveProfiles("test")
 @EnableAutoConfiguration(exclude = {SecurityAutoConfiguration.class, OAuth2ResourceServerAutoConfiguration.class, org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration.class})
-@Import({TestSecurityConfig.class, CategoryPactProviderTest.TestConfig.class})
+@Import(TestSecurityConfig.class)
 @PactFolder("../product/target/pacts")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("category-service")
@@ -120,27 +118,5 @@ class CategoryPactProviderTest {
 
     @State("category update request - description too long")
     void categoryUpdateRequestDescriptionTooLong(Map<String, Object> params) {
-    }
-
-    @Configuration
-    static class TestConfig {
-        @Bean
-        OutboxEventPublisher outboxEventPublisher(OutboxEventRepository outboxEventRepository) {
-            return new OutboxEventPublisher() {
-                @Override
-                public Mono<Void> saveEvent(String aggregateType, String aggregateId, String eventType, Object payload) {
-                    return Mono.empty();
-                }
-
-                @Override
-                public void publishOutboxEvents() {
-                }
-
-                @Override
-                public Mono<Void> publishOutboxEventsReactive() {
-                    return Mono.empty();
-                }
-            };
-        }
     }
 }

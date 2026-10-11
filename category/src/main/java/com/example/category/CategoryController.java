@@ -39,6 +39,11 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.getCategoryById(id));
     }
 
+    @GetMapping("/{id}/children")
+    public List<CategoryDto> getCategoryChildren(@PathVariable Long id) {
+        return categoryService.getCategoryChildren(id);
+    }
+
     @PostMapping
     public ResponseEntity<CategoryDto> createCategory(@Valid @RequestBody CategoryDto categoryDto) {
         CategoryDto created = categoryService.createCategory(categoryDto);
