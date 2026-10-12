@@ -5,6 +5,7 @@ import com.example.common.dto.OrderDto;
 import com.example.common.dto.OrderItemDto;
 import com.example.common.event.OrderEvent;
 import com.example.common.exception.ResourceNotFoundException;
+import com.example.order.mapper.OrderItemMapper;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
@@ -57,8 +58,8 @@ public class OrderService {
         this.eventPublisher = eventPublisher;
     }
 
-    // Test-only constructor (package-private for testing)
-    OrderService(OrderRepository orderRepository,
+    // Test-only constructor (public for testing)
+    public OrderService(OrderRepository orderRepository,
                  OrderItemRepository orderItemRepository,
                  OrderMapper orderMapper,
                  ObjectMapper objectMapper,
@@ -108,39 +109,62 @@ public class OrderService {
 
                     order.setStatus(OrderEvent.OrderStatus.CANCELLED.name());
 
-                    Flux<OrderItem> itemsToUpdate = Flux.fromIterable(order.getItems())
-                            .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING ||
-                                    item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
-                                    item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
-                            .flatMap(item -> {
-                                item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
-                                return orderItemRepository.save(item);
-                            });
+                    // Fetch items from repository instead of using order.getItems()
+                    return orderItemRepository.findByOrderId(id).collectList()
+                            .flatMap(items -> {
+                                Flux<OrderItem> itemsToUpdate = Flux.fromIterable(items)
+                                        .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING ||
+                                                item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
+                                                item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
+                                        .flatMap(item -> {
+                                            item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                                            return orderItemRepository.save(item);
+                                        });
 
-                    return itemsToUpdate
-                            .then(orderRepository.save(order))
-                            .flatMap(saved -> eventPublisher.publishOrderCancelled(saved).then(Mono.just(saved)))
-                            .map(orderMapper::toDto);
+                                return itemsToUpdate
+                                        .then(orderRepository.save(order))
+                                        .flatMap(saved -> eventPublisher.publishOrderCancelled(saved).then(Mono.just(saved)))
+                                        .map(orderMapper::toDto);
+                            });
                 }));
     }
 
     public Flux<OrderDto> getAllOrders() {
         log.debug("Fetching all orders");
         return orderRepository.findAll()
-                .map(orderMapper::toDto);
+                .flatMap(this::buildOrderDto);
     }
 
     public Mono<OrderDto> getOrderById(Long id) {
         log.debug("Fetching order by id: {}", id);
         return orderRepository.findById(id)
-                .map(orderMapper::toDto)
-                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", id)));
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", id)))
+                .flatMap(this::buildOrderDto);
     }
 
     public Flux<OrderDto> getOrdersByCustomerId(String customerId) {
         log.debug("Fetching orders by customer id: {}", customerId);
         return orderRepository.findByCustomerId(customerId)
-                .map(orderMapper::toDto);
+                .flatMap(this::buildOrderDto);
+    }
+
+    private Mono<OrderDto> buildOrderDto(Order order) {
+        return orderItemRepository.findByOrderId(order.getId()).collectList()
+                .map(items -> {
+                    OrderDto baseDto = orderMapper.toDto(order);
+                    // Build items list manually since OrderMapper doesn't map items from Order entity
+                    return new OrderDto(
+                        baseDto.id(),
+                        baseDto.customerId(),
+                        baseDto.customerEmail(),
+                        baseDto.status(),
+                        baseDto.totalAmount(),
+                        items.stream().map(OrderItemMapper.INSTANCE::toDto).toList(),
+                        baseDto.shipments(),
+                        baseDto.createdAt(),
+                        baseDto.updatedAt()
+                    );
+                });
     }
 
     public Mono<Void> deleteOrder(Long id) {

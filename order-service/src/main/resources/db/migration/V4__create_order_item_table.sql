@@ -5,7 +5,7 @@ CREATE TABLE order_items (
     product_id BIGINT NOT NULL,
     variant_id BIGINT,
     sku_code VARCHAR(100),
-    product_name VARCHAR(255) NOT NULL,
+    product_name VARCHAR(255),
     quantity_ordered INTEGER NOT NULL,
     quantity_shipped INTEGER NOT NULL DEFAULT 0,
     unit_price DECIMAL(10,2) NOT NULL,

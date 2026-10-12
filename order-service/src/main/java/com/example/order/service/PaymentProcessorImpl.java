@@ -76,40 +76,46 @@ public class PaymentProcessorImpl implements PaymentProcessor {
         };
     }
 
+    private Mono<List<OrderItem>> fetchOrderItems(Long orderId) {
+        return orderItemRepository.findByOrderId(orderId).collectList();
+    }
+
     @Override
     @CircuitBreaker(name = "payment", fallbackMethod = "processRefundFallback")
     @Retry(name = "payment")
     @TimeLimiter(name = "payment")
     public Mono<Void> processRefund(Long orderId) {
         log.info("Processing refund for order: {}", orderId);
-        return orderRepository.findById(orderId)
-                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", orderId)))
-                .flatMap(order -> {
-                    if (!OrderEvent.OrderStatus.CONFIRMED.name().equals(order.getStatus()) &&
-                            !OrderEvent.OrderStatus.SHIPPED.name().equals(order.getStatus()) &&
-                            !OrderEvent.OrderStatus.DELIVERED.name().equals(order.getStatus())) {
-                        log.warn("Order {} cannot be refunded from status: {}", orderId, order.getStatus());
-                        return Mono.error(new IllegalStateException("Order cannot be refunded from status: " + order.getStatus()));
-                    }
+        return transactionalOperator.transactional(
+                orderRepository.findById(orderId)
+                        .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", orderId)))
+                        .flatMap(order -> fetchOrderItems(orderId)
+                                .flatMap(items -> {
+                                    if (!OrderEvent.OrderStatus.CONFIRMED.name().equals(order.getStatus()) &&
+                                            !OrderEvent.OrderStatus.SHIPPED.name().equals(order.getStatus()) &&
+                                            !OrderEvent.OrderStatus.DELIVERED.name().equals(order.getStatus())) {
+                                        log.warn("Order {} cannot be refunded from status: {}", orderId, order.getStatus());
+                                        return Mono.error(new IllegalStateException("Order cannot be refunded from status: " + order.getStatus()));
+                                    }
 
-                    order.setStatus(OrderEvent.OrderStatus.REFUNDED.name());
+                                    order.setStatus(OrderEvent.OrderStatus.REFUNDED.name());
 
-                    for (OrderItem item : order.getItems()) {
-                        if (item.getStatus() == OrderItem.OrderItemStatus.RESERVED) {
-                            item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
-                            orderItemRepository.save(item).subscribe();
-                        }
-                    }
+                                    for (OrderItem item : items) {
+                                        if (item.getStatus() == OrderItem.OrderItemStatus.RESERVED) {
+                                            item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                                            orderItemRepository.save(item).subscribe();
+                                        }
+                                    }
 
-                    log.info("Order {} partially refunded, reserved items cancelled", orderId);
+                                    log.info("Order {} partially refunded, reserved items cancelled", orderId);
 
-                    OrderEvent updatedEvent = OrderEvent.statusChanged(orderId, OrderEvent.OrderStatus.valueOf(order.getStatus()));
-                    return outboxPublisher.saveEvent("Order", orderId.toString(),
-                            "ORDER_UPDATED", updatedEvent);
-                })
-                .switchIfEmpty(Mono.empty())
-                .<Void>map(v -> null)
-                .as(transactionalOperator::transactional);
+                                    OrderEvent updatedEvent = OrderEvent.statusChanged(orderId, OrderEvent.OrderStatus.valueOf(order.getStatus()));
+                                    return outboxPublisher.saveEvent("Order", orderId.toString(),
+                                            "ORDER_UPDATED", updatedEvent);
+                                })
+                                .switchIfEmpty(Mono.empty())
+                                .<Void>map(v -> null)
+                        ));
     }
 
     private Mono<Void> processRefundFallback(Long orderId, Exception ex) {
@@ -142,12 +148,13 @@ public class PaymentProcessorImpl implements PaymentProcessor {
                     order.setStatus(OrderEvent.OrderStatus.CONFIRMED.name());
                     return orderRepository.save(order);
                 })
-                .flatMap(saved -> {
-                    OrderEvent event = OrderEvent.confirmed(saved.getId(), saved.getCustomerId(),
-                            saved.getCustomerEmail(), amount, toEventItems(saved.getItems()));
-                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
-                            "ORDER_CONFIRMED", event);
-                }));
+                .flatMap(saved -> fetchOrderItems(saved.getId())
+                        .flatMap(items -> {
+                            OrderEvent event = OrderEvent.confirmed(saved.getId(), saved.getCustomerId(),
+                                    saved.getCustomerEmail(), amount, toEventItems(items));
+                            return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                    "ORDER_CONFIRMED", event);
+                        })));
     }
 
     @Override
@@ -159,12 +166,13 @@ public class PaymentProcessorImpl implements PaymentProcessor {
                     order.setStatus(OrderEvent.OrderStatus.CANCELLED.name());
                     return orderRepository.save(order);
                 })
-                .flatMap(saved -> {
-                    OrderEvent event = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
-                            saved.getCustomerEmail(), toEventItems(saved.getItems()));
-                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
-                            "ORDER_CANCELLED", event);
-                }));
+                .flatMap(saved -> fetchOrderItems(saved.getId())
+                        .flatMap(items -> {
+                            OrderEvent event = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
+                                    saved.getCustomerEmail(), toEventItems(items));
+                            return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                    "ORDER_CANCELLED", event);
+                        })));
     }
 
     @Override
@@ -176,12 +184,13 @@ public class PaymentProcessorImpl implements PaymentProcessor {
                     order.setStatus(OrderEvent.OrderStatus.REFUNDED.name());
                     return orderRepository.save(order);
                 })
-                .flatMap(saved -> {
-                    OrderEvent event = OrderEvent.refunded(saved.getId(), saved.getCustomerId(),
-                            saved.getCustomerEmail(), saved.getTotalAmount(), toEventItems(saved.getItems()));
-                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
-                            "PAYMENT_REFUNDED", event);
-                }));
+                .flatMap(saved -> fetchOrderItems(saved.getId())
+                        .flatMap(items -> {
+                            OrderEvent event = OrderEvent.refunded(saved.getId(), saved.getCustomerId(),
+                                    saved.getCustomerEmail(), saved.getTotalAmount(), toEventItems(items));
+                            return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                    "PAYMENT_REFUNDED", event);
+                        })));
     }
 
     @Override
@@ -193,11 +202,12 @@ public class PaymentProcessorImpl implements PaymentProcessor {
                     order.setStatus(OrderEvent.OrderStatus.PARTIALLY_REFUNDED.name());
                     return orderRepository.save(order);
                 })
-                .flatMap(saved -> {
-                    OrderEvent event = OrderEvent.partiallyRefunded(saved.getId(), saved.getCustomerId(),
-                            saved.getCustomerEmail(), saved.getTotalAmount(), toEventItems(saved.getItems()));
-                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
-                            "PAYMENT_PARTIALLY_REFUNDED", event);
-                }));
+                .flatMap(saved -> fetchOrderItems(saved.getId())
+                        .flatMap(items -> {
+                            OrderEvent event = OrderEvent.partiallyRefunded(saved.getId(), saved.getCustomerId(),
+                                    saved.getCustomerEmail(), saved.getTotalAmount(), toEventItems(items));
+                            return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                    "PAYMENT_PARTIALLY_REFUNDED", event);
+                        })));
     }
 }

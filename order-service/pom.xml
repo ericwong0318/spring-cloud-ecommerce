@@ -186,6 +186,11 @@
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-dbcp2</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- JQF Fuzz Testing -->
         <dependency>
@@ -206,6 +211,17 @@
     </dependencies>
 
     <build>
+        <testResources>
+            <testResource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>db/migration/**</include>
+                </includes>
+            </testResource>
+            <testResource>
+                <directory>src/test/resources</directory>
+            </testResource>
+        </testResources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

@@ -8,14 +8,19 @@ import au.com.dius.pact.provider.junitsupport.loader.PactFolder;
 import au.com.dius.pact.provider.junitsupport.State;
 import com.example.product.CategoryClient;
 import com.example.product.ProductApplication;
+import com.example.product.ProductRepository;
+import com.example.product.ProductMapper;
 import com.example.product.TestSecurityConfig;
 import com.example.product.config.RabbitMQConfig;
+import com.example.common.dto.ProductDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration;
@@ -26,28 +31,26 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.Optional;
 
-import org.mockito.Mockito;
-
-@Testcontainers
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = {ProductApplication.class, TestSecurityConfig.class, RabbitMQConfig.class}
+    properties = {
+        "spring.main.web-application-type=reactive",
+        "eureka.client.enabled=false",
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration,org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration"
+    }
 )
 @ActiveProfiles("test")
-@ExtendWith(PactVerificationInvocationContextProvider.class)
-@Provider("product-service")
-@PactFolder("../order-service/target/pacts")
 @EnableAutoConfiguration(exclude = {
+    MongoAutoConfiguration.class,
+    MongoDataAutoConfiguration.class,
+    DataSourceAutoConfiguration.class,
     ReactiveSecurityAutoConfiguration.class,
     ReactiveOAuth2ResourceServerAutoConfiguration.class,
     ReactiveManagementWebSecurityAutoConfiguration.class,
@@ -55,10 +58,11 @@ import org.mockito.Mockito;
     OAuth2ResourceServerAutoConfiguration.class,
     ManagementWebSecurityAutoConfiguration.class
 })
+@Import(TestSecurityConfig.class)
+@ExtendWith(PactVerificationInvocationContextProvider.class)
+@Provider("product-service")
+@PactFolder("../order-service/target/pacts")
 class ProductPactProviderTest {
-
-    @Container
-    static final MongoDBContainer mongo = new MongoDBContainer("mongo:7.0");
 
     @LocalServerPort
     private int port;
@@ -66,17 +70,17 @@ class ProductPactProviderTest {
     @MockBean
     private CategoryClient categoryClient;
 
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", mongo::getConnectionString);
-        registry.add("eureka.client.enabled", () -> "false");
-    }
+    @MockBean
+    private ProductRepository productRepository;
+
+    @MockBean
+    private ProductMapper productMapper;
 
     @BeforeEach
     void before(PactVerificationContext context) {
         context.setTarget(new HttpTestTarget("localhost", port));
-        Mockito.reset(categoryClient);
-        Mockito.when(categoryClient.getCategoryName(123L)).thenReturn(java.util.Optional.of("Electronics"));
+        Mockito.reset(categoryClient, productRepository, productMapper);
+        Mockito.when(categoryClient.getCategoryName(123L)).thenReturn(Optional.of("Electronics"));
     }
 
     @TestTemplate
@@ -86,6 +90,34 @@ class ProductPactProviderTest {
 
     @State("valid product create request")
     void validProductCreateRequest() {
+        // Mock the category name lookup for "cat-123" -> extracts "123"
+        Mockito.when(categoryClient.getCategoryName(123L)).thenReturn(Optional.of("Electronics"));
+
+        // Create a product entity that would be saved
+        com.example.product.Product entity = new com.example.product.Product();
+        entity.setName("Laptop Pro 15");
+        entity.setDescription("High-performance laptop for professionals");
+        entity.setCategoryId("cat-123");
+        entity.setCategoryName("Electronics");
+        entity.setPrice(new java.math.BigDecimal("1999.99"));
+
+        com.example.product.Product savedEntity = new com.example.product.Product();
+        savedEntity.setId("1");
+        savedEntity.setName("Laptop Pro 15");
+        savedEntity.setDescription("High-performance laptop for professionals");
+        savedEntity.setCategoryId("cat-123");
+        savedEntity.setCategoryName("Electronics");
+        savedEntity.setPrice(new java.math.BigDecimal("1999.99"));
+
+        ProductDto responseDto = new ProductDto(
+            "1", "Laptop Pro 15", "High-performance laptop for professionals",
+            new java.math.BigDecimal("1999.99"), "cat-123", "Electronics", java.util.List.of()
+        );
+
+        // Use argument matchers to match any ProductDto passed to mapper
+        Mockito.when(productMapper.toEntity(Mockito.any(ProductDto.class))).thenReturn(entity);
+        Mockito.when(productRepository.save(entity)).thenReturn(Mono.just(savedEntity));
+        Mockito.when(productMapper.toDto(savedEntity)).thenReturn(responseDto);
     }
 
     @State("valid product update request")

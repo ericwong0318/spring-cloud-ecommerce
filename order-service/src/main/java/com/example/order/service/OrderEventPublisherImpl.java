@@ -4,6 +4,7 @@ import com.example.common.event.OrderEvent;
 import com.example.common.event.OutboxEventPublisher;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
+import com.example.order.repository.OrderItemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -20,9 +21,11 @@ public class OrderEventPublisherImpl implements OrderEventPublisher {
     private static final Logger log = LoggerFactory.getLogger(OrderEventPublisherImpl.class);
 
     private final OutboxEventPublisher outboxPublisher;
+    private final OrderItemRepository orderItemRepository;
 
-    public OrderEventPublisherImpl(OutboxEventPublisher outboxPublisher) {
+    public OrderEventPublisherImpl(OutboxEventPublisher outboxPublisher, OrderItemRepository orderItemRepository) {
         this.outboxPublisher = outboxPublisher;
+        this.orderItemRepository = orderItemRepository;
     }
 
     private List<OrderEvent.OrderItem> toEventItems(List<OrderItem> items) {
@@ -53,12 +56,19 @@ public class OrderEventPublisherImpl implements OrderEventPublisher {
         };
     }
 
+    private Mono<List<OrderItem>> fetchOrderItems(Long orderId) {
+        return orderItemRepository.findByOrderId(orderId).collectList();
+    }
+
     @Override
     public Mono<Void> publishOrderCreated(Order order) {
-        List<OrderEvent.OrderItem> eventItems = toEventItems(order.getItems());
-        OrderEvent event = OrderEvent.created(order.getId(), order.getCustomerId(),
-                order.getCustomerEmail(), order.getTotalAmount(), eventItems);
-        return outboxPublisher.saveEvent("Order", order.getId().toString(), "ORDER_CREATED", event);
+        return fetchOrderItems(order.getId())
+                .flatMap(items -> {
+                    List<OrderEvent.OrderItem> eventItems = toEventItems(items);
+                    OrderEvent event = OrderEvent.created(order.getId(), order.getCustomerId(),
+                            order.getCustomerEmail(), order.getTotalAmount(), eventItems);
+                    return outboxPublisher.saveEvent("Order", order.getId().toString(), "ORDER_CREATED", event);
+                });
     }
 
     @Override
@@ -69,18 +79,24 @@ public class OrderEventPublisherImpl implements OrderEventPublisher {
 
     @Override
     public Mono<Void> publishOrderCancelled(Order order) {
-        List<OrderEvent.OrderItem> eventItems = toEventItems(order.getItems());
-        OrderEvent event = OrderEvent.cancelled(order.getId(), order.getCustomerId(),
-                order.getCustomerEmail(), eventItems);
-        return outboxPublisher.saveEvent("Order", order.getId().toString(), "ORDER_CANCELLED", event);
+        return fetchOrderItems(order.getId())
+                .flatMap(items -> {
+                    List<OrderEvent.OrderItem> eventItems = toEventItems(items);
+                    OrderEvent event = OrderEvent.cancelled(order.getId(), order.getCustomerId(),
+                            order.getCustomerEmail(), eventItems);
+                    return outboxPublisher.saveEvent("Order", order.getId().toString(), "ORDER_CANCELLED", event);
+                });
     }
 
     @Override
     public Mono<Void> publishOrderConfirmed(Order order, BigDecimal amount) {
-        List<OrderEvent.OrderItem> eventItems = toEventItems(order.getItems());
-        OrderEvent event = OrderEvent.confirmed(order.getId(), order.getCustomerId(),
-                order.getCustomerEmail(), amount, eventItems);
-        return outboxPublisher.saveEvent("Order", order.getId().toString(), "ORDER_CONFIRMED", event);
+        return fetchOrderItems(order.getId())
+                .flatMap(items -> {
+                    List<OrderEvent.OrderItem> eventItems = toEventItems(items);
+                    OrderEvent event = OrderEvent.confirmed(order.getId(), order.getCustomerId(),
+                            order.getCustomerEmail(), amount, eventItems);
+                    return outboxPublisher.saveEvent("Order", order.getId().toString(), "ORDER_CONFIRMED", event);
+                });
     }
 
     @Override
@@ -91,18 +107,24 @@ public class OrderEventPublisherImpl implements OrderEventPublisher {
 
     @Override
     public Mono<Void> publishPaymentRefunded(Order order) {
-        List<OrderEvent.OrderItem> eventItems = toEventItems(order.getItems());
-        OrderEvent event = OrderEvent.refunded(order.getId(), order.getCustomerId(),
-                order.getCustomerEmail(), order.getTotalAmount(), eventItems);
-        return outboxPublisher.saveEvent("Order", order.getId().toString(), "PAYMENT_REFUNDED", event);
+        return fetchOrderItems(order.getId())
+                .flatMap(items -> {
+                    List<OrderEvent.OrderItem> eventItems = toEventItems(items);
+                    OrderEvent event = OrderEvent.refunded(order.getId(), order.getCustomerId(),
+                            order.getCustomerEmail(), order.getTotalAmount(), eventItems);
+                    return outboxPublisher.saveEvent("Order", order.getId().toString(), "PAYMENT_REFUNDED", event);
+                });
     }
 
     @Override
     public Mono<Void> publishPaymentPartiallyRefunded(Order order) {
-        List<OrderEvent.OrderItem> eventItems = toEventItems(order.getItems());
-        OrderEvent event = OrderEvent.partiallyRefunded(order.getId(), order.getCustomerId(),
-                order.getCustomerEmail(), order.getTotalAmount(), eventItems);
-        return outboxPublisher.saveEvent("Order", order.getId().toString(), "PAYMENT_PARTIALLY_REFUNDED", event);
+        return fetchOrderItems(order.getId())
+                .flatMap(items -> {
+                    List<OrderEvent.OrderItem> eventItems = toEventItems(items);
+                    OrderEvent event = OrderEvent.partiallyRefunded(order.getId(), order.getCustomerId(),
+                            order.getCustomerEmail(), order.getTotalAmount(), eventItems);
+                    return outboxPublisher.saveEvent("Order", order.getId().toString(), "PAYMENT_PARTIALLY_REFUNDED", event);
+                });
     }
 
     @Override

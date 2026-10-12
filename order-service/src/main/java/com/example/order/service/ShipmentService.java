@@ -173,11 +173,13 @@ public class ShipmentService {
 
     private Mono<Void> checkAndTransitionOrderToShipped(Long orderId) {
         return orderRepository.findById(orderId)
-                .flatMap(order -> Flux.fromIterable(order.getItems())
-                        .all(item -> item.getStatus() == OrderItem.OrderItemStatus.SHIPPED ||
-                                item.getStatus() == OrderItem.OrderItemStatus.CANCELLED ||
-                                item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
-                        .flatMap(allShippedOrCancelled -> {
+                .flatMap(order -> orderItemRepository.findByOrderId(orderId).collectList()
+                        .flatMap(items -> {
+                            boolean allShippedOrCancelled = items.stream()
+                                    .allMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.SHIPPED ||
+                                            item.getStatus() == OrderItem.OrderItemStatus.CANCELLED ||
+                                            item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED);
+
                             if (allShippedOrCancelled) {
                                 order.setStatus(OrderEvent.OrderStatus.SHIPPED.name());
                                 return orderRepository.save(order)
@@ -194,32 +196,35 @@ public class ShipmentService {
 
     private Mono<Void> publishShippedEvent(Order order, Shipment shipment) {
         log.info("Publishing OrderEvent.SHIPPED for order: {} shipment: {}", order.getId(), shipment.getId());
-        List<OrderEvent.OrderItem> eventItems = order.getItems().stream()
-                .map(item -> new OrderEvent.OrderItem(
-                        item.getId(),
-                        item.getProductId(),
-                        item.getVariantId(),
-                        item.getProductName(),
-                        item.getSkuCode(),
-                        item.getQuantityOrdered(),
-                        item.getQuantityShipped(),
-                        item.getUnitPrice(),
-                        mapToEventItemStatus(item.getStatus()),
-                        item.getReservedAt()))
-                .collect(Collectors.toList());
+        return orderItemRepository.findByOrderId(order.getId()).collectList()
+                .flatMap(items -> {
+                    List<OrderEvent.OrderItem> eventItems = items.stream()
+                            .map(item -> new OrderEvent.OrderItem(
+                                    item.getId(),
+                                    item.getProductId(),
+                                    item.getVariantId(),
+                                    item.getProductName(),
+                                    item.getSkuCode(),
+                                    item.getQuantityOrdered(),
+                                    item.getQuantityShipped(),
+                                    item.getUnitPrice(),
+                                    mapToEventItemStatus(item.getStatus()),
+                                    item.getReservedAt()))
+                            .collect(Collectors.toList());
 
-        OrderEvent shippedEvent = OrderEvent.shipped(
-                order.getId(),
-                order.getCustomerId(),
-                null, // customerEmail not stored in order
-                order.getTotalAmount(),
-                eventItems,
-                shipment.getId(),
-                shipment.getTrackingNumber(),
-                shipment.getCarrier(),
-                LocalDateTime.now()
-        );
-        return saveOrderEventToOutbox("Order", order.getId().toString(), "ORDER_SHIPPED", shippedEvent);
+                    OrderEvent shippedEvent = OrderEvent.shipped(
+                            order.getId(),
+                            order.getCustomerId(),
+                            null, // customerEmail not stored in order
+                            order.getTotalAmount(),
+                            eventItems,
+                            shipment.getId(),
+                            shipment.getTrackingNumber(),
+                            shipment.getCarrier(),
+                            LocalDateTime.now()
+                    );
+                    return saveOrderEventToOutbox("Order", order.getId().toString(), "ORDER_SHIPPED", shippedEvent);
+                });
     }
 
     private Mono<Void> saveOrderEventToOutbox(String aggregateType, String aggregateId, String eventType, Object payload) {

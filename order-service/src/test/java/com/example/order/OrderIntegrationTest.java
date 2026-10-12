@@ -6,16 +6,22 @@ import com.example.common.event.InventoryEvent;
 import com.example.common.event.OrderEvent;
 import com.example.common.event.PaymentEvent;
 import com.example.common.event.ReservationExpiredEvent;
+import com.example.common.event.ReactiveIdempotentEventProcessor;
+import com.example.common.event.OutboxEventPublisher;
+import com.example.order.service.ShipmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -25,8 +31,20 @@ import java.util.UUID;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 class OrderIntegrationTest extends BaseIntegrationTest {
+
+    @MockBean
+    private ShipmentService shipmentService;
+
+    @MockBean
+    private ReactiveIdempotentEventProcessor reactiveIdempotentEventProcessor;
+
+    @MockBean
+    private OutboxEventPublisher outboxEventPublisher;
 
     @LocalServerPort
     private int port;
@@ -45,6 +63,9 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         RestAssured.port = port;
         RestAssured.basePath = "/orders";
         objectMapper.registerModule(new JavaTimeModule());
+        // Configure mock OutboxEventPublisher to return empty Mono
+        Mockito.when(outboxEventPublisher.saveEvent(Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.any()))
+                .thenReturn(Mono.empty());
     }
 
     private OrderDto createOrderDto(String customerId, String customerEmail, BigDecimal totalAmount, List<OrderItemDto> items) {
@@ -66,8 +87,8 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 null,
                 productId,
                 variantId,
-                null,
-                null,
+                "Test Product",
+                "SKU-TEST",
                 quantity,
                 0,
                 price,
@@ -102,7 +123,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void getOrder_shouldReturnOrder_whenExists() {
-        // First create an order
         OrderDto orderDto = createOrderDto("CUST-002", "customer2@example.com",
                 new BigDecimal("999.99"),
                 List.of(createOrderItemDto(2L, 2L, 1, new BigDecimal("999.99"))));
@@ -117,7 +137,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .extract()
                 .as(OrderDto.class);
 
-        // Then get the order
         OrderDto retrievedOrder = given()
                 .when()
                 .get("/{id}", createdOrder.id())
@@ -132,7 +151,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void cancelOrder_shouldCancelOrder_whenPending() {
-        // First create an order
         OrderDto orderDto = createOrderDto("CUST-003", "customer3@example.com",
                 new BigDecimal("49.99"),
                 List.of(createOrderItemDto(3L, 3L, 1, new BigDecimal("49.99"))));
@@ -147,7 +165,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .extract()
                 .as(OrderDto.class);
 
-        // Cancel the order
         OrderDto cancelledOrder = given()
                 .when()
                 .post("/{id}/cancel", createdOrder.id())
@@ -162,7 +179,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void cancelOrder_shouldReturn409_whenOrderNotPending() {
-        // First create an order
         OrderDto orderDto = createOrderDto("CUST-004", "customer4@example.com",
                 new BigDecimal("49.99"),
                 List.of(createOrderItemDto(4L, 4L, 1, new BigDecimal("49.99"))));
@@ -177,14 +193,12 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                 .extract()
                 .as(OrderDto.class);
 
-        // First cancel - should succeed
         given()
                 .when()
                 .post("/{id}/cancel", createdOrder.id())
                 .then()
                 .statusCode(HttpStatus.OK.value());
 
-        // Second cancel - should fail with 409 Conflict
         given()
                 .when()
                 .post("/{id}/cancel", createdOrder.id())
@@ -194,7 +208,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void fullSaga_shouldTransitionOrderToConfirmed_whenPaymentCaptured() {
-        // Create order
         OrderDto orderDto = createOrderDto("CUST-005", "customer5@example.com",
                 new BigDecimal("1999.98"),
                 List.of(createOrderItemDto(5L, 5L, 2, new BigDecimal("999.99"))));
@@ -211,12 +224,10 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         Long orderId = createdOrder.id();
 
-        // Simulate inventory reservation success
         InventoryEvent reservedEvent = InventoryEvent.reserved(5L, 5L, 2, 0);
         reservedEvent.setEventId(UUID.randomUUID());
         rabbitTemplate.convertAndSend("inventory.exchange", "reserved", reservedEvent);
 
-        // Wait for order to transition to RESERVED
         await().untilAsserted(() -> {
             OrderDto order = given()
                     .when()
@@ -229,7 +240,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
             assertThat(order.items().get(0).status()).isEqualTo(OrderItemDto.OrderItemStatus.RESERVED);
         });
 
-        // Simulate payment captured
         PaymentEvent paymentEvent = new PaymentEvent();
         paymentEvent.setEventType("CAPTURED");
         paymentEvent.setEventId(UUID.randomUUID());
@@ -245,7 +255,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         rabbitTemplate.convertAndSend("payment.exchange", "payment.captured", paymentEvent);
 
-        // Wait for order to transition to CONFIRMED
         await().untilAsserted(() -> {
             OrderDto order = given()
                     .when()
@@ -261,7 +270,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void fullSaga_shouldCancelOrder_whenPaymentFailed() {
-        // Create order
         OrderDto orderDto = createOrderDto("CUST-006", "customer6@example.com",
                 new BigDecimal("49.99"),
                 List.of(createOrderItemDto(6L, 6L, 1, new BigDecimal("49.99"))));
@@ -278,12 +286,10 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         Long orderId = createdOrder.id();
 
-        // Simulate inventory reservation success
         InventoryEvent reservedEvent = InventoryEvent.reserved(6L, 6L, 1, 0);
         reservedEvent.setEventId(UUID.randomUUID());
         rabbitTemplate.convertAndSend("inventory.exchange", "reserved", reservedEvent);
 
-        // Wait for order to transition to RESERVED
         await().untilAsserted(() -> {
             OrderDto order = given()
                     .when()
@@ -295,7 +301,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
             assertThat(order.status()).isEqualTo(OrderDto.OrderStatus.RESERVED);
         });
 
-        // Simulate payment failed
         PaymentEvent paymentEvent = new PaymentEvent();
         paymentEvent.setEventType("FAILED");
         paymentEvent.setEventId(UUID.randomUUID());
@@ -311,7 +316,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         rabbitTemplate.convertAndSend("payment.exchange", "payment.failed", paymentEvent);
 
-        // Wait for order to transition to CANCELLED
         await().untilAsserted(() -> {
             OrderDto order = given()
                     .when()
@@ -327,7 +331,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void fullSaga_shouldCancelOrder_whenReservationExpired() {
-        // Create order
         OrderDto orderDto = createOrderDto("CUST-007", "customer7@example.com",
                 new BigDecimal("999.99"),
                 List.of(createOrderItemDto(7L, 7L, 1, new BigDecimal("999.99"))));
@@ -345,12 +348,10 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         Long orderId = createdOrder.id();
         Long orderItemId = createdOrder.items().get(0).id();
 
-        // Simulate inventory reservation success
         InventoryEvent reservedEvent = InventoryEvent.reserved(7L, 7L, 1, 0);
         reservedEvent.setEventId(UUID.randomUUID());
         rabbitTemplate.convertAndSend("inventory.exchange", "reserved", reservedEvent);
 
-        // Wait for order to transition to RESERVED
         await().untilAsserted(() -> {
             OrderDto order = given()
                     .when()
@@ -363,12 +364,10 @@ class OrderIntegrationTest extends BaseIntegrationTest {
             assertThat(order.items().get(0).status()).isEqualTo(OrderItemDto.OrderItemStatus.RESERVED);
         });
 
-        // Simulate reservation expired
         ReservationExpiredEvent expiredEvent = ReservationExpiredEvent.expired(orderItemId, 7L, 1, LocalDateTime.now());
         expiredEvent.setEventId(UUID.randomUUID());
         rabbitTemplate.convertAndSend("inventory.exchange", "reservation.expired", expiredEvent);
 
-        // Wait for order to transition to CANCELLED
         await().untilAsserted(() -> {
             OrderDto order = given()
                     .when()
@@ -384,7 +383,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
     @Test
     void partialReservation_shouldSetItemToBackordered() {
-        // Create order with two items
         OrderDto orderDto = createOrderDto("CUST-008", "customer8@example.com",
                 new BigDecimal("1049.98"),
                 List.of(
@@ -404,7 +402,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         Long orderId = createdOrder.id();
 
-        // Simulate partial reservation - first item fully reserved, second item backordered
         InventoryEvent reservedEvent1 = InventoryEvent.reserved(8L, 8L, 1, 0);
         reservedEvent1.setEventId(UUID.randomUUID());
         rabbitTemplate.convertAndSend("inventory.exchange", "reserved", reservedEvent1);
@@ -413,7 +410,6 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         reservedEvent2.setEventId(UUID.randomUUID());
         rabbitTemplate.convertAndSend("inventory.exchange", "reserved", reservedEvent2);
 
-        // Wait for order to transition
         await().untilAsserted(() -> {
             OrderDto order = given()
                     .when()
@@ -422,10 +418,8 @@ class OrderIntegrationTest extends BaseIntegrationTest {
                     .statusCode(HttpStatus.OK.value())
                     .extract()
                     .as(OrderDto.class);
-                    // Order should be RESERVED (one item RESERVED, one BACKORDERED)
                     assertThat(order.status()).isEqualTo(OrderDto.OrderStatus.RESERVED);
                     assertThat(order.items()).hasSize(2);
-                    // Find the backordered item
                     boolean hasBackordered = order.items().stream()
                             .anyMatch(item -> item.status() == OrderItemDto.OrderItemStatus.BACKORDERED);
                     assertThat(hasBackordered).isTrue();

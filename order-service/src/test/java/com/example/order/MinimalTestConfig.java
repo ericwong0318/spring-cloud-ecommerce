@@ -1,19 +1,18 @@
 package com.example.order;
 
+import com.example.order.mapper.OrderMapper;
 import com.example.order.mapper.ShipmentMapper;
-import com.example.order.model.Order;
-import com.example.order.model.OrderItem;
-import com.example.order.model.Shipment;
-import com.example.order.model.ShipmentItem;
+import com.example.order.service.OrderSagaOrchestratorImpl;
+import com.example.order.service.PaymentProcessor;
+import com.example.order.service.ShipmentService;
+import com.example.order.service.OrderEventPublisher;
 import com.example.common.event.OutboxEventPublisher;
-import com.example.order.outbox.R2dbcOutboxEventRepository;
 import com.example.order.outbox.R2dbcOutboxEventRepository;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import com.example.order.repository.ShipmentItemRepository;
 import com.example.order.repository.ShipmentRepository;
 import com.example.order.service.OrderService;
-import com.example.order.service.ShipmentService;
 import org.mockito.Mockito;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -21,36 +20,50 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Primary;
+import org.springframework.transaction.reactive.TransactionalOperator;
 
+import com.example.common.dto.OrderDto;
+import com.example.common.dto.OrderItemDto;
+import com.example.common.dto.CreateOrderRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import reactor.core.publisher.Mono;
 
 /**
  * Minimal test configuration that only includes order-service beans, avoiding common module's JPA classes.
  */
 @Configuration
-@EnableAutoConfiguration(exclude = {
-    org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.data.r2dbc.R2dbcRepositoriesAutoConfiguration.class
-})
-@ComponentScan(basePackages = "com.example.order", excludeFilters = {
-    @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
-        com.example.common.event.OutboxEventRepository.class,
-        com.example.common.event.ReactiveOutboxEventPublisher.class,
-        com.example.common.event.IdempotentEventProcessor.class,
-        com.example.order.service.ShipmentService.class,
-        com.example.order.service.OrderService.class
-    }),
-    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.pact.*"),
-    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*PactProviderTest.*"),
-    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*PactConsumerTest.*"),
-    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*PactTestConfig.*"),
-    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*TestConfig.*"),
-    @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.BaseIntegrationTest.*")
-})
+@ComponentScan(
+    basePackages = {
+        "com.example.order.controller",
+        "com.example.order.service",
+        "com.example.order.repository",
+        "com.example.order.mapper",
+        "com.example.order.model",
+        "com.example.order.config",
+        "com.example.order.listener"
+    },
+    excludeFilters = {
+        @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = {
+            com.example.common.event.OutboxEventRepository.class,
+            com.example.common.event.ReactiveOutboxEventPublisher.class,
+            com.example.common.event.IdempotentEventProcessor.class,
+            com.example.order.service.OrderService.class,
+            com.example.order.service.ShipmentService.class,
+            com.example.order.outbox.R2dbcOutboxEventRepository.class,
+        }),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.pact.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*PactProviderTest.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*PactConsumerTest.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*PactTestConfig.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.*TestConfig.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.BaseIntegrationTest.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.controller.ShipmentController"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.service.ShipmentService"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.mapper.Shipment.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.repository.Shipment.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.order.model.Shipment.*")
+    }
+)
 public class MinimalTestConfig {
     @Bean
     @Primary
@@ -60,44 +73,59 @@ public class MinimalTestConfig {
 
     @Bean
     @Primary
-    public ShipmentService shipmentService() {
-        return Mockito.mock(ShipmentService.class);
+    public OrderSagaOrchestratorImpl orderSagaOrchestrator(OutboxEventPublisher outboxEventPublisher,
+                                                            PaymentProcessor paymentProcessor,
+                                                            OrderEventPublisher orderEventPublisher,
+                                                            OrderRepository orderRepository,
+                                                            OrderItemRepository orderItemRepository,
+                                                            OrderMapper orderMapper,
+                                                            ObjectMapper objectMapper,
+                                                            TransactionalOperator transactionalOperator) {
+        // Use real OrderSagaOrchestratorImpl with mocked external dependencies
+        return new OrderSagaOrchestratorImpl(orderRepository, orderItemRepository, orderMapper, objectMapper,
+                transactionalOperator, outboxEventPublisher, paymentProcessor, orderEventPublisher);
     }
 
     @Bean
     @Primary
-    public OrderService orderService() {
-        return Mockito.mock(OrderService.class);
+    public PaymentProcessor paymentProcessor() {
+        return Mockito.mock(PaymentProcessor.class);
     }
 
     @Bean
-    public OrderRepository orderRepository() {
-        return Mockito.mock(OrderRepository.class);
+    @Primary
+    public OrderEventPublisher orderEventPublisher() {
+        return Mockito.mock(OrderEventPublisher.class);
     }
 
     @Bean
-    public OrderItemRepository orderItemRepository() {
-        return Mockito.mock(OrderItemRepository.class);
-    }
-
-    @Bean
-    public ShipmentRepository shipmentRepository() {
-        return Mockito.mock(ShipmentRepository.class);
-    }
-
-    @Bean
-    public ShipmentItemRepository shipmentItemRepository() {
-        return Mockito.mock(ShipmentItemRepository.class);
-    }
-
-    @Bean
+    @Primary
     public ShipmentMapper shipmentMapper() {
         return Mockito.mock(ShipmentMapper.class);
     }
 
     @Bean
     @Primary
-    public R2dbcOutboxEventRepository r2dbcOutboxEventRepository() {
-        return Mockito.mock(R2dbcOutboxEventRepository.class);
+    public ShipmentService shipmentService() {
+        return Mockito.mock(ShipmentService.class);
+    }
+
+    /**
+     * Creates a real OrderService with real database repositories but mocked external services.
+     * This allows integration tests to use the real database while mocking saga orchestration,
+     * payment processing, and event publishing.
+     */
+    @Bean
+    @Primary
+    public OrderService orderService(OrderRepository orderRepository,
+                                      OrderItemRepository orderItemRepository,
+                                      OrderMapper orderMapper,
+                                      ObjectMapper objectMapper,
+                                      TransactionalOperator transactionalOperator,
+                                      OrderSagaOrchestratorImpl sagaOrchestrator,
+                                      PaymentProcessor paymentProcessor,
+                                      OrderEventPublisher eventPublisher) {
+        return new OrderService(orderRepository, orderItemRepository, orderMapper, objectMapper,
+                transactionalOperator, sagaOrchestrator, paymentProcessor, eventPublisher, true);
     }
 }

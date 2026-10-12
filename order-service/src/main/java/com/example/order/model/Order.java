@@ -6,10 +6,13 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
+/**
+ * Order entity for R2DBC persistence.
+ * Does not contain nested entities (OrderItem, Shipment) as R2DBC doesn't support nested entities.
+ * Related entities are persisted separately via their repositories with orderId foreign key.
+ */
 @Table("orders")
 public class Order {
 
@@ -33,43 +36,22 @@ public class Order {
     @Column("updated_at")
     private LocalDateTime updatedAt;
 
-    // Transient fields for related entities (not persisted directly)
-    private transient List<OrderItem> items = new ArrayList<>();
-    private transient List<Shipment> shipments = new ArrayList<>();
-
     public Order() {
     }
 
     public Order(Long id, String customerId, String customerEmail, String status, BigDecimal totalAmount,
-                 List<OrderItem> items, List<Shipment> shipments, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                 LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.customerId = customerId;
         this.customerEmail = customerEmail;
         this.status = status;
         this.totalAmount = totalAmount;
-        this.items = items != null ? items : new ArrayList<>();
-        this.shipments = shipments != null ? shipments : new ArrayList<>();
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
     public static OrderBuilder builder() {
         return new OrderBuilder();
-    }
-
-    public void addItem(OrderItem item) {
-        items.add(item);
-        item.setOrderId(this.id);
-    }
-
-    public void removeItem(OrderItem item) {
-        items.remove(item);
-        item.setOrderId(null);
-    }
-
-    public void addShipment(Shipment shipment) {
-        shipments.add(shipment);
-        shipment.setOrderId(this.id);
     }
 
     // Getters and Setters
@@ -111,22 +93,6 @@ public class Order {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
-    }
-
-    public List<OrderItem> getItems() {
-        return items;
-    }
-
-    public void setItems(List<OrderItem> items) {
-        this.items = items != null ? items : new ArrayList<>();
-    }
-
-    public List<Shipment> getShipments() {
-        return shipments;
-    }
-
-    public void setShipments(List<Shipment> shipments) {
-        this.shipments = shipments != null ? shipments : new ArrayList<>();
     }
 
     public LocalDateTime getCreatedAt() {
@@ -174,8 +140,6 @@ public class Order {
         private String customerEmail;
         private String status;
         private BigDecimal totalAmount;
-        private List<OrderItem> items = new ArrayList<>();
-        private List<Shipment> shipments = new ArrayList<>();
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -204,16 +168,6 @@ public class Order {
             return this;
         }
 
-        public OrderBuilder items(List<OrderItem> items) {
-            this.items = items != null ? items : new ArrayList<>();
-            return this;
-        }
-
-        public OrderBuilder shipments(List<Shipment> shipments) {
-            this.shipments = shipments != null ? shipments : new ArrayList<>();
-            return this;
-        }
-
         public OrderBuilder createdAt(LocalDateTime createdAt) {
             this.createdAt = createdAt;
             return this;
@@ -225,7 +179,7 @@ public class Order {
         }
 
         public Order build() {
-            return new Order(id, customerId, customerEmail, status, totalAmount, items, shipments, createdAt, updatedAt);
+            return new Order(id, customerId, customerEmail, status, totalAmount, createdAt, updatedAt);
         }
     }
 }

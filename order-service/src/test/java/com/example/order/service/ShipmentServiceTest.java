@@ -103,8 +103,6 @@ class ShipmentServiceTest {
         orderItem.setStatus(OrderItem.OrderItemStatus.RESERVED);
         orderItem.setReservedAt(LocalDateTime.now());
 
-        order.setItems(List.of(orderItem));
-
         // Setup shipment
         shipment = new Shipment();
         shipment.setId(1L);
@@ -162,6 +160,7 @@ private ShipmentService createShipmentService() {
         
         // Mock order item repository
         when(orderItemRepository.findById(1L)).thenReturn(Mono.just(orderItem));
+        when(orderItemRepository.findByOrderId(1L)).thenReturn(Flux.just(orderItem));
         when(orderItemRepository.save(any(OrderItem.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
         
         // Mock shipment repository
@@ -261,7 +260,6 @@ private ShipmentService createShipmentService() {
         order2.setTotalAmount(new BigDecimal("999.99"));
         order2.setCreatedAt(LocalDateTime.now());
         order2.setUpdatedAt(LocalDateTime.now());
-        order2.setItems(List.of());
 
         when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
         when(orderRepository.findById(2L)).thenReturn(Mono.just(order2));

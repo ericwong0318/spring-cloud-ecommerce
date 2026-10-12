@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -100,6 +101,8 @@ public class OrderSagaOrchestratorImpl implements OrderSagaHandler {
 
         LocalDateTime now = LocalDateTime.now();
 
+        // Create order items from request (but don't add to order since it no longer has items collection)
+        List<OrderItem> orderItems = new ArrayList<>();
         if (request.items() != null) {
             for (CreateOrderItemRequest itemDto : request.items()) {
                 OrderItem item = new OrderItem();
@@ -110,18 +113,33 @@ public class OrderSagaOrchestratorImpl implements OrderSagaHandler {
                 item.setUnitPrice(BigDecimal.ZERO);
                 item.setStatus(OrderItem.OrderItemStatus.PENDING);
                 item.setReservedAt(now);
-                order.addItem(item);
+                orderItems.add(item);
             }
         }
 
+        // Save order first
         return transactionalOperator.transactional(orderRepository.save(order))
-                .flatMap(saved -> {
-                    List<OrderEvent.OrderItem> eventItems = toEventItems(saved.getItems());
-                    OrderEvent event = OrderEvent.created(saved.getId(), saved.getCustomerId(),
-                            request.customerEmail(), saved.getTotalAmount(), eventItems);
-                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
-                            "ORDER_CREATED", event)
-                            .then(Mono.just(saved));
+                .flatMap(savedOrder -> {
+                    // Save order items with the order ID
+                    if (!orderItems.isEmpty()) {
+                        orderItems.forEach(item -> item.setOrderId(savedOrder.getId()));
+                        return orderItemRepository.saveAll(orderItems)
+                                .collectList()
+                                .flatMap(savedItems -> {
+                                    List<OrderEvent.OrderItem> eventItems = toEventItems(savedItems);
+                                    OrderEvent event = OrderEvent.created(savedOrder.getId(), savedOrder.getCustomerId(),
+                                            request.customerEmail(), savedOrder.getTotalAmount(), eventItems);
+                                    return outboxPublisher.saveEvent("Order", savedOrder.getId().toString(),
+                                            "ORDER_CREATED", event)
+                                            .then(Mono.just(savedOrder));
+                                });
+                    } else {
+                        OrderEvent event = OrderEvent.created(savedOrder.getId(), savedOrder.getCustomerId(),
+                                request.customerEmail(), savedOrder.getTotalAmount(), List.of());
+                        return outboxPublisher.saveEvent("Order", savedOrder.getId().toString(),
+                                "ORDER_CREATED", event)
+                                .then(Mono.just(savedOrder));
+                    }
                 })
                 .map(orderMapper::toDto);
     }
@@ -298,7 +316,7 @@ public class OrderSagaOrchestratorImpl implements OrderSagaHandler {
                                 return orderRepository.save(order)
                                         .flatMap(saved -> {
                                             log.info("Order {} transitioned to PENDING", saved.getId());
-                                            return publishOrderEvent("ORDER_UPDATED", saved, toEventItems(saved.getItems()));
+                                            return publishOrderEvent("ORDER_UPDATED", saved, toEventItems(items));
                                         })
                                         .then();
                             }
@@ -373,19 +391,23 @@ public class OrderSagaOrchestratorImpl implements OrderSagaHandler {
 
                     order.setStatus(OrderEvent.OrderStatus.CANCELLED.name());
 
-                    Flux<OrderItem> itemsToUpdate = Flux.fromIterable(order.getItems())
-                            .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING ||
-                                    item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
-                                    item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
-                            .flatMap(item -> {
-                                item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
-                                return orderItemRepository.save(item);
-                            });
+                    // Fetch order items from repository instead of using order.getItems()
+                    return orderItemRepository.findByOrderId(event.getOrderId()).collectList()
+                            .flatMap(items -> {
+                                Flux<OrderItem> itemsToUpdate = Flux.fromIterable(items)
+                                        .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING ||
+                                                item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
+                                                item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
+                                        .flatMap(item -> {
+                                            item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                                            return orderItemRepository.save(item);
+                                        });
 
-                    return itemsToUpdate
-                            .then(orderRepository.save(order))
-                            .flatMap(saved -> eventPublisher.publishOrderCancelled(saved).then(Mono.just(saved)))
-                            .map(orderMapper::toDto);
+                                return itemsToUpdate
+                                        .then(orderRepository.save(order))
+                                        .flatMap(saved -> eventPublisher.publishOrderCancelled(saved).then(Mono.just(saved)))
+                                        .map(orderMapper::toDto);
+                            });
                 }))
                 .then();
     }
@@ -402,22 +424,26 @@ public class OrderSagaOrchestratorImpl implements OrderSagaHandler {
 
                     order.setStatus(OrderEvent.OrderStatus.CANCELLED.name());
 
-                    Flux<OrderItem> itemsToUpdate = Flux.fromIterable(order.getItems())
-                            .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.RESERVED)
-                            .flatMap(item -> {
-                                item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
-                                return orderItemRepository.save(item);
-                            });
+                    // Fetch items from repository instead of using order.getItems()
+                    return orderItemRepository.findByOrderId(orderId).collectList()
+                            .flatMap(items -> {
+                                Flux<OrderItem> itemsToUpdate = Flux.fromIterable(items)
+                                        .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.RESERVED)
+                                        .flatMap(item -> {
+                                            item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                                            return orderItemRepository.save(item);
+                                        });
 
-                    return itemsToUpdate
-                            .then(orderRepository.save(order))
-                            .flatMap(saved -> {
-                                List<OrderEvent.OrderItem> eventItems = toEventItems(saved.getItems());
-                                OrderEvent event = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
-                                        saved.getCustomerEmail(), eventItems);
-                                return outboxPublisher.saveEvent("Order", saved.getId().toString(),
-                                        "ORDER_CANCELLED", event)
-                                        .then(Mono.empty());
+                                return itemsToUpdate
+                                        .then(orderRepository.save(order))
+                                        .flatMap(saved -> {
+                                            List<OrderEvent.OrderItem> eventItems = toEventItems(items);
+                                            OrderEvent event = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
+                                                    saved.getCustomerEmail(), eventItems);
+                                            return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                                    "ORDER_CANCELLED", event)
+                                                    .then(Mono.empty());
+                                        });
                             });
                 }));
     }
