@@ -14,7 +14,8 @@ public record CreateOrderRequest(
     @Schema(description = "Customer identifier", example = "CUST-001", requiredMode = Schema.RequiredMode.REQUIRED)
     String customerId,
 
-    @Schema(description = "Customer email", example = "customer@example.com", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @NotBlank(message = "Customer email is required")
+    @Schema(description = "Customer email", example = "customer@example.com", requiredMode = Schema.RequiredMode.REQUIRED)
     String customerEmail,
 
     @NotNull(message = "Order items are required")

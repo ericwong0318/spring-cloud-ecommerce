@@ -236,6 +236,14 @@ public class OrderFuzzTest {
     }
 
     @Test
+    @DisplayName("A missing customer email is rejected with a problem+json 400")
+    void missingCustomerEmailIsRejected() {
+        assertProblemDetail(postFor("", """
+                { "customerId": "CUST-001", "items": [] }
+                """));
+    }
+
+    @Test
     @DisplayName("An oversized payload is rejected with a problem+json 400")
     void oversizedPayloadIsRejected() {
         assertProblemDetail(postFor("", generateOversizedPayload("{", 1_000_000)));
