@@ -124,7 +124,7 @@ public class OrderService {
                                 return itemsToUpdate
                                         .then(orderRepository.save(order))
                                         .flatMap(saved -> eventPublisher.publishOrderCancelled(saved).then(Mono.just(saved)))
-                                        .map(orderMapper::toDto);
+                                        .flatMap(saved -> buildOrderDto(saved));
                             });
                 }));
     }

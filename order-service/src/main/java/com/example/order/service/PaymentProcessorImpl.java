@@ -141,7 +141,7 @@ public class PaymentProcessorImpl implements PaymentProcessor {
 
     @Override
     public Mono<Void> handlePaymentCaptured(Long orderId, BigDecimal amount) {
-        log.info("Handling payment captured for order: {}", orderId);
+        log.info("Handling payment captured for order: {}, amount: {}", orderId, amount);
         return transactionalOperator.transactional(orderRepository.findById(orderId)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", orderId)))
                 .flatMap(order -> {
@@ -163,16 +163,36 @@ public class PaymentProcessorImpl implements PaymentProcessor {
         return transactionalOperator.transactional(orderRepository.findById(orderId)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Order", orderId)))
                 .flatMap(order -> {
+                    if (!OrderEvent.OrderStatus.PENDING.name().equals(order.getStatus()) &&
+                            !OrderEvent.OrderStatus.RESERVED.name().equals(order.getStatus())) {
+                        log.warn("Order {} cannot be cancelled from status: {}", orderId, order.getStatus());
+                        return Mono.error(new IllegalStateException("Order cannot be cancelled from status: " + order.getStatus()));
+                    }
+
                     order.setStatus(OrderEvent.OrderStatus.CANCELLED.name());
-                    return orderRepository.save(order);
-                })
-                .flatMap(saved -> fetchOrderItems(saved.getId())
-                        .flatMap(items -> {
-                            OrderEvent event = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
-                                    saved.getCustomerEmail(), toEventItems(items));
-                            return outboxPublisher.saveEvent("Order", saved.getId().toString(),
-                                    "ORDER_CANCELLED", event);
-                        })));
+
+                    return orderItemRepository.findByOrderId(orderId).collectList()
+                            .flatMap(items -> {
+                                Flux<OrderItem> itemsToUpdate = Flux.fromIterable(items)
+                                        .filter(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING ||
+                                                item.getStatus() == OrderItem.OrderItemStatus.RESERVED ||
+                                                item.getStatus() == OrderItem.OrderItemStatus.BACKORDERED)
+                                        .flatMap(item -> {
+                                            item.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                                            return orderItemRepository.save(item);
+                                        });
+
+                                return itemsToUpdate
+                                        .then(orderRepository.save(order))
+                                        .flatMap(saved -> fetchOrderItems(saved.getId())
+                                                .flatMap(savedItems -> {
+                                                    OrderEvent event = OrderEvent.cancelled(saved.getId(), saved.getCustomerId(),
+                                                            saved.getCustomerEmail(), toEventItems(savedItems));
+                                                    return outboxPublisher.saveEvent("Order", saved.getId().toString(),
+                                                            "ORDER_CANCELLED", event);
+                                                }));
+                            });
+                }));
     }
 
     @Override

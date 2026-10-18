@@ -9,6 +9,7 @@ import com.example.common.event.OrderEvent;
 import com.example.common.event.OutboxEventPublisher;
 import com.example.common.event.PaymentEvent;
 import com.example.common.event.ReservationExpiredEvent;
+import com.example.order.mapper.OrderItemMapper;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.model.Order;
 import com.example.order.model.OrderItem;
@@ -103,6 +104,7 @@ public class OrderSagaOrchestratorImpl implements OrderSagaHandler {
 
         // Create order items from request (but don't add to order since it no longer has items collection)
         List<OrderItem> orderItems = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
         if (request.items() != null) {
             for (CreateOrderItemRequest itemDto : request.items()) {
                 OrderItem item = new OrderItem();
@@ -110,14 +112,20 @@ public class OrderSagaOrchestratorImpl implements OrderSagaHandler {
                 item.setVariantId(itemDto.variantId());
                 item.setQuantityOrdered(itemDto.quantity());
                 item.setQuantityShipped(0);
-                item.setUnitPrice(BigDecimal.ZERO);
+                // Use default price since CreateOrderItemRequest doesn't have price field
+                BigDecimal unitPrice = BigDecimal.ZERO;
+                item.setUnitPrice(unitPrice);
                 item.setStatus(OrderItem.OrderItemStatus.PENDING);
                 item.setReservedAt(now);
                 orderItems.add(item);
+                // Calculate total amount (using default price for now)
+                totalAmount = totalAmount.add(unitPrice.multiply(BigDecimal.valueOf(itemDto.quantity())));
             }
         }
 
-        // Save order first
+        // Save order first with calculated total amount
+        order.setTotalAmount(totalAmount);
+        
         return transactionalOperator.transactional(orderRepository.save(order))
                 .flatMap(savedOrder -> {
                     // Save order items with the order ID
@@ -141,7 +149,24 @@ public class OrderSagaOrchestratorImpl implements OrderSagaHandler {
                                 .then(Mono.just(savedOrder));
                     }
                 })
-                .map(orderMapper::toDto);
+                .flatMap(savedOrder -> 
+                    orderItemRepository.findByOrderId(savedOrder.getId()).collectList()
+                        .map(savedItems -> {
+                            OrderDto baseDto = orderMapper.toDto(savedOrder);
+                            // Build OrderDto with items
+                            return new OrderDto(
+                                baseDto.id(),
+                                baseDto.customerId(),
+                                baseDto.customerEmail(),
+                                baseDto.status(),
+                                baseDto.totalAmount(),
+                                savedItems.stream().map(OrderItemMapper.INSTANCE::toDto).toList(),
+                                baseDto.shipments(),
+                                baseDto.createdAt(),
+                                baseDto.updatedAt()
+                            );
+                        })
+                );
     }
 
     private Mono<Void> publishOrderEvent(String eventType, Order order, List<OrderEvent.OrderItem> items) {
@@ -231,10 +256,16 @@ public class OrderSagaOrchestratorImpl implements OrderSagaHandler {
 
                     Long orderId = orderItem.getOrderId();
 
-                    orderItem.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                    // If backordered > 0, set to BACKORDERED; otherwise CANCELLED
+                    if (backordered > 0) {
+                        orderItem.setStatus(OrderItem.OrderItemStatus.BACKORDERED);
+                        log.info("OrderItem {} set to BACKORDERED (backordered={})", orderItem.getId(), backordered);
+                    } else {
+                        orderItem.setStatus(OrderItem.OrderItemStatus.CANCELLED);
+                        log.info("OrderItem {} cancelled due to stock reservation failure", orderItem.getId());
+                    }
                     return orderItemRepository.save(orderItem)
-                            .doOnNext(saved -> log.info("OrderItem {} cancelled due to stock reservation failure", saved.getId()))
-                            .flatMap(savedItem -> checkAndCancelOrderIfAllItemsCancelledOrBackordered(orderId));
+                            .flatMap(savedItem -> checkAndTransitionOrderToReserved(savedItem.getOrderId()));
                 })
                 .then();
     }
