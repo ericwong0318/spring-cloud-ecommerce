@@ -3,6 +3,7 @@ package com.example.order;
 import com.example.common.event.BaseEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.order.service.OrderService;
+import com.rabbitmq.client.Channel;
 import io.r2dbc.spi.ConnectionFactory;
 import org.junit.jupiter.api.TestInstance;
 import org.mockito.Mockito;
@@ -181,7 +182,24 @@ public abstract class BaseIntegrationTest {
         @Bean
         @Primary
         public org.springframework.amqp.rabbit.connection.ConnectionFactory rabbitConnectionFactory() {
-            return Mockito.mock(org.springframework.amqp.rabbit.connection.ConnectionFactory.class);
+            org.springframework.amqp.rabbit.connection.ConnectionFactory mockFactory = Mockito.mock(org.springframework.amqp.rabbit.connection.ConnectionFactory.class);
+            org.springframework.amqp.rabbit.connection.Connection mockConnection = Mockito.mock(org.springframework.amqp.rabbit.connection.Connection.class);
+            Channel mockChannel = Mockito.mock(Channel.class);
+            
+            try {
+                Mockito.when(mockFactory.createConnection()).thenReturn(mockConnection);
+                Mockito.when(mockConnection.createChannel(false)).thenReturn(mockChannel);
+                Mockito.when(mockChannel.isOpen()).thenReturn(true);
+                // Use generic matchers to avoid type issues with MessageProperties vs AMQP.BasicProperties
+                Mockito.doNothing().when(mockChannel).basicPublish(Mockito.anyString(), Mockito.anyString(), Mockito.anyBoolean(), Mockito.any(), Mockito.any(byte[].class));
+                Mockito.doNothing().when(mockChannel).basicPublish(Mockito.anyString(), Mockito.anyString(), Mockito.any(), Mockito.any(byte[].class));
+                Mockito.doNothing().when(mockChannel).close();
+                Mockito.doNothing().when(mockConnection).close();
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to configure mock RabbitMQ", e);
+            }
+            
+            return mockFactory;
         }
     }
 

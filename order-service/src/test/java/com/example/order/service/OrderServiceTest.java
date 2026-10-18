@@ -38,6 +38,7 @@ import reactor.test.StepVerifier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -144,6 +145,7 @@ class OrderServiceTest {
     @Test
     void getAllOrders_shouldReturnListOfOrders() {
         when(orderRepository.findAll()).thenReturn(Flux.just(order));
+        when(orderItemRepository.findByOrderId(anyLong())).thenReturn(Flux.empty());
         when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         StepVerifier.create(orderService.getAllOrders())
@@ -167,6 +169,7 @@ class OrderServiceTest {
     @Test
     void getOrderById_shouldReturnOrder_whenExists() {
         when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
+        when(orderItemRepository.findByOrderId(1L)).thenReturn(Flux.empty());
         when(orderMapper.toDto(any(Order.class))).thenReturn(orderDto);
 
         StepVerifier.create(orderService.getOrderById(1L))

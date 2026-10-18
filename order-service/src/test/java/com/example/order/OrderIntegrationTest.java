@@ -8,6 +8,8 @@ import com.example.common.event.PaymentEvent;
 import com.example.common.event.ReservationExpiredEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.common.event.OutboxEventPublisher;
+import com.example.order.service.OrderEventPublisher;
+import com.example.order.service.OrderSagaOrchestratorImpl;
 import com.example.order.service.ShipmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -16,7 +18,6 @@ import io.restassured.http.ContentType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -25,6 +26,7 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -46,11 +48,14 @@ class OrderIntegrationTest extends BaseIntegrationTest {
     @MockBean
     private OutboxEventPublisher outboxEventPublisher;
 
-    @LocalServerPort
-    private int port;
+    @MockBean
+    private OrderEventPublisher eventPublisher;
 
     @Autowired
-    private RabbitTemplate rabbitTemplate;
+    private OrderSagaOrchestratorImpl sagaOrchestrator;
+
+    @LocalServerPort
+    private int port;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -65,6 +70,13 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         objectMapper.registerModule(new JavaTimeModule());
         // Configure mock OutboxEventPublisher to return empty Mono
         Mockito.when(outboxEventPublisher.saveEvent(Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.any()))
+                .thenReturn(Mono.empty());
+        // Configure mock OrderEventPublisher to return empty Mono
+        Mockito.when(eventPublisher.publishOrderCreated(Mockito.any()))
+                .thenReturn(Mono.empty());
+        Mockito.when(eventPublisher.publishOrderCancelled(Mockito.any()))
+                .thenReturn(Mono.empty());
+        Mockito.when(eventPublisher.publishOrderUpdated(Mockito.any()))
                 .thenReturn(Mono.empty());
     }
 
@@ -226,9 +238,10 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         InventoryEvent reservedEvent = InventoryEvent.reserved(5L, 5L, 2, 0);
         reservedEvent.setEventId(UUID.randomUUID());
-        rabbitTemplate.convertAndSend("inventory.exchange", "reserved", reservedEvent);
 
+        // Directly invoke saga orchestrator instead of sending via RabbitMQ
         await().untilAsserted(() -> {
+            sagaOrchestrator.handleInventoryReserved(reservedEvent).block();
             OrderDto order = given()
                     .when()
                     .get("/{id}", orderId)
@@ -253,9 +266,8 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         paymentEvent.setTransactionId("txn_123456");
         paymentEvent.setTimestamp(LocalDateTime.now());
 
-        rabbitTemplate.convertAndSend("payment.exchange", "payment.captured", paymentEvent);
-
         await().untilAsserted(() -> {
+            sagaOrchestrator.handlePaymentCaptured(paymentEvent).block();
             OrderDto order = given()
                     .when()
                     .get("/{id}", orderId)
@@ -288,9 +300,9 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         InventoryEvent reservedEvent = InventoryEvent.reserved(6L, 6L, 1, 0);
         reservedEvent.setEventId(UUID.randomUUID());
-        rabbitTemplate.convertAndSend("inventory.exchange", "reserved", reservedEvent);
-
+        // Directly invoke saga orchestrator instead of sending via RabbitMQ
         await().untilAsserted(() -> {
+            sagaOrchestrator.handleInventoryReserved(reservedEvent).block();
             OrderDto order = given()
                     .when()
                     .get("/{id}", orderId)
@@ -314,9 +326,8 @@ class OrderIntegrationTest extends BaseIntegrationTest {
         paymentEvent.setTransactionId("txn_failed");
         paymentEvent.setTimestamp(LocalDateTime.now());
 
-        rabbitTemplate.convertAndSend("payment.exchange", "payment.failed", paymentEvent);
-
-        await().untilAsserted(() -> {
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted(() -> {
+            sagaOrchestrator.handlePaymentFailed(paymentEvent).block();
             OrderDto order = given()
                     .when()
                     .get("/{id}", orderId)
@@ -350,9 +361,10 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         InventoryEvent reservedEvent = InventoryEvent.reserved(7L, 7L, 1, 0);
         reservedEvent.setEventId(UUID.randomUUID());
-        rabbitTemplate.convertAndSend("inventory.exchange", "reserved", reservedEvent);
 
+        // Directly invoke saga orchestrator instead of sending via RabbitMQ
         await().untilAsserted(() -> {
+            sagaOrchestrator.handleInventoryReserved(reservedEvent).block();
             OrderDto order = given()
                     .when()
                     .get("/{id}", orderId)
@@ -366,9 +378,9 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         ReservationExpiredEvent expiredEvent = ReservationExpiredEvent.expired(orderItemId, 7L, 1, LocalDateTime.now());
         expiredEvent.setEventId(UUID.randomUUID());
-        rabbitTemplate.convertAndSend("inventory.exchange", "reservation.expired", expiredEvent);
 
         await().untilAsserted(() -> {
+            sagaOrchestrator.handleReservationExpired(expiredEvent).block();
             OrderDto order = given()
                     .when()
                     .get("/{id}", orderId)
@@ -404,13 +416,14 @@ class OrderIntegrationTest extends BaseIntegrationTest {
 
         InventoryEvent reservedEvent1 = InventoryEvent.reserved(8L, 8L, 1, 0);
         reservedEvent1.setEventId(UUID.randomUUID());
-        rabbitTemplate.convertAndSend("inventory.exchange", "reserved", reservedEvent1);
 
         InventoryEvent reservedEvent2 = InventoryEvent.reserved(9L, 9L, 0, 1);
         reservedEvent2.setEventId(UUID.randomUUID());
-        rabbitTemplate.convertAndSend("inventory.exchange", "reserved", reservedEvent2);
 
-        await().untilAsserted(() -> {
+        // Directly invoke saga orchestrator instead of sending via RabbitMQ
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted(() -> {
+            sagaOrchestrator.handleInventoryReserved(reservedEvent1).block();
+            sagaOrchestrator.handleInventoryReserved(reservedEvent2).block();
             OrderDto order = given()
                     .when()
                     .get("/{id}", orderId)

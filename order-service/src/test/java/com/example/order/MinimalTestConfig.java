@@ -3,14 +3,13 @@ package com.example.order;
 import com.example.order.mapper.OrderMapper;
 import com.example.order.mapper.ShipmentMapper;
 import com.example.order.service.OrderSagaOrchestratorImpl;
-import com.example.order.service.PaymentProcessor;
 import com.example.order.service.ShipmentService;
+import com.example.order.service.PaymentProcessor;
 import com.example.order.service.OrderEventPublisher;
 import com.example.common.event.OutboxEventPublisher;
 import com.example.order.outbox.R2dbcOutboxEventRepository;
 import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
-import com.example.order.repository.ShipmentItemRepository;
 import com.example.order.repository.ShipmentRepository;
 import com.example.order.service.OrderService;
 import org.mockito.Mockito;
@@ -84,12 +83,6 @@ public class MinimalTestConfig {
         // Use real OrderSagaOrchestratorImpl with mocked external dependencies
         return new OrderSagaOrchestratorImpl(orderRepository, orderItemRepository, orderMapper, objectMapper,
                 transactionalOperator, outboxEventPublisher, paymentProcessor, orderEventPublisher);
-    }
-
-    @Bean
-    @Primary
-    public PaymentProcessor paymentProcessor() {
-        return Mockito.mock(PaymentProcessor.class);
     }
 
     @Bean
