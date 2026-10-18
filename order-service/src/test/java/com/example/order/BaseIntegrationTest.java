@@ -1,6 +1,5 @@
 package com.example.order;
 
-import com.example.common.event.BaseEvent;
 import com.example.common.event.ReactiveIdempotentEventProcessor;
 import com.example.order.service.OrderService;
 import com.rabbitmq.client.Channel;
@@ -21,7 +20,6 @@ import reactor.core.publisher.Mono;
 
 import javax.sql.DataSource;
 import java.time.Duration;
-import java.util.function.Function;
 
 /**
  * Base integration test configuration for order-service.
@@ -62,72 +60,7 @@ public abstract class BaseIntegrationTest {
     static {
         System.setProperty("testcontainers.ryuk.enabled", "true"); // Enable Ryuk for cleanup
         postgres.start();
-        runFlywayMigrations();
-    }
-
-    private static void runFlywayMigrations() {
-        try {
-            // Run migration scripts directly using JDBC to bypass Flyway version detection issues
-            String jdbcUrl = String.format("jdbc:postgresql://host.docker.internal:%d/%s",
-                    postgres.getFirstMappedPort(), postgres.getDatabaseName());
-            org.apache.commons.dbcp2.BasicDataSource dataSource = new org.apache.commons.dbcp2.BasicDataSource();
-            dataSource.setUrl(String.format("jdbc:postgresql://host.docker.internal:%d/%s",
-                    postgres.getFirstMappedPort(), postgres.getDatabaseName()));
-            dataSource.setUsername(postgres.getUsername());
-            dataSource.setPassword(postgres.getPassword());
-            dataSource.setDriverClassName("org.postgresql.Driver");
-            
-            try (java.sql.Connection conn = dataSource.getConnection()) {
-                // Run each migration script in order
-                String[] migrationScripts = {
-                    "db/migration/V1__create_order_table.sql",
-                    "db/migration/V2__create_outbox_table.sql",
-                    "db/migration/V3__create_processed_events_table.sql",
-                    "db/migration/V4__create_order_item_table.sql",
-                    "db/migration/V4__create_shedlock_table.sql",
-                    "db/migration/V5__create_shipment_tables.sql"
-                };
-                
-                for (String script : migrationScripts) {
-                    System.out.println("Running migration: " + script);
-                    try (java.io.InputStream is = BaseIntegrationTest.class.getClassLoader().getResourceAsStream(script)) {
-                        if (is == null) {
-                            throw new RuntimeException("Migration script not found: " + script);
-                        }
-                        String sql = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-                        // Split by semicolon and execute each statement
-                        String[] statements = sql.split(";");
-                        for (String statement : statements) {
-                            String trimmed = statement.trim();
-                            if (!trimmed.isEmpty()) {
-                                // Remove leading comments
-                                while (trimmed.startsWith("--")) {
-                                    int newlineIndex = trimmed.indexOf('\n');
-                                    if (newlineIndex == -1) {
-                                        trimmed = "";
-                                        break;
-                                    }
-                                    trimmed = trimmed.substring(newlineIndex + 1).trim();
-                                }
-                                if (!trimmed.isEmpty()) {
-                                    System.out.println("Executing: " + trimmed.substring(0, Math.min(200, trimmed.length())) + "...");
-                                    try (java.sql.Statement stmt = conn.createStatement()) {
-                                        stmt.execute(trimmed);
-                                        System.out.println("  -> Success");
-                                    } catch (Exception e) {
-                                        System.err.println("  -> FAILED: " + e.getMessage());
-                                        throw e;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            dataSource.close();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to run database migrations", e);
-        }
+        TestDatabaseMigrations.run(postgres);
     }
 
     @DynamicPropertySource
@@ -240,21 +173,20 @@ public abstract class BaseIntegrationTest {
     }
 
     /**
-     * Mock ReactiveIdempotentEventProcessor for integration tests to avoid JPA repository dependency.
-     * Delegates to the actual handler to test the business logic.
+     * Provides the real {@link ReactiveIdempotentEventProcessor}, backed by the R2DBC
+     * {@code ProcessedEventRepository}, so integration tests exercise the actual
+     * deduplication behaviour. The processor lives in {@code com.example.common.event},
+     * which is outside this application's component scan, so it must be declared here.
      */
     @Configuration
     public static class TestIdempotentEventProcessorConfig {
 
         @Bean
         @Primary
-        public ReactiveIdempotentEventProcessor reactiveIdempotentEventProcessor() {
-            ReactiveIdempotentEventProcessor mock = Mockito.mock(ReactiveIdempotentEventProcessor.class);
-            Mockito.doAnswer(invocation -> {
-                Function<com.example.common.event.BaseEvent, reactor.core.publisher.Mono<Void>> handler = invocation.getArgument(1);
-                return handler.apply(invocation.getArgument(0));
-            }).when(mock).process(Mockito.any(com.example.common.event.BaseEvent.class), Mockito.any(Function.class));
-            return mock;
+        public ReactiveIdempotentEventProcessor reactiveIdempotentEventProcessor(
+                com.example.common.event.CommonProcessedEventRepository processedEventRepository,
+                TransactionalOperator transactionalOperator) {
+            return new ReactiveIdempotentEventProcessor(processedEventRepository, transactionalOperator);
         }
     }
 }

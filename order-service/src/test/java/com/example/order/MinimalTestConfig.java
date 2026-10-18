@@ -67,7 +67,7 @@ public class MinimalTestConfig {
     @Bean
     @Primary
     public OutboxEventPublisher outboxEventPublisher() {
-        return Mockito.mock(OutboxEventPublisher.class);
+        return emptyMonoMock(OutboxEventPublisher.class);
     }
 
     @Bean
@@ -88,7 +88,7 @@ public class MinimalTestConfig {
     @Bean
     @Primary
     public OrderEventPublisher orderEventPublisher() {
-        return Mockito.mock(OrderEventPublisher.class);
+        return emptyMonoMock(OrderEventPublisher.class);
     }
 
     @Bean
@@ -120,5 +120,19 @@ public class MinimalTestConfig {
                                       OrderEventPublisher eventPublisher) {
         return new OrderService(orderRepository, orderItemRepository, orderMapper, objectMapper,
                 transactionalOperator, sagaOrchestrator, paymentProcessor, eventPublisher, true);
+    }
+
+    /**
+     * Creates a Mockito mock whose {@code Mono}-returning methods default to
+     * {@link Mono#empty()}. Mockito's default {@code null} answer breaks reactive chains,
+     * because a {@code flatMap}/mapper function must never return {@code null}.
+     */
+    private static <T> T emptyMonoMock(Class<T> type) {
+        return Mockito.mock(type, invocation -> {
+            if (Mono.class.isAssignableFrom(invocation.getMethod().getReturnType())) {
+                return Mono.empty();
+            }
+            return Mockito.RETURNS_DEFAULTS.answer(invocation);
+        });
     }
 }
