@@ -244,6 +244,15 @@ public class OrderFuzzTest {
     }
 
     @Test
+    @DisplayName("An over-long customer email is rejected with a problem+json 400")
+    void overLongCustomerEmailIsRejected() {
+        String longEmail = "a".repeat(256) + "@example.com";
+        assertProblemDetail(postFor("", """
+                { "customerId": "CUST-001", "customerEmail": "%s", "items": [] }
+                """.formatted(longEmail)));
+    }
+
+    @Test
     @DisplayName("An oversized payload is rejected with a problem+json 400")
     void oversizedPayloadIsRejected() {
         assertProblemDetail(postFor("", generateOversizedPayload("{", 1_000_000)));

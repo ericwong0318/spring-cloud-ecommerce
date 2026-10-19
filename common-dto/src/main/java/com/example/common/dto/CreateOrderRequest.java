@@ -15,6 +15,7 @@ public record CreateOrderRequest(
     String customerId,
 
     @NotBlank(message = "Customer email is required")
+    @Size(max = 255)
     @Schema(description = "Customer email", example = "customer@example.com", requiredMode = Schema.RequiredMode.REQUIRED)
     String customerEmail,
 
