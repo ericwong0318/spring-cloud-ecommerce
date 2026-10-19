@@ -37,12 +37,6 @@ spring:
             - Path=/api/v1/inventory/**
           filters:
             - StripPrefix=2
-        - id: notification-service
-          uri: lb://notification-service
-          predicates:
-            - Path=/api/v1/notifications/**
-          filters:
-            - StripPrefix=2
         - id: payment-service
           uri: lb://payment-service
           predicates:
@@ -87,6 +81,11 @@ spring:
         concurrency: 3
         max-concurrency: 10
         prefetch: 10
+  data:
+    redis:
+      host: redis
+      port: 6379
+      timeout: 5s
 
 management:
   endpoints:
