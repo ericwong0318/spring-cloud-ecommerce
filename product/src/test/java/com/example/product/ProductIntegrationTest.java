@@ -5,13 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -27,7 +22,7 @@ import reactor.core.publisher.Mono;
 
 @ActiveProfiles("test")
 @WebFluxTest(ProductController.class)
-@Import({ProductController.class, ProductIntegrationTest.TestSecurityConfig.class})
+@Import(ProductController.class)
 class ProductIntegrationTest {
 
     @Autowired
@@ -35,18 +30,6 @@ class ProductIntegrationTest {
 
     @MockBean
     private ProductService productService;
-
-    @Configuration
-    @EnableWebFluxSecurity
-    static class TestSecurityConfig {
-        @Bean
-        SecurityWebFilterChain filterChain(ServerHttpSecurity http) {
-            return http
-                .csrf(csrf -> csrf.disable())
-                .authorizeExchange(auth -> auth.anyExchange().permitAll())
-                .build();
-        }
-    }
 
     @Test
     void whenAllProductsRetrieved_thenReturn200() {

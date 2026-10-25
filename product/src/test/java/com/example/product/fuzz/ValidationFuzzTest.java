@@ -1,7 +1,6 @@
 package com.example.product.fuzz;
 
 import com.example.product.ProductApplication;
-import com.example.product.TestSecurityConfig;
 import com.example.product.config.RabbitMQConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
@@ -10,12 +9,6 @@ import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
@@ -45,18 +38,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = {ProductApplication.class, TestSecurityConfig.class, RabbitMQConfig.class}
+    classes = {ProductApplication.class, RabbitMQConfig.class}
 )
 @ActiveProfiles("test")
 @Import({ValidationFuzzTest.FuzzTestConfig.class})
-@EnableAutoConfiguration(exclude = {
-    ReactiveSecurityAutoConfiguration.class,
-    ReactiveOAuth2ResourceServerAutoConfiguration.class,
-    ReactiveManagementWebSecurityAutoConfiguration.class,
-    SecurityAutoConfiguration.class,
-    OAuth2ResourceServerAutoConfiguration.class,
-    ManagementWebSecurityAutoConfiguration.class
-})
 @EnableMongoRepositories(basePackages = "com.example.product")
 public abstract class ValidationFuzzTest {
 

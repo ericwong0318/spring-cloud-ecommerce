@@ -10,7 +10,6 @@ import com.example.product.CategoryClient;
 import com.example.product.ProductApplication;
 import com.example.product.ProductRepository;
 import com.example.product.ProductMapper;
-import com.example.product.TestSecurityConfig;
 import com.example.product.config.RabbitMQConfig;
 import com.example.common.dto.ProductDto;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,12 +20,6 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
-import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
-import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -50,15 +43,9 @@ import java.util.Optional;
 @EnableAutoConfiguration(exclude = {
     MongoAutoConfiguration.class,
     MongoDataAutoConfiguration.class,
-    DataSourceAutoConfiguration.class,
-    ReactiveSecurityAutoConfiguration.class,
-    ReactiveOAuth2ResourceServerAutoConfiguration.class,
-    ReactiveManagementWebSecurityAutoConfiguration.class,
-    SecurityAutoConfiguration.class,
-    OAuth2ResourceServerAutoConfiguration.class,
-    ManagementWebSecurityAutoConfiguration.class
+    DataSourceAutoConfiguration.class
 })
-@Import(TestSecurityConfig.class)
+@Import(RabbitMQConfig.class)
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("product-service")
 @PactFolder("../order-service/target/pacts")
