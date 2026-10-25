@@ -10,6 +10,7 @@ import com.example.payment.repository.ProcessedEventRepository;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.r2dbc.connection.R2dbcTransactionManager;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -28,6 +29,7 @@ public class ReactiveOutboxConfig {
     }
 
     @Bean
+    @Primary
     public ReactiveOutboxEventPublisher<OutboxEvent> reactiveOutboxEventPublisher(
             ReactiveOutboxEventRepository<OutboxEvent> reactiveOutboxEventRepository,
             org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate,

@@ -1,3 +1,20 @@
 spring:
   config:
     import: optional:configserver:http://config-server:8888
+  main:
+    allow-bean-definition-overriding: true
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  r2dbc:
+    url: r2dbc:postgresql://postgres-order:5432/order_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /

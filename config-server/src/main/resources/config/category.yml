@@ -41,6 +41,6 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
   flyway:
-    enabled: true
+    enabled: false
     locations: classpath:db/migration/category
     baseline-on-migrate: true

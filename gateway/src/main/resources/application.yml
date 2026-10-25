@@ -1,3 +1,67 @@
 spring:
-  config:
-    import: optional:configserver:http://config-server:8888
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      cors:
+        allowed-origins: "http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000"
+        allowed-methods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+        allowed-headers: "*"
+        allow-credentials: true
+        max-age: 3600
+      routes:
+        - id: product-service
+          uri: lb://product
+          predicates:
+            - Path=/api/v1/products/**
+          filters:
+            - StripPrefix=2
+        - id: category-service
+          uri: lb://category
+          predicates:
+            - Path=/api/v1/categories/**
+          filters:
+            - StripPrefix=2
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - StripPrefix=2
+        - id: inventory-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/v1/inventory/**
+          filters:
+            - StripPrefix=2
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/v1/payments/**
+          filters:
+            - StripPrefix=2
+  data:
+    redis:
+      host: redis
+      port: 6379
+      timeout: 5s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,gateway
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+    reactor.netty: DEBUG
+    reactor.netty.http.server: DEBUG

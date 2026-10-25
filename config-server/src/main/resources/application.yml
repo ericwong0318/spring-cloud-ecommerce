@@ -10,7 +10,7 @@ spring:
     config:
       server:
         native:
-          search-locations: file:/app/config
+          search-locations: file:///app/config
 
 management:
   endpoints:
@@ -23,3 +23,10 @@ management:
       show-details: always
   server:
     port: 8888
+
+logging:
+  level:
+    org.springframework.cloud.config: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
+    reactor.netty: INFO

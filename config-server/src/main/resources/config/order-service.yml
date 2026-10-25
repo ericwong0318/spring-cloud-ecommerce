@@ -48,7 +48,7 @@ spring:
     activate:
       on-profile: docker
   r2dbc:
-    url: r2dbc:postgresql://postgres:5432/order_db
+    url: r2dbc:postgresql://postgres-order:5432/order_db
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
   rabbitmq:

@@ -7,12 +7,16 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
+
+import com.example.common.event.OutboxPublisherAutoConfiguration;
 
 @EnableWebFlux
 @SpringBootApplication(exclude = {
     SecurityAutoConfiguration.class,
     OAuth2ResourceServerAutoConfiguration.class
 })
+@Import(OutboxPublisherAutoConfiguration.class)
 @ComponentScan(basePackages = {
     "com.example.order",
     "com.example.common.dto",

@@ -23,7 +23,7 @@ public class InventoryEventListener extends BaseReactiveSagaListener<InventoryEv
         this.paymentSagaOrchestrator = paymentSagaOrchestrator;
     }
 
-    @RabbitListener(queues = "${rabbitmq.queue.inventory-reserved}")
+    @RabbitListener(queues = "${rabbitmq.queue.inventory-reserved:inventory.reserved.queue}")
     public void handleInventoryReserved(InventoryEvent event) {
         processEvent(event);
     }

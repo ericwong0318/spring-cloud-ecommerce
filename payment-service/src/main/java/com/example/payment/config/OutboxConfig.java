@@ -39,7 +39,7 @@ public class OutboxConfig {
             OutboxEventPublisher outboxEventPublisher,
             ReactiveIdempotentEventProcessor idempotentProcessor,
             ProcessedEventRepository processedEventRepository,
-            @Value("${rabbitmq.exchange.payment}") String exchange) {
+            @Value("${rabbitmq.exchange.payment:payment.events}") String exchange) {
         return new PaymentEventPublisher(outboxEventPublisher, idempotentProcessor, processedEventRepository, exchange);
     }
 }

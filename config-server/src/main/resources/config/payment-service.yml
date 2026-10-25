@@ -55,7 +55,7 @@ spring:
       - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
       - org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
   r2dbc:
-    url: r2dbc:postgresql://postgres:5432/payment_db
+    url: r2dbc:postgresql://postgres-payment:5432/payment_db
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     pool:

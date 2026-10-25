@@ -15,16 +15,16 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    @Value("${rabbitmq.exchange.payment}")
+    @Value("${rabbitmq.exchange.payment:payment.events}")
     private String paymentExchange;
 
-    @Value("${rabbitmq.exchange.inventory}")
+    @Value("${rabbitmq.exchange.inventory:inventory.events}")
     private String inventoryExchange;
 
-    @Value("${rabbitmq.queue.payment-events}")
+    @Value("${rabbitmq.queue.payment-events:payment.events.queue}")
     private String paymentEventsQueue;
 
-    @Value("${rabbitmq.queue.inventory-reserved}")
+    @Value("${rabbitmq.queue.inventory-reserved:inventory.reserved.queue}")
     private String inventoryReservedQueue;
 
     @Bean

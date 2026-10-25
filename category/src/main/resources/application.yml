@@ -1,6 +1,6 @@
 spring:
-  config:
-    import: optional:configserver:http://localhost:8888
+  application:
+    name: category
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:}
 ---
@@ -8,24 +8,12 @@ spring:
   config:
     activate:
       on-profile: docker
-    import: optional:configserver:http://config-server:8888
----
-spring:
-  config:
-    activate:
-      on-profile: seed-data
-  application:
-    name: category
-  jpa:
-    hibernate:
-      ddl-auto: none
-  flyway:
-    enabled: false
----
-spring:
-  config:
-    activate:
-      on-profile: docker
+  eureka:
+    client:
+      serviceUrl:
+        defaultZone: http://eureka-server:8761/eureka/
+      registerWithEureka: true
+      fetchRegistry: true
   datasource:
     url: jdbc:postgresql://postgres-category:5432/category_db
     driver-class-name: org.postgresql.Driver
@@ -48,6 +36,11 @@ spring:
     enabled: false
     locations: classpath:db/migration/category
     baseline-on-migrate: true
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
 ---
 spring:
   config:

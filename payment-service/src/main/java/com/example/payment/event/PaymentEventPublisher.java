@@ -32,7 +32,7 @@ public class PaymentEventPublisher {
     public PaymentEventPublisher(OutboxEventPublisher outboxEventPublisher,
                                   ReactiveIdempotentEventProcessor idempotentProcessor,
                                   ProcessedEventRepository processedEventRepository,
-                                  @org.springframework.beans.factory.annotation.Value("${rabbitmq.exchange.payment}") String exchange) {
+                                  @org.springframework.beans.factory.annotation.Value("${rabbitmq.exchange.payment:payment.events}") String exchange) {
         this.outboxEventPublisher = outboxEventPublisher;
         this.idempotentProcessor = idempotentProcessor;
         this.processedEventRepository = processedEventRepository;
