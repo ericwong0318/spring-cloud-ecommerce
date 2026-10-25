@@ -112,7 +112,7 @@ export function Header() {
               aria-label={`Shopping cart, ${cart?.itemCount} items`}
               sx={{ position: 'relative' }}
             >
-              <Badge badgeContent={cart?.itemCount} color="error" overlap="circular">
+              <Badge badgeContent={cart?.itemCount} color="error" overlap="circular" data-testid="cart-badge">
                 <CartIcon />
               </Badge>
             </IconButton>

@@ -63,7 +63,7 @@ export function Login() {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <Stack spacing={2}>
             <TextField
               label="Email"

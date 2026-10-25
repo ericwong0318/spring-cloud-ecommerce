@@ -72,7 +72,7 @@ export function Register() {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <Stack spacing={2}>
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField

@@ -128,8 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (isTokenExpired(tokens)) {
-      // Try to refresh token
+      // Try to refresh token with timeout to prevent hanging
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         const response = await fetch(`${OAUTH_CONFIG.AUTH_SERVER_URL}/oauth2/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -138,7 +140,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             refresh_token: tokens.refreshToken || '',
             client_id: OAUTH_CONFIG.CLIENT_ID,
           }),
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
         
         if (response.ok) {
           const newTokens = await response.json();
@@ -269,6 +273,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
       const response = await fetch(`${OAUTH_CONFIG.AUTH_SERVER_URL}/oauth2/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -279,7 +285,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           client_id: OAUTH_CONFIG.CLIENT_ID,
           code_verifier: codeVerifier,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error('Token exchange failed');
