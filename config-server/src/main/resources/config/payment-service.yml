@@ -26,6 +26,22 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration/payment
+  eureka:
+    client:
+      service-url:
+        default-zone: http://eureka-server:8761/eureka/
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 5s
+    exchange:
+      payment: payment-events
+      inventory: inventory-events
+    queue:
+      payment-events: payment-events
   cloud:
     config:
       import: optional:configserver:http://localhost:8888
@@ -86,3 +102,19 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration/payment
+  eureka:
+    client:
+      service-url:
+        default-zone: http://eureka-server:8761/eureka/
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 5s
+    exchange:
+      payment: payment-events
+      inventory: inventory-events
+    queue:
+      payment-events: payment-events
