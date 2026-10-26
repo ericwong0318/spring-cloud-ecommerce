@@ -38,10 +38,17 @@ public record ProductDto(
     @Schema(description = "Category name (populated on read)", example = "Electronics", accessMode = Schema.AccessMode.READ_ONLY)
     String categoryName,
 
+    @Schema(description = "Product thumbnail image URL")
+    String thumbnail,
+
+    @Schema(description = "Product image URLs")
+    List<String> images,
+
     @Schema(description = "Product variants")
     List<ProductVariantDto> variants
 ) {
     public ProductDto {
         variants = variants != null ? new ArrayList<>(variants) : new ArrayList<>();
+        images = images != null ? new ArrayList<>(images) : new ArrayList<>();
     }
 }

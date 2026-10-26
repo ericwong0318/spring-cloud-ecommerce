@@ -428,6 +428,16 @@ public class ProductDataInitializer implements CommandLineRunner {
         product.setPrice(price);
         product.setCategoryId(categoryId);
         product.setCategoryName(categoryName);
+        // Generate placeholder image URLs based on product name hash
+        int nameHash = name.hashCode();
+        if (nameHash < 0) nameHash = -nameHash;
+        String seed = String.valueOf(nameHash);
+        String thumbnail = String.format("https://picsum.photos/400/400?product=%s", seed);
+        List<String> images = new ArrayList<>();
+        images.add(thumbnail);
+        images.add(String.format("https://picsum.photos/800/600?product=%s&random=%d", seed, nameHash));
+        product.setThumbnail(thumbnail);
+        product.setImages(images);
         return product;
     }
 

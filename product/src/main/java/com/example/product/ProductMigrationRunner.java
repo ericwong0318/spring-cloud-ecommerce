@@ -87,6 +87,8 @@ public class ProductMigrationRunner implements CommandLineRunner {
                         price,
                         categoryId != null ? String.valueOf(categoryId) : null,
                         categoryName,
+                        String.format("https://picsum.photos/400/400?product=%s", productId),
+                        List.of(String.format("https://picsum.photos/800/600?product=%s&random=%d", productId, productId)),
                         variants
                 );
 
