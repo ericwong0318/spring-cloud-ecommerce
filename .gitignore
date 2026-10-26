@@ -57,3 +57,7 @@ otel-collector/otel-collector-config.yaml
 
 # worktrees
 .worktrees
+
+# Playwright test artifacts
+playwright-report/
+test-results/
