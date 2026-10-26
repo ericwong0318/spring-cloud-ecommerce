@@ -10,12 +10,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
+
+import reactor.core.publisher.Flux;
+import reactor.util.retry.Retry;
 
 @Component
 @Profile("seed-data")
@@ -38,78 +42,83 @@ public class ProductDataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        log.info("Starting product data seeding...");
+        try {
+            log.info("Starting product data seeding...");
 
-        // Check if products already exist
-        long count = productRepository.count().block();
-        if (count > 0) {
-            log.info("Products already exist ({} found), skipping seeding", count);
-            return;
+            // Check if products already exist
+            long count = productRepository.count().block();
+            if (count > 0) {
+                log.info("Products already exist ({} found), skipping seeding", count);
+                return;
+            }
+
+            // Fetch categories from category service with retry
+            WebClient webClient = webClientBuilder.baseUrl(categoryServiceUrl).build();
+            List<CategoryDto> categories = webClient.get()
+                    .uri("/categories/tree")
+                    .retrieve()
+                    .bodyToFlux(CategoryDto.class)
+                    .collectList()
+                    .retryWhen(Retry.backoff(5, Duration.ofSeconds(2)))
+                    .block(Duration.ofSeconds(30));
+
+            if (categories == null || categories.isEmpty()) {
+                log.warn("No categories found from category service, skipping product seeding");
+                return;
+            }
+
+            // Build a map of category name to ID for lookup
+            Map<String, String> categoryNameToId = buildCategoryNameToIdMap(categories);
+
+            // Create products
+            Random random = new Random(42); // Fixed seed for reproducibility
+            List<Product> products = new ArrayList<>();
+
+            // Electronics products
+            products.addAll(createSmartphones(categoryNameToId, random));
+            products.addAll(createLaptops(categoryNameToId, random));
+            products.addAll(createAccessories(categoryNameToId, random));
+            products.addAll(createAudio(categoryNameToId, random));
+
+            // Clothing products
+            products.addAll(createMensClothing(categoryNameToId, random));
+            products.addAll(createWomensClothing(categoryNameToId, random));
+            products.addAll(createKidsClothing(categoryNameToId, random));
+
+            // Home & Garden products
+            products.addAll(createFurniture(categoryNameToId, random));
+            products.addAll(createKitchen(categoryNameToId, random));
+            products.addAll(createDecor(categoryNameToId, random));
+
+            // Sports products
+            products.addAll(createFitness(categoryNameToId, random));
+            products.addAll(createOutdoor(categoryNameToId, random));
+
+            // Save all products
+            productRepository.saveAll(products)
+                    .doOnNext(p -> log.debug("Created product: {}", p.getName()))
+                    .collectList()
+                    .block();
+
+            log.info("Product data seeding completed! Created {} products", products.size());
+        } catch (Exception e) {
+            log.warn("Product data seeding failed: {}. Products will be empty until services are restarted.", e.getMessage());
         }
-
-        // Fetch categories from category service
-        WebClient webClient = webClientBuilder.baseUrl(categoryServiceUrl).build();
-        List<CategoryDto> categories = webClient.get()
-                .uri("/categories/tree")
-                .retrieve()
-                .bodyToFlux(CategoryDto.class)
-                .collectList()
-                .block();
-
-        if (categories == null || categories.isEmpty()) {
-            log.warn("No categories found from category service, skipping product seeding");
-            return;
-        }
-
-        // Flatten categories to get all IDs
-        List<String> categoryIds = flattenCategories(categories);
-
-        // Create products
-        Random random = new Random(42); // Fixed seed for reproducibility
-        List<Product> products = new ArrayList<>();
-
-        // Electronics products
-        products.addAll(createSmartphones(categoryIds, random));
-        products.addAll(createLaptops(categoryIds, random));
-        products.addAll(createAccessories(categoryIds, random));
-        products.addAll(createAudio(categoryIds, random));
-
-        // Clothing products
-        products.addAll(createMensClothing(categoryIds, random));
-        products.addAll(createWomensClothing(categoryIds, random));
-        products.addAll(createKidsClothing(categoryIds, random));
-
-        // Home & Garden products
-        products.addAll(createFurniture(categoryIds, random));
-        products.addAll(createKitchen(categoryIds, random));
-        products.addAll(createDecor(categoryIds, random));
-
-        // Sports products
-        products.addAll(createFitness(categoryIds, random));
-        products.addAll(createOutdoor(categoryIds, random));
-
-        // Save all products
-        productRepository.saveAll(products)
-                .doOnNext(p -> log.debug("Created product: {}", p.getName()))
-                .collectList()
-                .block();
-
-        log.info("Product data seeding completed! Created {} products", products.size());
     }
 
-    private List<String> flattenCategories(List<CategoryDto> categories) {
-        List<String> ids = new ArrayList<>();
+    private Map<String, String> buildCategoryNameToIdMap(List<CategoryDto> categories) {
+        Map<String, String> map = new HashMap<>();
         for (CategoryDto cat : categories) {
-            ids.add(String.valueOf(cat.id()));
+            map.put(cat.name(), String.valueOf(cat.id()));
             if (cat.children() != null && !cat.children().isEmpty()) {
-                ids.addAll(flattenCategories(cat.children()));
+                map.putAll(buildCategoryNameToIdMap(cat.children()));
             }
         }
-        return ids;
+        return map;
     }
 
-    private List<Product> createSmartphones(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Smartphones");
+    private List<Product> createSmartphones(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Smartphones");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("iPhone 15 Pro", "Latest Apple smartphone with A17 Pro chip",
@@ -138,8 +147,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createLaptops(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Laptops");
+    private List<Product> createLaptops(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Laptops");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("MacBook Pro 16\" M3 Max", "Apple's most powerful laptop for professionals",
@@ -164,8 +173,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createAccessories(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Accessories");
+    private List<Product> createAccessories(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Accessories");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("Anker 737 Power Bank", "24,000mAh power bank with 140W output",
@@ -189,8 +198,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createAudio(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Audio");
+    private List<Product> createAudio(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Audio");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("Sony WH-1000XM5", "Industry-leading noise canceling headphones",
@@ -213,8 +222,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createMensClothing(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Men's Clothing");
+    private List<Product> createMensClothing(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Men's Clothing");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("Classic Oxford Shirt", "Premium cotton oxford shirt for work or casual wear",
@@ -245,8 +254,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createWomensClothing(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Women's Clothing");
+    private List<Product> createWomensClothing(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Women's Clothing");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("Silk Blouse", "Elegant silk blouse for work or evening",
@@ -275,8 +284,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createKidsClothing(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Kids' Clothing");
+    private List<Product> createKidsClothing(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Kids' Clothing");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("Organic Cotton Onesie Set (3-pack)", "Soft organic cotton onesies for babies",
@@ -295,8 +304,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createFurniture(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Furniture");
+    private List<Product> createFurniture(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Furniture");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("Mid-Century Modern Sofa", "Stylish 3-seater sofa with walnut legs",
@@ -320,8 +329,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createKitchen(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Kitchen & Dining");
+    private List<Product> createKitchen(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Kitchen & Dining");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("Le Creuset Dutch Oven 5.5qt", "Enameled cast iron dutch oven",
@@ -344,8 +353,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createDecor(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Decor");
+    private List<Product> createDecor(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Decor");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("Abstract Canvas Wall Art (Set of 3)", "Modern abstract wall art for living room",
@@ -362,8 +371,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createFitness(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Fitness");
+    private List<Product> createFitness(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Fitness");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("Adjustable Dumbbell Set (5-50 lbs)", "Space-saving adjustable dumbbells",
@@ -385,8 +394,8 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private List<Product> createOutdoor(List<String> categoryIds, Random random) {
-        String categoryId = findCategoryId(categoryIds, "Outdoor");
+    private List<Product> createOutdoor(Map<String, String> categoryNameToId, Random random) {
+        String categoryId = findCategoryId(categoryNameToId, "Outdoor");
         List<Product> products = new ArrayList<>();
 
         Product p1 = createProduct("4-Person Tent", "Lightweight backpacking tent with rainfly",
@@ -403,13 +412,13 @@ public class ProductDataInitializer implements CommandLineRunner {
         return products;
     }
 
-    private String findCategoryId(List<String> categoryIds, String categoryName) {
-        // In real implementation, we'd fetch the actual ID from category service
-        // For now, return a placeholder that matches the category name pattern
-        return categoryIds.stream()
-                .filter(id -> id.contains(categoryName.toLowerCase()) || categoryName.toLowerCase().contains(id.toLowerCase()))
-                .findFirst()
-                .orElse(categoryIds.isEmpty() ? "1" : categoryIds.get(0));
+    private String findCategoryId(Map<String, String> categoryNameToId, String categoryName) {
+        String id = categoryNameToId.get(categoryName);
+        if (id == null) {
+            log.warn("Category '{}' not found in category map, using first available", categoryName);
+            id = categoryNameToId.values().iterator().next();
+        }
+        return id;
     }
 
     private Product createProduct(String name, String description, BigDecimal price, String categoryId, String categoryName) {
