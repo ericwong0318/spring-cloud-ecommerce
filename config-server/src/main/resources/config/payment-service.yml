@@ -84,6 +84,5 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
   flyway:
-    enabled: true
+    enabled: false
     locations: classpath:db/migration/payment
-    baseline-on-migrate: true
