@@ -71,10 +71,22 @@ export function ProductList() {
     placeholderData: (previousData) => previousData,
   });
 
-  const products = productsResponse?.content || [];
-  const totalPages = productsResponse?.totalPages || 0;
-  const totalElements = productsResponse?.totalElements || 0;
-  const currentPage = productsResponse?.page || 0;
+  // Backend returns a flat JSON array, not a PaginatedResponse object
+  const products = Array.isArray(productsResponse)
+    ? productsResponse
+    : productsResponse?.content || [];
+
+  const totalPages = Array.isArray(productsResponse)
+    ? 1
+    : productsResponse?.totalPages || 0;
+
+  const totalElements = Array.isArray(productsResponse)
+    ? productsResponse.length
+    : productsResponse?.totalElements || 0;
+
+  const currentPage = Array.isArray(productsResponse)
+    ? 0
+    : productsResponse?.page || 0;
 
   const handleFilterChange = (newFilters: Partial<ProductFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters, page: 0 }));
