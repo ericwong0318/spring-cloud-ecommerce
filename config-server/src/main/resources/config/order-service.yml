@@ -66,6 +66,10 @@ spring:
         concurrency: 3
         max-concurrency: 10
         prefetch: 10
+    exchange:
+      order: order-events
+    queue:
+      order-events: order-events
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -95,6 +99,10 @@ spring:
         concurrency: 3
         max-concurrency: 10
         prefetch: 10
+    exchange:
+      order: order-events
+    queue:
+      order-events: order-events
   flyway:
     enabled: true
     locations: classpath:db/migration
