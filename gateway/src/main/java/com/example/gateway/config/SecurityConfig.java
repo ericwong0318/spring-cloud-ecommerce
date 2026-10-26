@@ -27,17 +27,25 @@ public class SecurityConfig {
     private static class CorsPreflightWebFilter implements WebFilter, Ordered {
         @Override
         public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-            if ("OPTIONS".equalsIgnoreCase(exchange.getRequest().getMethod().name())) {
-                System.out.println(">>> CORS Preflight: " + exchange.getRequest().getMethod() + " " + exchange.getRequest().getPath() + " origin=" + exchange.getRequest().getHeaders().getOrigin());
-                var origin = exchange.getRequest().getHeaders().getOrigin();
-                var response = exchange.getResponse();
-                response.getHeaders().add("Access-Control-Allow-Origin", origin != null ? origin : "*");
+            var request = exchange.getRequest();
+            var response = exchange.getResponse();
+            var origin = request.getHeaders().getOrigin();
+
+            // Add CORS headers to all responses
+            if (origin != null) {
+                response.getHeaders().add("Access-Control-Allow-Origin", origin);
                 response.getHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
                 response.getHeaders().add("Access-Control-Allow-Headers", "*");
                 response.getHeaders().add("Access-Control-Allow-Credentials", "true");
                 response.getHeaders().add("Access-Control-Max-Age", "3600");
+            }
+
+            // Handle preflight OPTIONS requests
+            if ("OPTIONS".equalsIgnoreCase(request.getMethod().name())) {
+                System.out.println(">>> CORS Preflight: " + request.getMethod() + " " + request.getPath() + " origin=" + origin);
                 return response.setComplete();
             }
+
             return chain.filter(exchange);
         }
 
