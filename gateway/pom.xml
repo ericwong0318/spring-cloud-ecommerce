@@ -36,6 +36,12 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
         </dependency>
+        <!-- OpenAPI request validation -->
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>1.5.7</version>
+        </dependency>
 <!-- Resilience4j removed - circuit breaker not needed for basic routing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
