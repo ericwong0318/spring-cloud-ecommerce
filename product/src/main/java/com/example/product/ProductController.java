@@ -1,16 +1,20 @@
 package com.example.product;
 
+import com.example.common.dto.CategoryDto;
 import com.example.common.dto.ProductDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClient;
 
+import java.util.List;
 import java.util.Map;
 
 import reactor.core.publisher.Flux;
@@ -22,9 +26,14 @@ import reactor.core.publisher.Mono;
 public class ProductController {
 
     private final ProductService productService;
+    private final WebClient.Builder webClientBuilder;
 
-    public ProductController(ProductService productService) {
+    @Value("${category-service.url:http://category:8082}")
+    private String categoryServiceUrl;
+
+    public ProductController(ProductService productService, WebClient.Builder webClientBuilder) {
         this.productService = productService;
+        this.webClientBuilder = webClientBuilder;
     }
 
     @GetMapping("/health")
@@ -36,15 +45,33 @@ public class ProductController {
     @GetMapping
     @Operation(summary = "List all products", description = "Returns a list of all products")
     public Flux<ProductDto> getAllProducts(
-            @Parameter(description = "Filter by category ID") @RequestParam(required = false) String categoryId,
+            @Parameter(description = "Filter by category ID (parent or subcategory)") @RequestParam(required = false) String categoryId,
             @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "Sort field") @RequestParam(defaultValue = "id") String sort) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         if (categoryId != null) {
-            return productService.getProductsByCategory(categoryId, pageable);
+            // Check if categoryId is a parent category by looking for subcategories
+            List<String> subcategoryIds = webClientBuilder.build()
+                    .get()
+                    .uri(categoryServiceUrl + "/categories/" + categoryId + "/children")
+                    .retrieve()
+                    .bodyToFlux(CategoryDto.class)
+                    .map(cd -> String.valueOf(cd.id()))
+                    .collectList()
+                    .block();
+
+            if (subcategoryIds != null && !subcategoryIds.isEmpty()) {
+                // Has subcategories - get products from all subcategories
+                return Flux.concat(subcategoryIds.stream()
+                        .map(scId -> productService.getProductsByCategory(scId, pageable))
+                        .collect(java.util.stream.Collectors.toList()));
+            } else {
+                // No subcategories - filter by this single category
+                return productService.getProductsByCategory(categoryId, pageable);
+            }
         }
-        return productService.getAllProducts();
+        return productService.getAllProducts(pageable);
     }
 
     @GetMapping("/{id}")
@@ -107,7 +134,8 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a product", description = "Deletes a product by its ID")
-    public Mono<ResponseEntity<Void>> deleteProduct(@PathVariable String id) {
+    public Mono<ResponseEntity<Void>> deleteProduct(
+            @PathVariable String id) {
         return productService.deleteProduct(id)
                 .thenReturn(ResponseEntity.noContent().<Void>build())
                 .onErrorResume(e -> Mono.just(ResponseEntity.notFound().<Void>build()));
