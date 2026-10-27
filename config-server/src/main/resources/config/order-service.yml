@@ -30,6 +30,28 @@ spring:
     config:
       import: optional:configserver:http://localhost:8888
 
+rabbitmq:
+  exchange:
+    order: order.exchange
+    payment: payment.exchange
+    inventory: inventory.exchange
+    ecommerce: ecommerce.exchange
+  queue:
+    order-events: order.events.queue
+    payment-events: payment.events.queue
+    inventory-events: inventory.events.queue
+    reservation-expired: reservation.expired.queue
+  routing-key:
+    order-created: order.created
+    order-updated: order.updated
+    order-cancelled: order.cancelled
+    payment-authorized: payment.authorized
+    payment-captured: payment.captured
+    payment-refunded: payment.refunded
+    payment-failed: payment.failed
+    inventory-reserved: inventory.reserved
+    reservation-expired: reservation.expired
+
 management:
   endpoints:
     web:
@@ -75,6 +97,28 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+rabbitmq:
+  exchange:
+    order: order.exchange
+    payment: payment.exchange
+    inventory: inventory.exchange
+    ecommerce: ecommerce.exchange
+  queue:
+    order-events: order.events.queue
+    payment-events: payment.events.queue
+    inventory-events: inventory.events.queue
+    reservation-expired: reservation.expired.queue
+  routing-key:
+    order-created: order.created
+    order-updated: order.updated
+    order-cancelled: order.cancelled
+    payment-authorized: payment.authorized
+    payment-captured: payment.captured
+    payment-refunded: payment.refunded
+    payment-failed: payment.failed
+    inventory-reserved: inventory.reserved
+    reservation-expired: reservation.expired
+
 ---
 spring:
   config:
@@ -107,3 +151,25 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+
+rabbitmq:
+  exchange:
+    order: order.exchange
+    payment: payment.exchange
+    inventory: inventory.exchange
+    ecommerce: ecommerce.exchange
+  queue:
+    order-events: order.events.queue
+    payment-events: payment.events.queue
+    inventory-events: inventory.events.queue
+    reservation-expired: reservation.expired.queue
+  routing-key:
+    order-created: order.created
+    order-updated: order.updated
+    order-cancelled: order.cancelled
+    payment-authorized: payment.authorized
+    payment-captured: payment.captured
+    payment-refunded: payment.refunded
+    payment-failed: payment.failed
+    inventory-reserved: inventory.reserved
+    reservation-expired: reservation.expired

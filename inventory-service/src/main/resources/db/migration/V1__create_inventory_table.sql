@@ -7,7 +7,9 @@ CREATE TABLE inventory (
     reorder_level INTEGER NOT NULL DEFAULT 10,
     cost_price DECIMAL(10,2),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sku_code VARCHAR(100),
+    low_stock_notified BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE INDEX idx_inventory_product_id ON inventory(product_id);
