@@ -2,7 +2,7 @@ package com.example.payment.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
@@ -29,13 +29,13 @@ public class RabbitMQConfig {
     private String inventoryReservedQueue;
 
     @Bean
-    public DirectExchange paymentExchange() {
-        return new DirectExchange(paymentExchange, true, false);
+    public TopicExchange paymentExchange() {
+        return new TopicExchange(paymentExchange, true, false);
     }
 
     @Bean
-    public DirectExchange inventoryExchange() {
-        return new DirectExchange(inventoryExchange, true, false);
+    public TopicExchange inventoryExchange() {
+        return new TopicExchange(inventoryExchange, true, false);
     }
 
     @Bean
@@ -49,27 +49,27 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Binding paymentAuthorizedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
+    public Binding paymentAuthorizedBinding(TopicExchange paymentExchange, Queue paymentEventsQueue) {
         return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with("payment.authorized");
     }
 
     @Bean
-    public Binding paymentCapturedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
+    public Binding paymentCapturedBinding(TopicExchange paymentExchange, Queue paymentEventsQueue) {
         return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with("payment.captured");
     }
 
     @Bean
-    public Binding paymentRefundedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
+    public Binding paymentRefundedBinding(TopicExchange paymentExchange, Queue paymentEventsQueue) {
         return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with("payment.refunded");
     }
 
     @Bean
-    public Binding paymentFailedBinding(DirectExchange paymentExchange, Queue paymentEventsQueue) {
+    public Binding paymentFailedBinding(TopicExchange paymentExchange, Queue paymentEventsQueue) {
         return BindingBuilder.bind(paymentEventsQueue).to(paymentExchange).with("payment.failed");
     }
 
     @Bean
-    public Binding inventoryReservedBinding(DirectExchange inventoryExchange, Queue inventoryReservedQueue) {
+    public Binding inventoryReservedBinding(TopicExchange inventoryExchange, Queue inventoryReservedQueue) {
         return BindingBuilder.bind(inventoryReservedQueue).to(inventoryExchange).with("inventory.reserved");
     }
 

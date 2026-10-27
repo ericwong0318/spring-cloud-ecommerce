@@ -2,6 +2,8 @@ spring:
   config:
     import: optional:configserver:http://config-server:8888
 ---
+server:
+  port: 8087
 spring:
   config:
     activate:
@@ -28,6 +30,11 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -42,3 +49,49 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+management:
+  health:
+    mail:
+      enabled: false
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DATASOURCE_URL:jdbc:postgresql://postgres:5432/notification_db}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+rabbitmq:
+  exchange:
+    order: order.exchange
+    payment: payment.exchange
+  queue:
+    notification-order-events: notification.order.events.queue
+    notification-payment-events: notification.payment.events.queue
+  routing-key:
+    order-created: order.created
+    order-cancelled: order.cancelled
+    payment-authorized: payment.authorized
+    payment-captured: payment.captured
+    payment-refunded: payment.refunded
+    payment-failed: payment.failed

@@ -4,6 +4,8 @@ spring:
   main:
     allow-bean-definition-overriding: true
 ---
+server:
+  port: 8083
 spring:
   config:
     activate:
@@ -22,7 +24,7 @@ spring:
     config:
       import: optional:configserver:http://config-server:8888
   flyway:
-    enabled: false
+    enabled: true
 eureka:
   client:
     service-url:
