@@ -35,6 +35,23 @@ public class ProductService {
                 .map(productMapper::toDto);
     }
 
+    public Flux<ProductDto> getAllProducts(Pageable pageable, BigDecimal minPrice, BigDecimal maxPrice) {
+        log.debug("Fetching all products with pagination and price range [{}, {}]", minPrice, maxPrice);
+        if (minPrice != null && maxPrice != null) {
+            return productRepository.findByPriceBetween(minPrice, maxPrice, pageable)
+                    .map(productMapper::toDto);
+        }
+        if (minPrice != null) {
+            return productRepository.findByPriceGreaterThanEqual(minPrice, pageable)
+                    .map(productMapper::toDto);
+        }
+        if (maxPrice != null) {
+            return productRepository.findByPriceLessThanEqual(maxPrice, pageable)
+                    .map(productMapper::toDto);
+        }
+        return getAllProducts(pageable);
+    }
+
     public Flux<ProductDto> getAllProducts() {
         return getAllProducts(Pageable.unpaged());
     }

@@ -98,7 +98,7 @@ class ProductPactProviderTest {
 
         ProductDto responseDto = new ProductDto(
             "1", "Laptop Pro 15", "High-performance laptop for professionals",
-            new java.math.BigDecimal("1999.99"), "cat-123", "Electronics", java.util.List.of()
+            new java.math.BigDecimal("1999.99"), "cat-123", "Electronics", null, java.util.List.of(), java.util.List.of()
         );
 
         // Use argument matchers to match any ProductDto passed to mapper
