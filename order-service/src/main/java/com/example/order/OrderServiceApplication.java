@@ -1,20 +1,23 @@
 package com.example.order;
 
 import org.springframework.boot.SpringApplication;
-import org.springframework.web.reactive.config.EnableWebFlux;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 
 import com.example.common.event.OutboxPublisherAutoConfiguration;
 
-@EnableWebFlux
 @SpringBootApplication(exclude = {
     SecurityAutoConfiguration.class,
-    OAuth2ResourceServerAutoConfiguration.class
+    OAuth2ResourceServerAutoConfiguration.class,
+    JpaRepositoriesAutoConfiguration.class,
+    HibernateJpaAutoConfiguration.class,
+    org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration.class
 })
 @Import(OutboxPublisherAutoConfiguration.class)
 @ComponentScan(basePackages = {

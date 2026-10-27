@@ -8,6 +8,7 @@ import com.example.order.outbox.R2dbcOutboxEventRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.r2dbc.connection.R2dbcTransactionManager;
 import org.springframework.transaction.reactive.TransactionalOperator;
 
@@ -54,6 +55,7 @@ public class OutboxConfig {
      * Required for the common module's auto-configuration to work with order-service's repository.
      */
     @Bean
+    @Primary
     public ReactiveOutboxEventRepository<R2dbcOutboxEvent> reactiveOutboxEventRepository(
             R2dbcOutboxEventRepository outboxEventRepository) {
 

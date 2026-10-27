@@ -16,6 +16,7 @@ import com.example.order.repository.ShipmentItemRepository;
 import com.example.order.repository.ShipmentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.r2dbc.connection.R2dbcTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
@@ -43,6 +44,7 @@ public class ShipmentService {
     private final ObjectMapper objectMapper;
     private final TransactionalOperator transactionalOperator;
 
+    @Autowired
     public ShipmentService(ShipmentRepository shipmentRepository,
                            ShipmentItemRepository shipmentItemRepository,
                            OrderRepository orderRepository,
@@ -61,7 +63,7 @@ public class ShipmentService {
         this.transactionalOperator = TransactionalOperator.create(transactionManager);
     }
 
-    // Test-only constructor
+    // Test-only constructor (package-private to avoid Spring picking it up)
     ShipmentService(ShipmentRepository shipmentRepository,
                     ShipmentItemRepository shipmentItemRepository,
                     OrderRepository orderRepository,

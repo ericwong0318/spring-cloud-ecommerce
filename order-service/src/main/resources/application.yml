@@ -18,3 +18,16 @@ spring:
     username: guest
     password: guest
     virtual-host: /
+  cloud:
+    config:
+      import: optional:configserver:http://config-server:8888
+  flyway:
+    enabled: false
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true

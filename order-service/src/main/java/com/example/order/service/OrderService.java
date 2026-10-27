@@ -13,6 +13,7 @@ import com.example.order.repository.OrderItemRepository;
 import com.example.order.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
 
@@ -40,6 +41,7 @@ public class OrderService {
     private final PaymentProcessor paymentProcessor;
     private final OrderEventPublisher eventPublisher;
 
+    @Autowired
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
                         OrderMapper orderMapper,
@@ -48,26 +50,6 @@ public class OrderService {
                         OrderSagaOrchestratorImpl sagaOrchestrator,
                         PaymentProcessor paymentProcessor,
                         OrderEventPublisher eventPublisher) {
-        this.orderRepository = orderRepository;
-        this.orderItemRepository = orderItemRepository;
-        this.orderMapper = orderMapper;
-        this.objectMapper = objectMapper;
-        this.transactionalOperator = transactionalOperator;
-        this.sagaOrchestrator = sagaOrchestrator;
-        this.paymentProcessor = paymentProcessor;
-        this.eventPublisher = eventPublisher;
-    }
-
-    // Test-only constructor (public for testing)
-    public OrderService(OrderRepository orderRepository,
-                 OrderItemRepository orderItemRepository,
-                 OrderMapper orderMapper,
-                 ObjectMapper objectMapper,
-                 TransactionalOperator transactionalOperator,
-                 OrderSagaOrchestratorImpl sagaOrchestrator,
-                 PaymentProcessor paymentProcessor,
-                 OrderEventPublisher eventPublisher,
-                 boolean testMode) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.orderMapper = orderMapper;

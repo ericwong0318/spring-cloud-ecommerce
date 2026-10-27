@@ -1,6 +1,7 @@
 CREATE TABLE inventory (
     id BIGSERIAL PRIMARY KEY,
-    product_id BIGINT NOT NULL UNIQUE,
+    variant_id BIGINT NOT NULL UNIQUE,
+    product_id BIGINT NOT NULL,
     product_name VARCHAR(255) NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 0,
     reserved_quantity INTEGER NOT NULL DEFAULT 0,
@@ -13,3 +14,4 @@ CREATE TABLE inventory (
 );
 
 CREATE INDEX idx_inventory_product_id ON inventory(product_id);
+CREATE INDEX idx_inventory_variant_id ON inventory(variant_id);

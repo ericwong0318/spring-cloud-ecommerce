@@ -119,7 +119,7 @@ public class MinimalTestConfig {
                                       PaymentProcessor paymentProcessor,
                                       OrderEventPublisher eventPublisher) {
         return new OrderService(orderRepository, orderItemRepository, orderMapper, objectMapper,
-                transactionalOperator, sagaOrchestrator, paymentProcessor, eventPublisher, true);
+                transactionalOperator, sagaOrchestrator, paymentProcessor, eventPublisher);
     }
 
     /**
