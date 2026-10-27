@@ -5,6 +5,7 @@ import au.com.dius.pact.consumer.junit5.PactConsumerTestExt;
 import au.com.dius.pact.consumer.junit5.PactTestFor;
 import au.com.dius.pact.core.model.V4Pact;
 import au.com.dius.pact.core.model.annotations.Pact;
+import au.com.dius.pact.core.model.annotations.PactDirectory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.http.MediaType;
@@ -14,6 +15,7 @@ import java.util.Map;
 
 @ExtendWith(PactConsumerTestExt.class)
 @PactTestFor(providerName = "order-service", port = "8083")
+@PactDirectory("../order-service/target/pacts")
 class OrderServiceConsumerPactTest {
 
     private final WebTestClient webTestClient = WebTestClient.bindToServer()
