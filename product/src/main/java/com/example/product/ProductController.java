@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -48,7 +49,9 @@ public class ProductController {
             @Parameter(description = "Filter by category ID (parent or subcategory)") @RequestParam(required = false) String categoryId,
             @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Sort field") @RequestParam(defaultValue = "id") String sort) {
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "id") String sort,
+            @Parameter(description = "Minimum price (inclusive)") @RequestParam(required = false) BigDecimal minPrice,
+            @Parameter(description = "Maximum price (inclusive)") @RequestParam(required = false) BigDecimal maxPrice) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         if (categoryId != null) {
             // Check if categoryId is a parent category by looking for subcategories
@@ -71,7 +74,7 @@ public class ProductController {
                 return productService.getProductsByCategory(categoryId, pageable);
             }
         }
-        return productService.getAllProducts(pageable);
+        return productService.getAllProducts(pageable, minPrice, maxPrice);
     }
 
     @GetMapping("/{id}")

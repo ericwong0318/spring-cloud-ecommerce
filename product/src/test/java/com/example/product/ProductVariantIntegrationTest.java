@@ -57,7 +57,7 @@ class ProductVariantIntegrationTest extends BaseIntegrationTest {
     private TopicExchange exchange;
 
     private ProductDto createTestProduct(String name, BigDecimal price, String categoryId) {
-        return new ProductDto(null, name, "Test Description", price, categoryId, null, List.of());
+        return new ProductDto(null, name, "Test Description", price, categoryId, null, null, List.of(), List.of());
     }
 
     private ProductVariantDto createTestVariant(String skuCode, BigDecimal price, Map<String, String> attributes) {

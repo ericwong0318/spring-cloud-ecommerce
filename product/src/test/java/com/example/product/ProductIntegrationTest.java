@@ -33,7 +33,7 @@ class ProductIntegrationTest {
 
     @Test
     void whenAllProductsRetrieved_thenReturn200() {
-        ProductDto product = new ProductDto("1", "Test Product", "Description", BigDecimal.valueOf(99.99), "1", null, List.of());
+        ProductDto product = new ProductDto("1", "Test Product", "Description", BigDecimal.valueOf(99.99), "1", null, null, List.of(), List.of());
         when(productService.getAllProducts()).thenReturn(Flux.just(product));
 
         webTestClient.get()
@@ -51,7 +51,7 @@ class ProductIntegrationTest {
 
     @Test
     void whenProductCreated_thenReturn201() {
-        ProductDto created = new ProductDto("1", "New Product", "Description", BigDecimal.valueOf(49.99), "1", null, List.of());
+        ProductDto created = new ProductDto("1", "New Product", "Description", BigDecimal.valueOf(49.99), "1", null, null, List.of(), List.of());
         when(productService.createProduct(any(ProductDto.class))).thenReturn(Mono.just(created));
 
         webTestClient.post()
