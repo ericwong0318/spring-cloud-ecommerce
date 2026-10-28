@@ -27,7 +27,12 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Testcontainers
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = {
+        "spring.main.allow-bean-definition-overriding=true"
+    }
+)
 @ActiveProfiles("test")
 @ExtendWith(PactVerificationInvocationContextProvider.class)
 @Provider("inventory-service")
@@ -49,7 +54,7 @@ class InventoryPactProviderTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", () -> postgres.getJdbcUrl());
+        registry.add("spring.datasource.url", () -> "jdbc:postgresql://localhost:" + postgres.getFirstMappedPort() + "/" + postgres.getDatabaseName());
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");

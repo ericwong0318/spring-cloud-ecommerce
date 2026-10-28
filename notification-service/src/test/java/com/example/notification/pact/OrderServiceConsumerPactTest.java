@@ -30,11 +30,11 @@ class OrderServiceConsumerPactTest {
                 .path("/orders")
                 .method("POST")
                 .headers(Map.of("Content-Type", "application/json"))
-                .body("{\"customerId\":\"cust-123\",\"items\":[{\"productId\":1,\"quantity\":2,\"price\":29.99}]}")
+                .body("{\"customerId\":\"cust-123\",\"customerEmail\":\"customer@example.com\",\"items\":[{\"productId\":1,\"quantity\":2,\"price\":29.99}]}")
             .willRespondWith()
                 .status(200)
                 .headers(Map.of("Content-Type", "application/json"))
-                .body("{\"id\":1,\"customerId\":\"cust-123\",\"items\":[{\"productId\":1,\"quantity\":2,\"price\":29.99}],\"status\":\"CREATED\"}")
+                .body("{\"id\":1,\"customerId\":\"cust-123\",\"customerEmail\":\"customer@example.com\",\"items\":[{\"productId\":1,\"quantity\":2,\"price\":29.99}],\"status\":\"CREATED\"}")
             .toPact(V4Pact.class);
     }
 
@@ -73,13 +73,14 @@ class OrderServiceConsumerPactTest {
         webTestClient.post()
             .uri("/orders")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("{\"customerId\":\"cust-123\",\"items\":[{\"productId\":1,\"quantity\":2,\"price\":29.99}]}")
+            .bodyValue("{\"customerId\":\"cust-123\",\"customerEmail\":\"customer@example.com\",\"items\":[{\"productId\":1,\"quantity\":2,\"price\":29.99}]}")
             .exchange()
             .expectStatus().isOk()
             .expectHeader().contentType(MediaType.APPLICATION_JSON)
             .expectBody()
             .jsonPath("$.id").isEqualTo(1)
-            .jsonPath("$.customerId").isEqualTo("cust-123");
+            .jsonPath("$.customerId").isEqualTo("cust-123")
+            .jsonPath("$.customerEmail").isEqualTo("customer@example.com");
     }
 
     @Test

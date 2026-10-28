@@ -44,7 +44,6 @@ public class PaymentService {
 
 @CircuitBreaker(name = "payment-service", fallbackMethod = "authorizePaymentFallback")
     @Retry(name = "payment-service")
-    @TimeLimiter(name = "payment-service")
     public Mono<PaymentDto> authorizePayment(Long orderId, BigDecimal amount, String currency,
                                                String customerId, String customerEmail, String idempotencyKey) {
         log.info("Authorizing payment for order: {} with idempotency key: {}", orderId, idempotencyKey);
@@ -95,7 +94,6 @@ public class PaymentService {
 
     @CircuitBreaker(name = "payment-service", fallbackMethod = "capturePaymentFallback")
     @Retry(name = "payment-service")
-    @TimeLimiter(name = "payment-service")
     public Mono<PaymentDto> capturePayment(Long paymentId, String gatewayTransactionId, String idempotencyKey) {
         log.info("Capturing payment: {} with idempotency key: {}", paymentId, idempotencyKey);
 
@@ -131,7 +129,6 @@ public class PaymentService {
 
     @CircuitBreaker(name = "payment-service", fallbackMethod = "refundPaymentFallback")
     @Retry(name = "payment-service")
-    @TimeLimiter(name = "payment-service")
     public Mono<PaymentDto> refundPayment(Long paymentId, BigDecimal amount, String reason, String idempotencyKey) {
         log.info("Refunding payment: {} amount: {} with idempotency key: {}", paymentId, amount, idempotencyKey);
 

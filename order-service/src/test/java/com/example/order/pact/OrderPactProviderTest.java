@@ -114,6 +114,11 @@ class OrderPactProviderTest {
         ConnectionFactory connectionFactory() {
             return Mockito.mock(ConnectionFactory.class);
         }
+
+        @Bean
+        io.r2dbc.spi.ConnectionFactory r2dbcConnectionFactory() {
+            return Mockito.mock(io.r2dbc.spi.ConnectionFactory.class);
+        }
     }
 
     @MockBean
