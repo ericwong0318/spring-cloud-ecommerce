@@ -36,6 +36,8 @@ public class Product {
 
     private List<ProductVariant> variants = new ArrayList<>();
 
+    private Integer stockQuantity = 0;
+
     public Product() {
     }
 
@@ -131,6 +133,14 @@ public class Product {
 
     public void setVariants(List<ProductVariant> variants) {
         this.variants = variants;
+    }
+
+    public Integer getStockQuantity() {
+        return stockQuantity;
+    }
+
+    public void setStockQuantity(Integer stockQuantity) {
+        this.stockQuantity = stockQuantity;
     }
 
     public void addVariant(ProductVariant variant) {

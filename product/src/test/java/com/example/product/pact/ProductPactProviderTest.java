@@ -29,6 +29,7 @@ import org.springframework.test.context.ActiveProfiles;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Optional;
 
 @SpringBootTest(
@@ -98,7 +99,7 @@ class ProductPactProviderTest {
 
         ProductDto responseDto = new ProductDto(
             "1", "Laptop Pro 15", "High-performance laptop for professionals",
-            new java.math.BigDecimal("1999.99"), "cat-123", "Electronics", null, java.util.List.of(), java.util.List.of()
+            new java.math.BigDecimal("1999.99"), "cat-123", "Electronics", null, List.of(), List.of(), 10
         );
 
         // Use argument matchers to match any ProductDto passed to mapper

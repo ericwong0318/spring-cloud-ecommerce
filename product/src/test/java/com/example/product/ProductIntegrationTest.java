@@ -14,11 +14,15 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import org.springframework.data.domain.Pageable;
 
 @ActiveProfiles("test")
 @WebFluxTest(ProductController.class)
@@ -33,7 +37,7 @@ class ProductIntegrationTest {
 
     @Test
     void whenAllProductsRetrieved_thenReturn200() {
-        ProductDto product = new ProductDto("1", "Test Product", "Description", BigDecimal.valueOf(99.99), "1", null, null, List.of(), List.of());
+        ProductDto product = new ProductDto("1", "Test Product", "Description", BigDecimal.valueOf(99.99), "1", null, null, List.of(), List.of(), 10);
         when(productService.getAllProducts()).thenReturn(Flux.just(product));
 
         webTestClient.get()
@@ -50,8 +54,35 @@ class ProductIntegrationTest {
     }
 
     @Test
+    void whenInStockOnlyTrue_passesInStockOnlyToService() {
+        when(productService.getAllProducts(any(Pageable.class), eq(true))).thenReturn(Flux.empty());
+
+        webTestClient.get()
+                .uri(uriBuilder -> uriBuilder.path("/products").queryParam("inStockOnly", "true").build())
+                .exchange()
+                .expectStatus().isOk();
+
+        verify(productService).getAllProducts(any(Pageable.class), eq(true));
+    }
+
+    @Test
+    void whenInStockOnlyAbsent_doesNotChangeBehavior() {
+        ProductDto product = new ProductDto("1", "Test Product", "Description", BigDecimal.valueOf(99.99), "1", null, null, List.of(), List.of(), 10);
+        when(productService.getAllProducts(any(Pageable.class), eq(false))).thenReturn(Flux.just(product));
+
+        webTestClient.get()
+                .uri("/products")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBodyList(ProductDto.class)
+                .hasSize(1);
+
+        verify(productService).getAllProducts(any(Pageable.class), eq(false));
+    }
+
+    @Test
     void whenProductCreated_thenReturn201() {
-        ProductDto created = new ProductDto("1", "New Product", "Description", BigDecimal.valueOf(49.99), "1", null, null, List.of(), List.of());
+        ProductDto created = new ProductDto("1", "New Product", "Description", BigDecimal.valueOf(49.99), "1", null, null, List.of(), List.of(), 10);
         when(productService.createProduct(any(ProductDto.class))).thenReturn(Mono.just(created));
 
         webTestClient.post()

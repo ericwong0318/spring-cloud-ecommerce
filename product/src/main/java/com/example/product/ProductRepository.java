@@ -19,6 +19,10 @@ public interface ProductRepository extends ReactiveMongoRepository<Product, Stri
 
     Flux<Product> findAllBy(Pageable pageable);
 
+    Flux<Product> findByStockQuantityGreaterThan(Integer stockQuantity);
+
+    Flux<Product> findByStockQuantityGreaterThan(Integer stockQuantity, Pageable pageable);
+
     Flux<Product> findByPriceBetween(BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
 
     Flux<Product> findByPriceGreaterThanEqual(BigDecimal minPrice, Pageable pageable);
