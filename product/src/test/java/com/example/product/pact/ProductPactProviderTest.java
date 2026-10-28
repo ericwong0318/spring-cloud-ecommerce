@@ -110,6 +110,33 @@ class ProductPactProviderTest {
 
     @State("valid product update request")
     void validProductUpdateRequest() {
+        Mockito.when(categoryClient.getCategoryName(123L)).thenReturn(Optional.of("Electronics"));
+
+        com.example.product.Product existing = new com.example.product.Product();
+        existing.setId("1");
+        existing.setName("Laptop Pro 15");
+        existing.setDescription("High-performance laptop for professionals");
+        existing.setCategoryId("cat-123");
+        existing.setCategoryName("Electronics");
+        existing.setPrice(new java.math.BigDecimal("1999.99"));
+
+        com.example.product.Product savedEntity = new com.example.product.Product();
+        savedEntity.setId("1");
+        savedEntity.setName("Laptop Pro 16");
+        savedEntity.setDescription("Updated high-performance laptop");
+        savedEntity.setCategoryId("cat-123");
+        savedEntity.setCategoryName("Electronics");
+        savedEntity.setPrice(new java.math.BigDecimal("2199.99"));
+
+        ProductDto responseDto = new ProductDto(
+            "1", "Laptop Pro 16", "Updated high-performance laptop",
+            new java.math.BigDecimal("2199.99"), "cat-123", "Electronics",
+            null, List.of(), List.of(), 10
+        );
+
+        Mockito.when(productRepository.findById("1")).thenReturn(Mono.just(existing));
+        Mockito.when(productRepository.save(existing)).thenReturn(Mono.just(savedEntity));
+        Mockito.when(productMapper.toDto(savedEntity)).thenReturn(responseDto);
     }
 
     @State("product create request - name blank")

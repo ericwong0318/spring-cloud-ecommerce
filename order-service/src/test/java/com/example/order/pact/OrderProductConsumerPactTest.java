@@ -47,12 +47,11 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact validProductUpdateRequest(PactDslWithProvider builder) {
         return builder
                 .given("valid product update request")
                 .uponReceiving("A request to update a product")
-                .path("/api/products/1")
+                .path("/products/1")
                 .method("PUT")
                 .body(new PactDslJsonBody()
                         .stringType("name", "Laptop Pro 16")
@@ -316,6 +315,23 @@ class OrderProductConsumerPactTest {
                 .uri("/products")
                 .header("Content-Type", "application/json; charset=UTF-8")
                 .bodyValue(new ProductCreateRequest("Laptop Pro 15", "High-performance laptop for professionals", new BigDecimal("1999.99"), "cat-123"))
+                .retrieve()
+                .toBodilessEntity()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "validProductUpdateRequest")
+    void testValidProductUpdateRequest(MockServer mockServer) {
+        record ProductUpdateRequest(String name, String description, BigDecimal price, String categoryId) {}
+        String mockServerUrl = mockServer.getUrl();
+        System.out.println("Mock server URL: " + mockServerUrl);
+        WebClient.create(mockServerUrl)
+                .put()
+                .uri("/products/1")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue(new ProductUpdateRequest("Laptop Pro 16", "Updated high-performance laptop", new BigDecimal("2199.99"), "cat-123"))
                 .retrieve()
                 .toBodilessEntity()
                 .block();

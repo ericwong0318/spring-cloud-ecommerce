@@ -50,7 +50,6 @@ class OrderInventoryConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact validConfirmStockRequest(PactDslWithProvider builder) {
         return builder
                 .given("valid confirm stock request")

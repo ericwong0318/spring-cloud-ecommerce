@@ -15,7 +15,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ExtendWith(PactConsumerTestExt.class)
-@PactTestFor(providerName = "category-service", port = "8082")
+@PactTestFor(providerName = "category-service")
 class ProductCategoryConsumerPactTest {
 
     @Pact(consumer = "product-service")
@@ -37,7 +37,6 @@ class ProductCategoryConsumerPactTest {
     }
 
     @Pact(consumer = "product-service")
-    @Disabled
     public V4Pact categoryNotFound(PactDslWithProvider builder) {
         return builder
                 .given("category with id 999 does not exist")
@@ -64,7 +63,6 @@ class ProductCategoryConsumerPactTest {
     }
 
     @Test
-    @Disabled
     @PactTestFor(pactMethod = "categoryNotFound")
     void testCategoryNotFound(MockServer mockServer) {
         String mockServerUrl = mockServer.getUrl();
@@ -72,8 +70,7 @@ class ProductCategoryConsumerPactTest {
         WebClient.create(mockServerUrl)
                 .get()
                 .uri("/categories/999")
-                .retrieve()
-                .toBodilessEntity()
+                .exchange()
                 .block();
         assertNotNull("Pact generated");
     }

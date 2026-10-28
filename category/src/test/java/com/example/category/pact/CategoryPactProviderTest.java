@@ -119,4 +119,10 @@ class CategoryPactProviderTest {
     @State("category update request - description too long")
     void categoryUpdateRequestDescriptionTooLong(Map<String, Object> params) {
     }
+
+    @State("category with id 999 does not exist")
+    void categoryWithId999DoesNotExist(Map<String, Object> params) {
+        // Intentionally empty: no category with id 999 is saved, so the repository
+        // returns empty and the controller throws ResourceNotFoundException → 404.
+    }
 }

@@ -107,7 +107,9 @@ class InventoryPactProviderTest {
         inventory.setVariantId(1L);
         inventory.setProductId(1L);
         inventory.setProductName("Laptop Pro 15");
-        inventory.setQuantity(95);
+        // confirmStock decrements both quantity and reservedQuantity by confirm amount (5).
+        // Start with quantity=100, reservedQuantity=5 so after confirm: quantity=95, reservedQuantity=0.
+        inventory.setQuantity(100);
         inventory.setReservedQuantity(5);
         inventory.setReorderLevel(10);
         inventory.setCostPrice(new BigDecimal("500.00"));
