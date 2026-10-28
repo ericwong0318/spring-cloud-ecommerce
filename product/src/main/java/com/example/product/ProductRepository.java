@@ -17,6 +17,10 @@ public interface ProductRepository extends ReactiveMongoRepository<Product, Stri
 
     Flux<Product> findAllBy(Pageable pageable);
 
+    Flux<Product> findByStockQuantityGreaterThan(Integer stockQuantity);
+
+    Flux<Product> findByStockQuantityGreaterThan(Integer stockQuantity, Pageable pageable);
+
     @Query("{ 'variants.attributes.?0': ?1 }")
     Flux<Product> findByVariantsAttributesKeyAndVariantsAttributesValue(String key, String value);
 

@@ -89,7 +89,8 @@ public class ProductMigrationRunner implements CommandLineRunner {
                         categoryName,
                         String.format("https://picsum.photos/400/400?product=%s", productId),
                         List.of(String.format("https://picsum.photos/800/600?product=%s&random=%d", productId, productId)),
-                        variants
+                        variants,
+                        10
                 );
 
                 Product product = productMapper.toEntity(productDto);

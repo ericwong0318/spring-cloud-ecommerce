@@ -45,7 +45,10 @@ public record ProductDto(
     List<String> images,
 
     @Schema(description = "Product variants")
-    List<ProductVariantDto> variants
+    List<ProductVariantDto> variants,
+
+    @Schema(description = "Available stock quantity", example = "10")
+    Integer stockQuantity
 ) {
     public ProductDto {
         variants = variants != null ? new ArrayList<>(variants) : new ArrayList<>();

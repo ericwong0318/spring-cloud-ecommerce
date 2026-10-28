@@ -30,9 +30,15 @@ public class ProductService {
     }
 
     public Flux<ProductDto> getAllProducts(Pageable pageable) {
-        log.debug("Fetching all products with pagination");
-        return productRepository.findAllBy(pageable)
-                .map(productMapper::toDto);
+        return getAllProducts(pageable, false);
+    }
+
+    public Flux<ProductDto> getAllProducts(Pageable pageable, boolean inStockOnly) {
+        log.debug("Fetching all products with pagination, inStockOnly={}", inStockOnly);
+        Flux<Product> products = inStockOnly
+                ? productRepository.findByStockQuantityGreaterThan(0, pageable)
+                : productRepository.findAllBy(pageable);
+        return products.map(productMapper::toDto);
     }
 
     public Flux<ProductDto> getAllProducts() {
