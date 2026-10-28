@@ -1,7 +1,7 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, ReactNode } from 'react';
-import { cartApi } from '@services/endpoints';
+import { cartApi, productApi } from '@services/endpoints';
 import { useAuth } from './AuthContext';
-import type { Cart, CartItem } from '../types/domain';
+import type { Cart, CartItem, Product } from '../types/domain';
 import { STORAGE_KEYS } from '@utils/constants';
 
 interface CartState {
@@ -165,18 +165,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = async (productId: string, quantity: number, attributes?: Record<string, string>) => {
     if (!isAuthenticated) {
-      // Optimistic update for guest
+      // Optimistic update for guest - record the product's real price/subtotal
+      const product = await productApi.getProduct(productId);
       const newItem: CartItem = {
         id: `temp-${Date.now()}`,
         productId,
-        productName: '', // Will be filled by UI
-        productThumbnail: '',
-        price: 0,
-        currency: 'USD',
+        productName: product.name,
+        productThumbnail: product.thumbnail,
+        price: product.price,
+        currency: product.currency,
         quantity,
-        subtotal: 0,
+        subtotal: product.price * quantity,
         attributes: attributes || {},
-        maxQuantity: 99,
+        maxQuantity: Math.min(product.stockQuantity, 99),
       };
       dispatch({ type: 'OPTIMISTIC_ADD', payload: newItem });
       
