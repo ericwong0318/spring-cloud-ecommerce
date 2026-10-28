@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -49,6 +50,8 @@ public class ProductController {
             @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "Sort field") @RequestParam(defaultValue = "id") String sort,
+            @Parameter(description = "Minimum price (inclusive)") @RequestParam(required = false) BigDecimal minPrice,
+            @Parameter(description = "Maximum price (inclusive)") @RequestParam(required = false) BigDecimal maxPrice,
             @Parameter(description = "Filter to only products with stock available") @RequestParam(required = false) Boolean inStockOnly) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         boolean stockOnly = Boolean.TRUE.equals(inStockOnly);
@@ -73,9 +76,19 @@ public class ProductController {
                 // No subcategories - filter by this single category
                 products = productService.getProductsByCategory(categoryId, pageable);
             }
-            return stockOnly ? products.filter(dto -> dto.stockQuantity() != null && dto.stockQuantity() > 0) : products;
+            products = stockOnly ? products.filter(dto -> dto.stockQuantity() != null && dto.stockQuantity() > 0) : products;
+            if (minPrice != null || maxPrice != null) {
+                products = products.filter(dto -> {
+                    java.math.BigDecimal price = dto.price();
+                    if (price == null) return false;
+                    if (minPrice != null && price.compareTo(minPrice) < 0) return false;
+                    if (maxPrice != null && price.compareTo(maxPrice) > 0) return false;
+                    return true;
+                });
+            }
+            return products;
         }
-        return productService.getAllProducts(pageable, stockOnly);
+        return productService.getAllProducts(pageable, minPrice, maxPrice, stockOnly);
     }
 
     @GetMapping("/{id}")

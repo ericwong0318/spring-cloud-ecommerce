@@ -30,14 +30,28 @@ public class ProductService {
     }
 
     public Flux<ProductDto> getAllProducts(Pageable pageable) {
-        return getAllProducts(pageable, false);
+        return getAllProducts(pageable, null, null, false);
     }
 
-    public Flux<ProductDto> getAllProducts(Pageable pageable, boolean inStockOnly) {
-        log.debug("Fetching all products with pagination, inStockOnly={}", inStockOnly);
-        Flux<Product> products = inStockOnly
-                ? productRepository.findByStockQuantityGreaterThan(0, pageable)
-                : productRepository.findAllBy(pageable);
+    public Flux<ProductDto> getAllProducts(Pageable pageable, BigDecimal minPrice, BigDecimal maxPrice, Boolean inStockOnly) {
+        log.debug("Fetching all products with pagination, minPrice={}, maxPrice={}, inStockOnly={}", minPrice, maxPrice, inStockOnly);
+        boolean stockOnly = Boolean.TRUE.equals(inStockOnly);
+
+        Flux<Product> products;
+        if (minPrice != null && maxPrice != null) {
+            products = productRepository.findByPriceBetween(minPrice, maxPrice, pageable);
+        } else if (minPrice != null) {
+            products = productRepository.findByPriceGreaterThanEqual(minPrice, pageable);
+        } else if (maxPrice != null) {
+            products = productRepository.findByPriceLessThanEqual(maxPrice, pageable);
+        } else {
+            products = productRepository.findAllBy(pageable);
+        }
+
+        if (stockOnly) {
+            products = products.filter(p -> p.getStockQuantity() != null && p.getStockQuantity() > 0);
+        }
+
         return products.map(productMapper::toDto);
     }
 

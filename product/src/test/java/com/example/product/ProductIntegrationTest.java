@@ -38,7 +38,7 @@ class ProductIntegrationTest {
     @Test
     void whenAllProductsRetrieved_thenReturn200() {
         ProductDto product = new ProductDto("1", "Test Product", "Description", BigDecimal.valueOf(99.99), "1", null, null, List.of(), List.of(), 10);
-        when(productService.getAllProducts(any(Pageable.class), anyBoolean())).thenReturn(Flux.just(product));
+        when(productService.getAllProducts()).thenReturn(Flux.just(product));
 
         webTestClient.get()
                 .uri("/products")
