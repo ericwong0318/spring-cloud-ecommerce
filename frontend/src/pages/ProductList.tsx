@@ -5,7 +5,7 @@ import { Search as SearchIcon, FilterList, Close, ExpandMore } from '@mui/icons-
 import { useQuery } from '@tanstack/react-query';
 import { productApi, categoryApi } from '../services/endpoints';
 import { ProductCardComponent } from '@components/Card';
-import type { ProductFilters } from '../types/domain';
+import type { ProductFilters, ProductSummary } from '../types/domain';
 
 const SORT_OPTIONS = [
   { value: 'popular', label: 'Most Popular' },
@@ -80,22 +80,24 @@ export function ProductList() {
     placeholderData: (previousData) => previousData,
   });
 
-  // Backend returns a flat JSON array, not a PaginatedResponse object
-  const products = Array.isArray(productsResponse)
-    ? productsResponse
-    : productsResponse?.content || [];
+  // The listing endpoint returns a paginated response object (content + pagination metadata).
+  // Some endpoints (e.g. search) may still return a flat array; handle both shapes.
+  const response = productsResponse as any;
+  const isPaginated = response != null && !Array.isArray(response);
 
-  const totalPages = Array.isArray(productsResponse)
-    ? 1
-    : productsResponse?.totalPages || 0;
+  const products: ProductSummary[] = isPaginated
+    ? response.content
+    : (response || []);
 
-  const totalElements = Array.isArray(productsResponse)
-    ? productsResponse.length
-    : productsResponse?.totalElements || 0;
+  const totalPages = isPaginated ? response.totalPages : 1;
+  const totalElements = isPaginated
+    ? response.totalElements
+    : products.length;
 
-  const currentPage = Array.isArray(productsResponse)
-    ? 0
-    : productsResponse?.page || 0;
+  // Backend reports pageNumber; keep `page` as a fallback for non-standard responses.
+  const currentPage = isPaginated
+    ? Number(response.pageNumber ?? response.page) || 0
+    : 0;
 
   const handleFilterChange = (newFilters: Partial<ProductFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters, page: 0 }));

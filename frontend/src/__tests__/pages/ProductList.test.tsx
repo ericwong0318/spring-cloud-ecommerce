@@ -4,7 +4,7 @@ import React from 'react';
 import { ProductList } from '@pages/ProductList';
 import { productApi } from '@services/endpoints';
 import { useQuery } from '@tanstack/react-query';
-import type { ProductSummary } from '@types/domain';
+import type { PaginatedResponse, ProductSummary } from '@types/domain';
 import { ThemeProvider } from '@mui/material';
 import { theme } from '@styles/theme';
 import { CartProvider } from '@context/CartContext';
@@ -145,6 +145,75 @@ describe('ProductList search', () => {
     await waitFor(() => {
       expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
       expect(screen.getByText('Mechanical Keyboard')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('ProductList pagination', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (productApi.getProducts as ReturnType<typeof vi.fn>).mockResolvedValue(paginatedPageOne);
+    (productApi.searchProducts as ReturnType<typeof vi.fn>).mockResolvedValue(paginatedPageOne);
+    mockUseQuery.mockImplementation((options: any) => {
+      const [data, setData] = React.useState<unknown>(undefined);
+      React.useEffect(() => {
+        let cancelled = false;
+        if (options.queryFn) {
+          const result = options.queryFn();
+          if (result && typeof result.then === 'function') {
+            result.then((resolved) => {
+              if (!cancelled) setData(resolved);
+            });
+          }
+        }
+        return () => {
+          cancelled = true;
+        };
+      }, [options.queryFn]);
+      return { data, isLoading: data === undefined, error: null };
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const paginatedPageOne: PaginatedResponse<ProductSummary> = {
+    content: [mockFull[0], mockFull[1]],
+    pageNumber: 0,
+    pageSize: 20,
+    totalElements: 45,
+    totalPages: 3,
+    first: true,
+    last: false,
+    empty: false,
+  } as unknown as PaginatedResponse<ProductSummary>;
+
+  it('reports real total elements and total pages from the backend', async () => {
+    renderWithProviders(<ProductList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('45 products found')).toBeInTheDocument();
+    });
+
+    // Pagination controls render for more than one page
+    expect(screen.getByRole('button', { name: 'Go to page 2' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Go to page 4' })).not.toBeInTheDocument();
+  });
+
+  it('navigates to page 2 and requests the next page from the API', async () => {
+    renderWithProviders(<ProductList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('45 products found')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go to page 2' }));
+
+    await waitFor(() => {
+      expect(productApi.getProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1 }),
+      );
     });
   });
 });
