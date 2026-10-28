@@ -58,16 +58,25 @@ export function ProductList() {
   }, [filters, setSearchParams]);
 
   // Fetch categories for filter sidebar
+  const fetchCategories = useCallback(() => categoryApi.getCategoryTree(), []);
   const { data: categories } = useQuery({
     queryKey: ['categories', 'tree'],
-    queryFn: () => categoryApi.getCategoryTree(),
+    queryFn: fetchCategories,
     staleTime: 1000 * 60 * 30,
   });
 
-  // Fetch products
+  // Fetch products. When a search term is present, use the dedicated search
+  // endpoint so matches are returned; otherwise fall back to the full list.
+  const fetchProducts = useCallback(() => {
+    if (filters.search) {
+      return productApi.searchProducts(filters.search, { ...filters, search: undefined });
+    }
+    return productApi.getProducts(filters);
+  }, [filters]);
+
   const { data: productsResponse, isLoading, error } = useQuery({
     queryKey: ['products', 'list', filters],
-    queryFn: () => productApi.getProducts(filters),
+    queryFn: fetchProducts,
     placeholderData: (previousData) => previousData,
   });
 
