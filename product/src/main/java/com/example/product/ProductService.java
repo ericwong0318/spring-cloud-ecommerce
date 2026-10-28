@@ -1,5 +1,6 @@
 package com.example.product;
 
+import com.example.common.dto.PageResponse;
 import com.example.common.dto.ProductDto;
 import com.example.common.exception.ResourceNotFoundException;
 import org.slf4j.Logger;
@@ -11,6 +12,7 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -29,34 +31,62 @@ public class ProductService {
         this.categoryClient = categoryClient;
     }
 
-    public Flux<ProductDto> getAllProducts(Pageable pageable) {
+    public Mono<PageResponse<ProductDto>> getAllProducts(Pageable pageable) {
         return getAllProducts(pageable, null, null, false);
     }
 
-    public Flux<ProductDto> getAllProducts(Pageable pageable, BigDecimal minPrice, BigDecimal maxPrice, Boolean inStockOnly) {
+    public Mono<PageResponse<ProductDto>> getAllProducts(Pageable pageable, BigDecimal minPrice, BigDecimal maxPrice, Boolean inStockOnly) {
         log.debug("Fetching all products with pagination, minPrice={}, maxPrice={}, inStockOnly={}", minPrice, maxPrice, inStockOnly);
         boolean stockOnly = Boolean.TRUE.equals(inStockOnly);
 
-        Flux<Product> products;
-        if (minPrice != null && maxPrice != null) {
-            products = productRepository.findByPriceBetween(minPrice, maxPrice, pageable);
-        } else if (minPrice != null) {
-            products = productRepository.findByPriceGreaterThanEqual(minPrice, pageable);
-        } else if (maxPrice != null) {
-            products = productRepository.findByPriceLessThanEqual(maxPrice, pageable);
-        } else {
-            products = productRepository.findAllBy(pageable);
-        }
-
+        Flux<Product> products = selectProducts(pageable, minPrice, maxPrice);
         if (stockOnly) {
             products = products.filter(p -> p.getStockQuantity() != null && p.getStockQuantity() > 0);
         }
 
-        return products.map(productMapper::toDto);
+        Mono<List<ProductDto>> content = products.map(productMapper::toDto).collectList();
+
+        Mono<Long> totalElements = selectProducts(Pageable.unpaged(), minPrice, maxPrice)
+                .filter(product -> !stockOnly || (product.getStockQuantity() != null && product.getStockQuantity() > 0))
+                .count();
+
+        return Mono.zip(content, totalElements)
+                .map(tuple -> toPageResponse(tuple.getT1(), tuple.getT2(), pageable));
     }
 
-    public Flux<ProductDto> getAllProducts() {
+    public Mono<PageResponse<ProductDto>> getAllProducts() {
         return getAllProducts(Pageable.unpaged());
+    }
+
+    private PageResponse<ProductDto> toPageResponse(List<ProductDto> content, long totalElements, Pageable pageable) {
+        int pageSize = Math.max(pageable.getPageSize(), 1);
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / pageSize);
+        int page = pageable.getPageNumber();
+        boolean first = page == 0;
+        boolean last = totalPages == 0 || page >= totalPages - 1;
+        return new PageResponse<>(
+                content,
+                page,
+                pageSize,
+                totalElements,
+                totalPages,
+                first,
+                last,
+                page < totalPages - 1,
+                page > 0
+        );
+    }
+
+    private Flux<Product> selectProducts(Pageable pageable, BigDecimal minPrice, BigDecimal maxPrice) {
+        if (minPrice != null && maxPrice != null) {
+            return productRepository.findByPriceBetween(minPrice, maxPrice, pageable);
+        } else if (minPrice != null) {
+            return productRepository.findByPriceGreaterThanEqual(minPrice, pageable);
+        } else if (maxPrice != null) {
+            return productRepository.findByPriceLessThanEqual(maxPrice, pageable);
+        } else {
+            return productRepository.findAllBy(pageable);
+        }
     }
 
     public Mono<ProductDto> getProductById(String id) {
@@ -159,8 +189,8 @@ public class ProductService {
 
     public Flux<ProductDto> filterByAttributes(Map<String, String> attrs, Pageable pageable) {
         log.debug("Filtering products by attributes: {}", attrs);
-        // For multiple attributes, chain the queries
-        Flux<ProductDto> result = getAllProducts(pageable);
+        Flux<ProductDto> result = getAllProducts(pageable)
+                .flatMapMany(page -> Flux.fromIterable(page.content()));
         for (Map.Entry<String, String> entry : attrs.entrySet()) {
             final String k = entry.getKey();
             final String v = entry.getValue();

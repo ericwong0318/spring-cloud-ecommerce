@@ -1,6 +1,7 @@
 package com.example.product;
 
 import com.example.common.dto.CategoryDto;
+import com.example.common.dto.PageResponse;
 import com.example.common.dto.ProductDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -44,8 +46,8 @@ public class ProductController {
     }
 
     @GetMapping
-    @Operation(summary = "List all products", description = "Returns a list of all products")
-    public Flux<ProductDto> getAllProducts(
+    @Operation(summary = "List all products", description = "Returns a paginated list of all products")
+    public Mono<ResponseEntity<PageResponse<ProductDto>>> getAllProducts(
             @Parameter(description = "Filter by category ID (parent or subcategory)") @RequestParam(required = false) String categoryId,
             @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
@@ -56,39 +58,87 @@ public class ProductController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         boolean stockOnly = Boolean.TRUE.equals(inStockOnly);
         if (categoryId != null) {
-            // Check if categoryId is a parent category by looking for subcategories
-            List<String> subcategoryIds = webClientBuilder.build()
-                    .get()
-                    .uri(categoryServiceUrl + "/categories/" + categoryId + "/children")
-                    .retrieve()
-                    .bodyToFlux(CategoryDto.class)
-                    .map(cd -> String.valueOf(cd.id()))
-                    .collectList()
-                    .block();
-
-            Flux<ProductDto> products;
-            if (subcategoryIds != null && !subcategoryIds.isEmpty()) {
-                // Has subcategories - get products from all subcategories
-                products = Flux.concat(subcategoryIds.stream()
-                        .map(scId -> productService.getProductsByCategory(scId, pageable))
-                        .collect(java.util.stream.Collectors.toList()));
-            } else {
-                // No subcategories - filter by this single category
-                products = productService.getProductsByCategory(categoryId, pageable);
-            }
-            products = stockOnly ? products.filter(dto -> dto.stockQuantity() != null && dto.stockQuantity() > 0) : products;
-            if (minPrice != null || maxPrice != null) {
-                products = products.filter(dto -> {
-                    java.math.BigDecimal price = dto.price();
-                    if (price == null) return false;
-                    if (minPrice != null && price.compareTo(minPrice) < 0) return false;
-                    if (maxPrice != null && price.compareTo(maxPrice) > 0) return false;
-                    return true;
-                });
-            }
-            return products;
+            return getProductsByCategoryPage(categoryId, pageable, stockOnly, minPrice, maxPrice);
         }
-        return productService.getAllProducts(pageable, minPrice, maxPrice, stockOnly);
+        return productService.getAllProducts(pageable, minPrice, maxPrice, stockOnly)
+                .map(ResponseEntity::ok);
+    }
+
+    private Mono<ResponseEntity<PageResponse<ProductDto>>> getProductsByCategoryPage(
+            String categoryId, Pageable pageable, boolean stockOnly, BigDecimal minPrice, BigDecimal maxPrice) {
+        // Check if categoryId is a parent category by looking for subcategories
+        List<String> subcategoryIds = webClientBuilder.build()
+                .get()
+                .uri(categoryServiceUrl + "/categories/" + categoryId + "/children")
+                .retrieve()
+                .bodyToFlux(CategoryDto.class)
+                .map(cd -> String.valueOf(cd.id()))
+                .collectList()
+                .block();
+
+        List<String> categoryIds = new ArrayList<>();
+        if (subcategoryIds != null && !subcategoryIds.isEmpty()) {
+            categoryIds.addAll(subcategoryIds);
+        } else {
+            categoryIds.add(categoryId);
+        }
+
+        List<Flux<ProductDto>> categoryFluxes = new ArrayList<>(categoryIds.size());
+        for (String cid : categoryIds) {
+            categoryFluxes.add(productService.getProductsByCategory(cid, pageable));
+        }
+        Flux<ProductDto> products = Flux.concat(categoryFluxes);
+        products = stockOnly ? products.filter(dto -> dto.stockQuantity() != null && dto.stockQuantity() > 0) : products;
+        if (minPrice != null || maxPrice != null) {
+            products = products.filter(dto -> inRange(dto.price(), minPrice, maxPrice));
+        }
+
+        Mono<List<ProductDto>> content = products.collectList();
+
+        List<Flux<ProductDto>> allCategoryFluxes = new ArrayList<>(categoryIds.size());
+        for (String cid : categoryIds) {
+            allCategoryFluxes.add(productService.getProductsByCategory(cid, Pageable.unpaged()));
+        }
+        Mono<Long> totalElements = Flux.concat(allCategoryFluxes)
+                .filter(dto -> !stockOnly || (dto.stockQuantity() != null && dto.stockQuantity() > 0))
+                .filter(dto -> inRange(dto.price(), minPrice, maxPrice))
+                .count();
+
+        return Mono.zip(content, totalElements)
+                .map(tuple -> toPageResponse(tuple.getT1(), tuple.getT2(), pageable))
+                .map(ResponseEntity::ok);
+    }
+
+    private boolean inRange(BigDecimal price, BigDecimal minPrice, BigDecimal maxPrice) {
+        if (price == null) {
+            return false;
+        }
+        if (minPrice != null && price.compareTo(minPrice) < 0) {
+            return false;
+        }
+        if (maxPrice != null && price.compareTo(maxPrice) > 0) {
+            return false;
+        }
+        return true;
+    }
+
+    private PageResponse<ProductDto> toPageResponse(List<ProductDto> content, long totalElements, Pageable pageable) {
+        int pageSize = Math.max(pageable.getPageSize(), 1);
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / pageSize);
+        int page = pageable.getPageNumber();
+        boolean first = page == 0;
+        boolean last = totalPages == 0 || page >= totalPages - 1;
+        return new PageResponse<>(
+                content,
+                page,
+                pageSize,
+                totalElements,
+                totalPages,
+                first,
+                last,
+                page < totalPages - 1,
+                page > 0
+        );
     }
 
     @GetMapping("/{id}")
