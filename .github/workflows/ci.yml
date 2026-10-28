@@ -476,6 +476,49 @@ jobs:
         if: always()
         run: docker stop sonarqube && docker rm sonarqube
 
+  pact-verification:
+    name: Pact Contract Verification
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 30
+    env:
+      TESTCONTAINERS_RYUK_DISABLED: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build all modules (excluding system-test)
+        run: mvn clean install -DskipTests -B -pl '!system-test'
+
+      - name: Generate consumer pacts
+        run: |
+          mvn test -B -pl order-service,notification-service,product \
+            -Dtest='*PactConsumerTest' -DfailIfNoTests=false
+
+      - name: Verify provider pacts
+        run: |
+          mvn test -B -pl order-service,payment-service,category,inventory-service,product \
+            -Dtest='*PactProviderTest' -DfailIfNoTests=false
+
+      - name: Upload pact reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pact-reports
+          path: |
+            order-service/target/surefire-reports/*PactProviderTest*
+            payment-service/target/surefire-reports/*PactProviderTest*
+            category/target/surefire-reports/*PactProviderTest*
+            inventory-service/target/surefire-reports/*PactProviderTest*
+            product/target/surefire-reports/*PactProviderTest*
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
