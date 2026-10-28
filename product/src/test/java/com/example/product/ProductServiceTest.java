@@ -123,12 +123,10 @@ class ProductServiceTest {
         Product inStock = product("1", "In Stock Item", BigDecimal.TEN, 10);
         Product outOfStock = product("2", "Out of Stock Item", BigDecimal.TEN, 0);
         ProductDto inStockDto = dto("1", "In Stock Item", BigDecimal.TEN, 10);
-        ProductDto outOfStockDto = dto("2", "Out of Stock Item", BigDecimal.TEN, 0);
 
         when(productRepository.findAllBy(PAGEABLE))
                 .thenReturn(Flux.just(inStock, outOfStock));
         when(productMapper.toDto(inStock)).thenReturn(inStockDto);
-        when(productMapper.toDto(outOfStock)).thenReturn(outOfStockDto);
 
         List<ProductDto> result = productService.getAllProducts(PAGEABLE,
                 null, null, true)
