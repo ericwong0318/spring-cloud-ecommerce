@@ -16,6 +16,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,20 +56,20 @@ class ProductIntegrationTest {
 
     @Test
     void whenInStockOnlyTrue_passesInStockOnlyToService() {
-        when(productService.getAllProducts(any(Pageable.class), eq(true))).thenReturn(Flux.empty());
+        when(productService.getAllProducts(any(Pageable.class), isNull(), isNull(), eq(true))).thenReturn(Flux.empty());
 
         webTestClient.get()
                 .uri(uriBuilder -> uriBuilder.path("/products").queryParam("inStockOnly", "true").build())
                 .exchange()
                 .expectStatus().isOk();
 
-        verify(productService).getAllProducts(any(Pageable.class), eq(true));
+        verify(productService).getAllProducts(any(Pageable.class), isNull(), isNull(), eq(true));
     }
 
     @Test
     void whenInStockOnlyAbsent_doesNotChangeBehavior() {
         ProductDto product = new ProductDto("1", "Test Product", "Description", BigDecimal.valueOf(99.99), "1", null, null, List.of(), List.of(), 10);
-        when(productService.getAllProducts(any(Pageable.class), eq(false))).thenReturn(Flux.just(product));
+        when(productService.getAllProducts(any(Pageable.class), isNull(), isNull(), eq(false))).thenReturn(Flux.just(product));
 
         webTestClient.get()
                 .uri("/products")
@@ -77,7 +78,7 @@ class ProductIntegrationTest {
                 .expectBodyList(ProductDto.class)
                 .hasSize(1);
 
-        verify(productService).getAllProducts(any(Pageable.class), eq(false));
+        verify(productService).getAllProducts(any(Pageable.class), isNull(), isNull(), eq(false));
     }
 
     @Test
