@@ -36,12 +36,13 @@ This document describes how to run the full Consumer-Driven Contract testing cyc
 
 | Consumer | Provider | Test Location | Verifies |
 |----------|----------|---------------|----------|
-| order-service | product-service | `order-service/*ConsumerPactTest.java` | Product CRUD APIs |
-| order-service | payment-service | `order-service/*ConsumerPactTest.java` | Payment authorize/capture/refund |
-| order-service | inventory-service | `order-service/*ConsumerPactTest.java` | Inventory reservation |
-| product-service | category-service | *TODO* | Category lookup |
+| order-service | product-service | `order-service/OrderProductConsumerPactTest.java` | Product CRUD APIs |
+| order-service | payment-service | `order-service/OrderPaymentConsumerPactTest.java` | Payment authorize/capture/refund |
+| order-service | inventory-service | `order-service/OrderInventoryConsumerPactTest.java` | Inventory reservation |
+| product-service | category-service | `product/ProductCategoryConsumerPactTest.java` | Category lookup |
+| notification-service | order-service | `notification-service/OrderServiceConsumerPactTest.java` | Order create/get/cancel |
 
-> **Note**: Consumer tests for `product-service → category-service` and `order-service → inventory-service` are not yet implemented (see open tickets).
+All consumer contracts are implemented. Pacts are generated in each consumer module's `target/pacts/`.
 
 ---
 
@@ -68,8 +69,11 @@ Run consumer tests to generate Pact JSON files in each module's `target/pacts/` 
 # Order service → Product, Payment, Inventory
 mvn test -pl order-service -Dtest=*ConsumerPactTest
 
-# Product service → Category (when implemented)
-# mvn test -pl product -Dtest=*ConsumerPactTest
+# Product service → Category
+mvn test -pl product -Dtest=ProductCategoryConsumerPactTest
+
+# Notification service → Order
+mvn test -pl notification-service -Dtest=OrderServiceConsumerPactTest
 ```
 
 **Expected output:** Each test creates a `.json` file in `target/pacts/`:
@@ -86,48 +90,40 @@ order-service/target/pacts/
 
 ### Step 3: Verify Providers Against Local Pacts
 
-Run provider verification tests. Each provider test reads pacts from the consumer's `target/pacts/` directory.
+Run provider verification tests. Each provider test reads pacts from the consumer's `target/pacts/` directory using `@PactFolder`.
 
-> **Current Status**: Only `ProductPactProviderTest` uses the modern `@PactFolder` annotation and works end-to-end. Other provider tests use the deprecated `ProviderInfo` API and need migration (see tickets).
+> **Current Status**: All 5 provider tests use the modern `@PactFolder` annotation and pass end-to-end:
+> - Product (verifies order-service → product pacts)
+> - Order (verifies notification-service → order pacts)
+> - Payment (verifies order-service → payment pacts)
+> - Inventory (verifies order-service → inventory pacts, requires Testcontainers/Docker)
+> - Category (verifies product-service → category pacts)
 
 ```bash
-# Product service provider (WORKS - uses @PactFolder)
+# Product service provider (verifies order-service → product pacts)
 mvn test -pl product -Dtest=ProductPactProviderTest
 
-# Order service provider (NEEDS UPDATE - uses deprecated ProviderInfo API)
-# mvn test -pl order-service -Dtest=OrderPactProviderTest
+# Order service provider (verifies notification-service → order pacts)
+mvn test -pl order-service -Dtest=OrderPactProviderTest
 
-# Category service provider (NEEDS CONSUMER PACTS - product→category not implemented)
-# mvn test -pl category -Dtest=CategoryPactProviderTest
+# Category service provider (verifies product-service → category pacts)
+mvn test -pl category -Dtest=CategoryPactProviderTest
 
-# Payment service provider (NEEDS UPDATE - uses deprecated ProviderInfo API)
-# mvn test -pl payment-service -Dtest=PaymentPactProviderTest
+# Payment service provider (verifies order-service → payment pacts)
+mvn test -pl payment-service -Dtest=PaymentPactProviderTest
 
-# Inventory service provider (NEEDS UPDATE - uses deprecated ProviderInfo API)
-# mvn test -pl inventory-service -Dtest=InventoryPactProviderTest
+# Inventory service provider (verifies order-service → inventory pacts, needs Docker/Testcontainers)
+mvn test -pl inventory-service -Dtest=InventoryPactProviderTest
 ```
 
-**How it works (modern approach):** Provider tests use `@PactFolder` annotation pointing to the consumer's pact directory:
+**How it works:** Provider tests use `@PactFolder` annotation pointing to the consumer's pact directory:
 ```java
 @Provider("product-service")
 @PactFolder("../order-service/target/pacts")  // Reads from consumer's output
 class ProductPactProviderTest { ... }
 ```
 
-**Legacy approach (deprecated):** Some provider tests still use `ProviderInfo` API in `@BeforeAll`:
-```java
-// DEPRECATED - doesn't work with Pact 4.7.5
-private static ProviderInfo providerInfo;
-
-@BeforeAll
-static void setupProvider() {
-    providerInfo = new ProviderInfo("payment-service");
-    providerInfo.hasPactWith("order-service", consumer -> {
-        consumer.setPactSource(new File("../order-service/target/pacts"));
-        return INSTANCE;
-    });
-}
-```
+No provider tests use the deprecated `ProviderInfo` API — all have been migrated to `@PactFolder`.
 
 ---
 
@@ -241,18 +237,19 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 
 ## Verification Checklist
 
-Follow this checklist to verify the working cycle (as of current implementation):
+Follow this checklist to verify the full Pact CDC cycle (all verified passing):
 
-- [ ] `mvn clean install -pl common -DskipTests` — **PASS**
-- [ ] `mvn test -pl order-service -Dtest=*ConsumerPactTest` — **PASS** (generates pacts)
-- [ ] `ls order-service/target/pacts/*.json` — **2 files exist** (product, payment)
-- [ ] `mvn test -pl product -Dtest=ProductPactProviderTest` — **PASS** (uses @PactFolder)
-- [ ] `mvn test -pl order-service -Dtest=OrderPactProviderTest` — **NEEDS UPDATE** (uses deprecated ProviderInfo API)
-- [ ] `mvn test -pl category -Dtest=CategoryPactProviderTest` — **NEEDS CONSUMER PACTS** (product→category not implemented)
-- [ ] `mvn test -pl payment-service -Dtest=PaymentPactProviderTest` — **NEEDS UPDATE** (uses deprecated ProviderInfo API)
-- [ ] `mvn test -pl inventory-service -Dtest=InventoryPactProviderTest` — **NEEDS UPDATE** (uses deprecated ProviderInfo API)
+- [x] `mvn clean install -pl common -DskipTests` — **PASS** (installs shared DTOs)
+- [x] `mvn test -pl order-service -Dtest=*ConsumerPactTest` — **PASS** (generates product, payment, inventory pacts)
+- [x] `mvn test -pl product -Dtest=ProductCategoryConsumerPactTest` — **PASS** (generates category pact)
+- [x] `mvn test -pl notification-service -Dtest=OrderServiceConsumerPactTest` — **PASS** (generates order pacts for notification consumer)
+- [x] `mvn test -pl product -Dtest=ProductPactProviderTest` — **PASS** (verifies order-service → product)
+- [x] `mvn test -pl order-service -Dtest=OrderPactProviderTest` — **PASS** (verifies notification-service → order)
+- [x] `mvn test -pl category -Dtest=CategoryPactProviderTest` — **PASS** (verifies product-service → category)
+- [x] `mvn test -pl payment-service -Dtest=PaymentPactProviderTest` — **PASS** (verifies order-service → payment)
+- [x] `mvn test -pl inventory-service -Dtest=InventoryPactProviderTest` — **PASS** (verifies order-service → inventory; requires Docker/Testcontainers)
 
-> **Note**: The full cycle passes for `order-service → product-service`. Other contracts require consumer test implementation and/or provider test migration to `@PactFolder`.
+> **Note**: The full Pact CDC cycle passes for all 5 consumer-provider pairs. All provider tests use `@PactFolder` (no deprecated `ProviderInfo` API remains).
 
 ---
 
@@ -280,15 +277,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify providers (working)
-        run: mvn test -pl product -Dtest=ProductPactProviderTest
-      # TODO: Enable after provider test migration to @PactFolder
-      # - name: Verify other providers
-      #   run: |
-      #     mvn test -pl order-service -Dtest=OrderPactProviderTest
-      #     mvn test -pl category -Dtest=CategoryPactProviderTest
-      #     mvn test -pl payment-service -Dtest=PaymentPactProviderTest
-      #     mvn test -pl inventory-service -Dtest=InventoryPactProviderTest
+      - name: Verify all providers (@PactFolder)
+        run: |
+          mvn test -B -pl order-service,payment-service,category,inventory-service,product \
+            -Dtest='*PactProviderTest' -DfailIfNoTests=false
 ```
 
 ### Required Secrets
@@ -305,34 +297,32 @@ jobs:
 From the implementation spec:
 
 ```
-┌─────────────────┐
-│ 1. Fix Lombok   │ ◀── Unblocks compilation
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ 2. Remove Pact  │ ◀── Unblocks provider test execution
-│    Maven Plugin │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ 3. Consumer     │ ◀── Generates pacts
-│    Tests        │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ 4. Update       │ ◀── Consumes pacts
-│    Provider     │
-│    Tests        │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ 5. Document     │ ◀── Enables team adoption
-│    Workflow     │  (THIS DOCUMENT)
-└─────────────────┘
+┌─────────────────────────┐ ◀── Complete
+│ 1. Common module        │    (shared DTOs installed)
+└──────────┬──────────────┘
+           │
+           ▼
+┌─────────────────────────┐ ◀── Complete
+│ 2. Consumer Pact Tests  │    (generates target/pacts/*.json)
+│    - order-service      │    → product, payment, inventory
+│    - product-service    │    → category
+│    - notification-service│  → order
+└──────────┬──────────────┘
+           │
+           ▼
+┌─────────────────────────┐ ◀── Complete
+│ 3. Provider Pact Tests  │    (verify via @PactFolder)
+│    - product-service    │    ← order-service pacts
+│    - order-service      │    ← notification-service pacts
+│    - category-service   │    ← product-service pacts
+│    - payment-service    │    ← order-service pacts
+│    - inventory-service  │    ← order-service pacts
+└──────────┬──────────────┘
+           │
+           ▼
+┌─────────────────────────┐ ◀── Complete (THIS DOCUMENT)
+│ 4. Document Workflow    │
+└─────────────────────────┘
 ```
 
 ---
@@ -343,10 +333,14 @@ From the implementation spec:
 |------|---------|
 | `order-service/src/test/java/.../pact/OrderProductConsumerPactTest.java` | Consumer tests for product-service |
 | `order-service/src/test/java/.../pact/OrderPaymentConsumerPactTest.java` | Consumer tests for payment-service |
+| `order-service/src/test/java/.../pact/OrderInventoryConsumerPactTest.java` | Consumer tests for inventory-service |
+| `product/src/test/java/.../pact/ProductCategoryConsumerPactTest.java` | Consumer tests for category-service |
+| `notification-service/src/test/java/.../pact/OrderServiceConsumerPactTest.java` | Consumer tests for order-service |
 | `product/src/test/java/.../pact/ProductPactProviderTest.java` | Provider verification for product-service |
 | `category/src/test/java/.../pact/CategoryPactProviderTest.java` | Provider verification for category-service |
 | `payment-service/src/test/java/.../pact/PaymentPactProviderTest.java` | Provider verification for payment-service |
 | `inventory-service/src/test/java/.../pact/InventoryPactProviderTest.java` | Provider verification for inventory-service |
+| `order-service/src/test/java/.../pact/OrderPactProviderTest.java` | Provider verification for order-service |
 | `pom.xml` (parent) | Pact version (4.7.5), maven-compiler-plugin config |
 
 ---
@@ -359,17 +353,17 @@ From the implementation spec:
 # 1. Setup
 mvn clean install -pl common -DskipTests
 
-# 2. Generate contracts (order-service → product, payment)
+# 2. Generate consumer contracts (all pairs)
 mvn test -pl order-service -Dtest="*ConsumerPactTest"
+mvn test -pl product -Dtest=ProductCategoryConsumerPactTest
+mvn test -pl notification-service -Dtest=OrderServiceConsumerPactTest
 
-# 3. Verify providers (currently only product-service works end-to-end)
+# 3. Verify all providers (all use @PactFolder)
 mvn test -pl product -Dtest=ProductPactProviderTest
-
-# === OTHER PROVIDERS (need updates) ===
-# mvn test -pl order-service -Dtest=OrderPactProviderTest        # needs @PactFolder migration
-# mvn test -pl category -Dtest=CategoryPactProviderTest         # needs consumer pacts
-# mvn test -pl payment-service -Dtest=PaymentPactProviderTest   # needs @PactFolder migration
-# mvn test -pl inventory-service -Dtest=InventoryPactProviderTest # needs @PactFolder migration
+mvn test -pl order-service -Dtest=OrderPactProviderTest
+mvn test -pl category -Dtest=CategoryPactProviderTest
+mvn test -pl payment-service -Dtest=PaymentPactProviderTest
+mvn test -pl inventory-service -Dtest=InventoryPactProviderTest   # requires Docker/Testcontainers
 
 # === OPTIONAL: WITH PACT BROKER ===
 # docker run -d -p 9292:9292 pactfoundation/pact-broker

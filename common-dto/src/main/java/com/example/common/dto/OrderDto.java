@@ -30,6 +30,7 @@ public record OrderDto(
     @Schema(description = "Total order amount", example = "1999.98", requiredMode = Schema.RequiredMode.REQUIRED)
     BigDecimal totalAmount,
 
+    @NotNull(message = "Order items are required")
     @Schema(description = "Order items", requiredMode = Schema.RequiredMode.REQUIRED)
     List<OrderItemDto> items,
 

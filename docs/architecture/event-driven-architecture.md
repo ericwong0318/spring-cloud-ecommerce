@@ -110,10 +110,10 @@ SagaOrchestrator (common interface)
 ### Compensation Logic
 - **Inventory release**: Transitions reserved items back to PENDING, order back to PENDING
 - **Payment failure**: Releases inventory reservations, cancels order
-- **Reservation expiry**: Scheduled job detects stale RESERVED orders (>30 min) and triggers compensation
+- **Reservation expiry**: Scheduled job detects stale RESERVED orders (>15 min) and triggers compensation
 
 ### Scheduler
-`ReservationExpiryScheduler` runs every 60 seconds, queries orders in RESERVED status with items reserved >30 minutes, and publishes `ReservationExpiredEvent` for each expired item.
+`ReservationExpiryScheduler` runs every 60 seconds, queries orders in RESERVED status with items reserved >15 minutes, and publishes `ReservationExpiredEvent` for each expired item.
 
 ---
 
@@ -312,7 +312,7 @@ outbox:
 ### Saga Timeouts
 ```yaml
 saga:
-  reservation-ttl: 30min
+  reservation-ttl: 15min
   expiry-check-interval: 60s
   payment-authorization-timeout: 10s
 ```
@@ -328,8 +328,7 @@ idempotency:
 
 ## References
 
-- [Domain Model](../domain-model.md) — Core domain terminology
+- [Glossary](../../glossary.md) — Core domain terminology and event naming
 - [Service Ports](../../AGENTS.md#service-ports-default) — Port assignments
-- [ADR 001: Outbox Pattern](../adr/001-outbox-pattern.md)
-- [ADR 002: Saga Orchestration](../adr/002-saga-orchestration.md)
-- [ADR 003: Common Module Strategy](../adr/003-common-module.md)
+- [ADR 006: Event Backbone](../adr/006-event-backbone.md) — Event exchange and routing conventions
+- [ADR 001: Service Decomposition](../adr/001-service-decomposition.md) — Service boundaries

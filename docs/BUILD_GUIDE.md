@@ -269,7 +269,7 @@ Each service loads configuration from:
 ## Code Style
 
 - Follow existing code style in each module
-- Use Lombok for boilerplate reduction (`@Getter`, `@Setter`, `@Constructor`)
+- **Lombok is being phased out** — do not add new Lombok annotations (`@Getter`, `@Setter`, `@Constructor`, `@Data`, etc.). When modifying a class that uses Lombok, convert to explicit code; prefer Java Records for DTOs and explicit constructors for dependency injection (see AGENTS.md Lombok Removal Policy)
 - Use MapStruct for DTO/entity mapping
 - Services use constructor injection
 - Controllers return `Mono<ResponseEntity<>>` or `Flux<>`

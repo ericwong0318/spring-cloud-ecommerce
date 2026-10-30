@@ -9,6 +9,31 @@ This guide covers deploying the Spring Cloud Microservices E-Commerce platform t
 - `helm` CLI installed
 - Splunk Observability Cloud access token (for OTel Collector)
 
+### Canonical deployment approach: Helm chart via helmfile.yaml
+
+The canonical way to deploy to Kubernetes is the **Helm chart** (`k8s/helm/spring-cloud-project`) managed through **helmfile** (`helmfile.yaml` at repo root). This is the production-ready approach — it covers all 10 services plus PostgreSQL, RabbitMQ, OTel Collector, Ingress, NetworkPolicies, and PodDisruptionBudgets, with dev/prod environment overrides.
+
+```bash
+# Deploy everything (dev environment)
+helmfile -f helmfile.yaml -e dev sync
+
+# Deploy everything (prod environment)
+helmfile -f helmfile.yaml -e prod sync
+
+# Preview changes without applying
+helmfile -f helmfile.yaml -e dev template
+```
+
+### Alternative: raw Kubernetes manifests
+
+`k8s/deployments.yaml` contains raw (non-templated) Kubernetes manifests for all 10 services. This is a lightweight alternative for quick local testing when you don't want to use Helm:
+
+```bash
+kubectl apply -f k8s/deployments.yaml
+```
+
+The raw manifests are kept for simplicity but are **not** the canonical deployment path — they lack environment-specific values, secrets management, ingress, and network policies that the Helm chart provides.
+
 ## Step 1: Configure kubectl Context
 
 OrbStack bundles a built-in Kubernetes cluster. Verify it's available:
@@ -96,8 +121,8 @@ kubectl apply -f k8s/deployments.yaml
 
 This creates:
 - A `ConfigMap` named `otel-config` with OTel environment variables
-- 7 `Deployments` (config-server, eureka-server, gateway, product, category, auth-server, order-service)
-- 7 `Services` (one per deployment)
+- 10 `Deployments` (config-server, eureka-server, gateway, product, category, auth-server, order-service, inventory-service, payment-service, notification-service)
+- 10 `Services` (one per deployment)
 
 ### Verify Deployments
 
@@ -148,6 +173,15 @@ kubectl port-forward -n ecommerce svc/auth-server 9000:9000
 
 # Order Service
 kubectl port-forward -n ecommerce svc/order-service 8083:8083
+
+# Inventory Service
+kubectl port-forward -n ecommerce svc/inventory-service 8084:8084
+
+# Payment Service
+kubectl port-forward -n ecommerce svc/payment-service 8086:8086
+
+# Notification Service
+kubectl port-forward -n ecommerce svc/notification-service 8087:8087
 ```
 
 ### Verify Health Endpoints
@@ -160,6 +194,9 @@ curl http://localhost:8080/actuator/health   # gateway
 curl http://localhost:8081/actuator/health   # product
 curl http://localhost:8082/actuator/health   # category
 curl http://localhost:8083/actuator/health   # order
+curl http://localhost:8084/actuator/health   # inventory
+curl http://localhost:8086/actuator/health   # payment
+curl http://localhost:8087/actuator/health   # notification
 ```
 
 ## Step 6: Verify Observability
@@ -206,6 +243,9 @@ kubectl delete namespace splunk-otel
 | category | 8082 | Category management |
 | auth-server | 9000 | OAuth2 token issuance |
 | order-service | 8083 | Order processing |
+| inventory-service | 8084 | Inventory management |
+| payment-service | 8086 | Payment processing |
+| notification-service | 8087 | Notifications |
 
 ## Environment Variables
 
@@ -226,7 +266,7 @@ Each service pod receives these OTel environment variables from the `otel-config
 ### Pods stuck in ImagePullBackOff
 Verify the Docker images are built and available in OrbStack's Docker daemon:
 ```bash
-docker images | grep -E "(config|eureka|gateway|product|category|auth|order)-server"
+docker images | grep -E "(config|eureka|gateway|product|category|auth|order|inventory|payment|notification)"
 ```
 
 ### Collector not receiving data

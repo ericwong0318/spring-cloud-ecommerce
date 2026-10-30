@@ -34,24 +34,45 @@ public class OpenApiConstraintVerifier {
         Map.entry(Size.class, ann -> {
             Size s = (Size) ann;
             Map<String, Object> m = new HashMap<>();
-            if (s.min() >= 0) m.put("minLength", s.min());
+            // Only expect minLength when min > 0 (springdoc does not emit minLength: 0)
+            if (s.min() > 0) m.put("minLength", s.min());
             if (s.max() < Integer.MAX_VALUE) m.put("maxLength", s.max());
             return m;
         }),
-        Map.entry(Min.class, ann -> Map.of("minimum", (long) ((Min) ann).value())),
-        Map.entry(Max.class, ann -> Map.of("maximum", (long) ((Max) ann).value())),
+        Map.entry(Min.class, ann -> {
+            long value = ((Min) ann).value();
+            // Only expect minimum when value > 0 (springdoc does not emit minimum: 0)
+            if (value > 0) {
+                return Map.of("minimum", value);
+            }
+            return Map.of();
+        }),
+        Map.entry(Max.class, ann -> {
+            long value = ((Max) ann).value();
+            // Only expect maximum when value < Integer.MAX_VALUE (springdoc does not emit maximum: MAX_VALUE)
+            if (value < Integer.MAX_VALUE) {
+                return Map.of("maximum", value);
+            }
+            return Map.of();
+        }),
         Map.entry(DecimalMin.class, ann -> {
             DecimalMin d = (DecimalMin) ann;
             Map<String, Object> m = new HashMap<>();
             m.put("minimum", Double.parseDouble(d.value()));
-            m.put("exclusiveMinimum", !d.inclusive());
+            // Only expect exclusiveMinimum when inclusive = false (springdoc does not emit exclusiveMinimum: false)
+            if (!d.inclusive()) {
+                m.put("exclusiveMinimum", !d.inclusive());
+            }
             return m;
         }),
         Map.entry(DecimalMax.class, ann -> {
             DecimalMax d = (DecimalMax) ann;
             Map<String, Object> m = new HashMap<>();
             m.put("maximum", Double.parseDouble(d.value()));
-            m.put("exclusiveMaximum", !d.inclusive());
+            // Only expect exclusiveMaximum when inclusive = false (springdoc does not emit exclusiveMaximum: false)
+            if (!d.inclusive()) {
+                m.put("exclusiveMaximum", !d.inclusive());
+            }
             return m;
         }),
         Map.entry(Pattern.class, ann -> Map.of("pattern", ((Pattern) ann).regexp())),

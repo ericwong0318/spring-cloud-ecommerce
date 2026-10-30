@@ -1,7 +1,7 @@
 # AGENTS.md - Spring Cloud Microservices Platform
 
 ## Project Overview
-Multi-module Maven project with 11 services:
+Multi-module Maven project with 10 services plus a `system-test` module:
 - `config-server` - Spring Cloud Config Server (Git backend)
 - `eureka-server` - Service discovery (Netflix Eureka)
 - `gateway` - Spring Cloud Gateway (routes + OAuth2 resource server + Redis + Resilience4j)
@@ -79,7 +79,7 @@ mvn spring-boot:run -pl payment-service
 - Contract: Pact (TODO)
 
 ## CI Pipeline (GitHub Actions)
-`.github/workflows/ci.yml` runs: `validate -> test -> build -> docker -> security-scan`
+`.github/workflows/ci.yml` runs: `validate → test → verify → openapi-constraint-check → validation-md-generation → build → fullstack-verification → docker → sonarqube → pact-verification → security-scan` (`verify`, `docker`, `sonarqube` are conditional — nightly or main-branch only).
 
 ## Common Gotchas
 1. **Start order matters**: Config Server → Eureka → Auth Server → Gateway → Services
@@ -100,6 +100,8 @@ mvn spring-boot:run -pl payment-service
 
 ## Ticket Tracking Rule
 **After completing work on a ticket, tick the checkboxes in the ticket file (`.scratch/*/issues/*.md`) to mark tasks as done.**
+
+> **Note:** The `.scratch/` directory (issue tracker + specs) lives in the **main branch worktree** (`/Users/ericw/spring-cloud-ecommerce-worktrees/main`). It is **not present** in this feature worktree. When working in this worktree, either create `.scratch/` here per `docs/agents/issue-tracker.md`, or reference tickets in the main branch worktree. See `docs/DOCUMENT_REVIEW.md` for the full list of dangling `.scratch/` references.
 
 ## Agent skills
 

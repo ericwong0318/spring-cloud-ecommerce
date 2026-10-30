@@ -47,7 +47,7 @@ Multi-module Maven project with 11 Spring Boot 3.3.x microservices using Spring 
 
 ### Config Centralization (Complete)
 - Config Server uses native profile (local filesystem)
-- All 11 services import config via `spring.config.import`
+- All 10 services import config via `spring.config.import`
 - Profile-specific configs: dev, docker, prod
 - `docs/config-centralization.md` - migration guide
 
@@ -81,11 +81,27 @@ Multi-module Maven project with 11 Spring Boot 3.3.x microservices using Spring 
 - ⚠️ Full docker-compose stack verification
 - ⚠️ k8s dev overlay deployment
 
-### Known Gaps
-- config-server/order-service.yml still has JPA/H2 config (outdated)
-- Category, Inventory, Notification, Auth Server still use JPA (not migrated to R2DBC)
-- SonarQube quality gate thresholds not defined
-- OpenAPI constraint verification job has pre-existing issues
+### Known Gaps (status)
+
+- **config-server/order-service.yml JPA/H2 config** — **RESOLVED**: order-service.yml already uses R2DBC (`spring.r2dbc.url`); no JPA/H2 config present.
+- **Category, Inventory, Notification, Auth Server still use JPA** — **RESOLVED (decision: keep JPA locally)**: These 4 services use self-contained JPA entities (`@Entity`, `JpaRepository`) with their own `spring-boot-starter-data-jpa` dependencies. They do not depend on the removed common-module JPA and compile/test cleanly. Per ADR 011, keeping JPA locally is an explicit, supported option; no R2DBC migration is required.
+- **SonarQube quality gate thresholds** — **RESOLVED**: Thresholds added to `sonar-project.properties` (see SonarQube section below).
+- **OpenAPI constraint verification pre-existing issues** — **RESOLVED**: Fixed `OpenApiConstraintVerifier` to not expect default-value constraints that springdoc-openapi doesn't emit (`@Size` minLength:0, `@DecimalMin` exclusiveMinimum:false, `@Min` minimum:0). Added `@NotNull` to `OrderDto.items` to match its `@Schema(requiredMode = REQUIRED)`.
+
+### SonarQube quality gate thresholds
+
+Defined in `sonar-project.properties`:
+
+| Metric | Threshold |
+|--------|-----------|
+| Coverage on new code | ≥ 80% |
+| Bugs (new) | = 0 |
+| Vulnerabilities (new) | = 0 |
+| Security hotspots (new) | = 0 |
+| Code smells (new) | = 0 |
+| Duplicated blocks (new) | = 0 |
+
+The CI `sonarqube` job analyzes all modules against these thresholds.
 
 ## Documentation
 

@@ -12,7 +12,7 @@
 | **Order Line Item** | Single product + quantity + price snapshot within an order | order |
 | **Payment** | Financial transaction authorizing/capturing funds for an order | payment |
 | **Saga** | Long-running transaction across services via choreographed events | order (orchestrator) |
-| **RabbitMQ Event** | Message published to `ecommerce.events` exchange with routing key `{aggregate}.{action}` | all domain services |
+| **RabbitMQ Event** | Message published to a per-service topic exchange (`product.exchange`, `order.exchange`, `payment.exchange`, `inventory.exchange`, `ecommerce.exchange`) with routing key `{aggregate}.{action}` | all domain services |
 | **DLX** | Dead Letter Exchange (`ecommerce.events.dlx`) for failed message capture | infrastructure |
 
 ## Order Statuses

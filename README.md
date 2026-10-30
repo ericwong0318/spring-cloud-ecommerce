@@ -21,7 +21,7 @@ A production-ready, cloud-native E-Commerce microservices platform built with **
 This platform is a distributed E-Commerce system demonstrating modern microservice patterns. It supports **product catalog management**, **order processing**, and **category organization** with full OAuth2 security, service discovery, and centralized configuration.
 
 ### Core Features
-- 🛍️ **Product Management** — CRUD operations with PostgreSQL persistence
+- 🛍️ **Product Management** — CRUD operations with MongoDB persistence
 - 📦 **Order Management** — Reactive order processing with R2DBC + PostgreSQL
 - 🏷️ **Category Management** — Categorize and organize products
 - 🔐 **OAuth2 Authorization** — JWT-based authentication with Spring Authorization Server
@@ -486,12 +486,18 @@ kubectl delete namespace splunk-otel
 ## CI/CD
 
 GitHub Actions (`.github/workflows/ci.yml`):
+
 1. **validate** — Maven compile + syntax check
-2. **test** — Unit tests + integration tests (Testcontainers)
-3. **build** — Full Maven build
-4. **validation-md-generation** — Generate VALIDATION.md from Jakarta Validation annotations
-5. **docker** — Build & push Docker images
-6. **security-scan** — OWASP dependency check + Trivy
+2. **test** — Unit tests (excludes `system-test`; Testcontainers skipped)
+3. **verify** — Integration / fuzz tests via Testcontainers (nightly schedule only)
+4. **openapi-constraint-check** — OpenAPI constraint verification against running services
+5. **validation-md-generation** — Generate `VALIDATION.md` from Jakarta Validation annotations
+6. **build** — Full Maven build (excludes `system-test`)
+7. **fullstack-verification** — Start config server → Eureka → auth → gateway → services; verify health, Eureka registration, config sourcing
+8. **docker** — Build Docker image (`payment-service`; main branch only)
+9. **sonarqube** — SonarQube analysis
+10. **pact-verification** — Pact consumer contract generation + provider verification
+11. **security-scan** — OWASP Dependency Check
 
 ### Pre-commit Hook
 
@@ -524,7 +530,8 @@ mvn exec:java -pl ci/validation -Dexec.mainClass=com.example.validation.Validati
 | common | 7 | Unit |
 | system-test | 16 | Integration, Fuzz, Tracing (Testcontainers) |
 | architecture-tests | 5 | Architecture (ArchUnit) |
-| **Total** | **96** | — |
+
+> **Note:** Test file counts are a snapshot and may have changed after the architecture improvements (unified outbox/idempotent processor/saga orchestration). The post-improvement baseline reported `common: 14`, `order-service: 52`, `inventory-service: 13`, `notification-service: 5`, `architecture-tests: 5` — see `docs/architecture/architecture-improvements-summary.md`. For current counts run `mvn test` per module.
 
 Test patterns:
 - **Unit** — `@SpringBootTest` with mocked dependencies (Mockito)

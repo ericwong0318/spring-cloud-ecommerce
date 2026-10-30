@@ -211,5 +211,5 @@ mvn clean install -DskipTests -pl '!system-test'
 ## Related Documentation
 
 - [Architecture Decision Records](../adr/) — For architectural decisions made during these improvements
-- [Domain Model](../domain-model.md) — Core domain terminology
+- [Glossary](../../glossary.md) — Core domain terminology
 - [Service Ports](../../AGENTS.md#service-ports-default) — Service port assignments
