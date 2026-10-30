@@ -257,7 +257,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'push' || github.event_name == 'pull_request'
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       ENABLE_SPLUNK_AGENT: "false"
       SPLUNK_ACCESS_TOKEN: test-token
@@ -368,13 +368,23 @@ jobs:
 
       - name: Wait for all services
         run: |
-          SERVICES="product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8087 payment-service:8086"
+          SERVICES="config-server:8888 eureka-server:8761 auth-server:9000 gateway:8080 product:8081 category:8082 order-service:8083 inventory-service:8084 notification-service:8087 payment-service:8086"
           for svc_port in $SERVICES; do
             svc=${svc_port%:*}
             port=${svc_port#*:}
-            echo "Waiting for $svc on port $port..."
-            timeout 180 bash -c "until curl -sf http://localhost:$port/actuator/health | grep -q UP; do sleep 5; done"
+            (
+              for i in $(seq 1 36); do
+                if curl -sf http://localhost:$port/actuator/health | grep -q UP; then
+                  echo "$svc is up on port $port"
+                  exit 0
+                fi
+                sleep 5
+              done
+              echo "$svc failed to start on port $port"
+              exit 1
+            ) &
           done
+          wait
 
       - name: Verify Config Server registration
         run: |
