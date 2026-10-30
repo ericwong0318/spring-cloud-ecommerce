@@ -5,6 +5,7 @@ import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         ValidationFuzzIntegrationTest.TestConfig.class
     }
 )
+@ExtendWith(edu.berkeley.cs.jqf.junit5.JQFTestExtension.class)
 public abstract class ValidationFuzzIntegrationTest {
 
     @Container

@@ -3,12 +3,12 @@ package com.example.system.fuzz;
 import com.example.common.dto.ConfirmStockRequest;
 import com.example.common.dto.ReserveStockRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.berkeley.cs.jqf.fuzz.Fuzz;
-import edu.berkeley.cs.jqf.fuzz.JQF;
+import edu.berkeley.cs.jqf.junit5.FuzzTest;
+import edu.berkeley.cs.jqf.junit5.JQFTestExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests POST /inventory/reserve, DELETE /inventory/reserve/{orderItemId},
  * POST /inventory/confirm with malformed JSON payloads.
  */
-@RunWith(JQF.class)
+@ExtendWith(JQFTestExtension.class)
 public class InventoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
 
     private static final String VALID_RESERVE_JSON = """
@@ -46,7 +46,7 @@ public class InventoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest 
         super.setUp();
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /inventory/reserve with malformed JSON")
     public void fuzzReserveStock(String mutatedJson) {
         if (!mutatedJson.equals(VALID_RESERVE_JSON)) {
@@ -54,7 +54,7 @@ public class InventoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest 
         }
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /inventory/confirm with malformed JSON")
     public void fuzzConfirmStock(String mutatedJson) {
         if (!mutatedJson.equals(VALID_CONFIRM_JSON)) {
@@ -62,7 +62,7 @@ public class InventoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest 
         }
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz DELETE /inventory/reserve/{orderItemId} with malformed params")
     public void fuzzReleaseReservation(String variantId, String quantity) {
         // Test with invalid query params
@@ -75,21 +75,21 @@ public class InventoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest 
                 .statusCode(400);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /inventory/reserve with oversized payload")
     public void fuzzReserveStockOversized(String basePayload) {
         String oversized = generateOversizedPayload(basePayload, 10_000_000); // 10MB
         assertValidationError("/inventory/reserve", oversized);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /inventory/reserve with numeric overflow on variantId")
     public void fuzzReserveStockNumericOverflow(String basePayload) {
         String overflow = generateNumericOverflowPayload(basePayload, "variantId");
         assertValidationError("/inventory/reserve", overflow);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /inventory/reserve with deeply nested structure")
     public void fuzzReserveStockDeepNesting(int depth) {
         String nested = generateDeeplyNestedPayload(Math.min(depth, 1000));
@@ -97,35 +97,35 @@ public class InventoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest 
         assertValidationError("/inventory/reserve", payload);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /inventory/reserve with zero quantity")
     public void fuzzReserveStockZeroQuantity(String basePayload) {
         String zero = basePayload.replace("\"quantity\": 5", "\"quantity\": 0");
         assertValidationError("/inventory/reserve", zero);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /inventory/reserve with negative quantity")
     public void fuzzReserveStockNegativeQuantity(String basePayload) {
         String negative = basePayload.replace("\"quantity\": 5", "\"quantity\": -5");
         assertValidationError("/inventory/reserve", negative);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /inventory/reserve with huge quantity")
     public void fuzzReserveStockHugeQuantity(String basePayload) {
         String huge = basePayload.replace("\"quantity\": 5", "\"quantity\": 2147483648");
         assertValidationError("/inventory/reserve", huge);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /inventory/confirm with zero quantity")
     public void fuzzConfirmStockZeroQuantity(String basePayload) {
         String zero = basePayload.replace("\"quantity\": 5", "\"quantity\": 0");
         assertValidationError("/inventory/confirm", zero);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /inventory/confirm with negative quantity")
     public void fuzzConfirmStockNegativeQuantity(String basePayload) {
         String negative = basePayload.replace("\"quantity\": 5", "\"quantity\": -5");

@@ -4,12 +4,12 @@ import com.example.common.dto.AuthorizeRequest;
 import com.example.common.dto.CaptureRequest;
 import com.example.common.dto.RefundRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.berkeley.cs.jqf.fuzz.Fuzz;
-import edu.berkeley.cs.jqf.fuzz.JQF;
+import edu.berkeley.cs.jqf.junit5.FuzzTest;
+import edu.berkeley.cs.jqf.junit5.JQFTestExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests POST /payments/authorize, POST /payments/{id}/capture, POST /payments/{id}/refund
  * with malformed JSON payloads.
  */
-@RunWith(JQF.class)
+@ExtendWith(JQFTestExtension.class)
 public class PaymentFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
 
     private static final String VALID_AUTHORIZE_JSON = """
@@ -62,7 +62,7 @@ public class PaymentFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         // In a real test, we'd create an order and authorize a payment
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/authorize with malformed JSON")
     public void fuzzAuthorizePayment(String mutatedJson) {
         if (!mutatedJson.equals(VALID_AUTHORIZE_JSON)) {
@@ -70,7 +70,7 @@ public class PaymentFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         }
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/{id}/capture with malformed JSON")
     public void fuzzCapturePayment(String mutatedJson) {
         if (!mutatedJson.equals(VALID_CAPTURE_JSON)) {
@@ -78,7 +78,7 @@ public class PaymentFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         }
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/{id}/refund with malformed JSON")
     public void fuzzRefundPayment(String mutatedJson) {
         if (!mutatedJson.equals(VALID_REFUND_JSON)) {
@@ -86,21 +86,21 @@ public class PaymentFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         }
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/authorize with oversized payload")
     public void fuzzAuthorizePaymentOversized(String basePayload) {
         String oversized = generateOversizedPayload(basePayload, 10_000_000); // 10MB
         assertValidationError("/payments/authorize", oversized);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/authorize with numeric overflow on amount")
     public void fuzzAuthorizePaymentNumericOverflow(String basePayload) {
         String overflow = generateNumericOverflowPayload(basePayload, "amount");
         assertValidationError("/payments/authorize", overflow);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/authorize with deeply nested structure")
     public void fuzzAuthorizePaymentDeepNesting(int depth) {
         String nested = generateDeeplyNestedPayload(Math.min(depth, 1000));
@@ -109,42 +109,42 @@ public class PaymentFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         assertValidationError("/payments/authorize", payload);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/authorize with regex bypass on currency")
     public void fuzzAuthorizePaymentRegexBypass(String fieldName, String maliciousValue) {
         String bypass = generateRegexBypassPayload(VALID_AUTHORIZE_JSON, fieldName, maliciousValue);
         assertValidationError("/payments/authorize", bypass);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/authorize with negative amount")
     public void fuzzAuthorizePaymentNegativeAmount(String basePayload) {
         String negative = basePayload.replace("\"amount\": \"1999.98\"", "\"amount\": \"-1999.98\"");
         assertValidationError("/payments/authorize", negative);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/authorize with invalid currency length")
     public void fuzzAuthorizePaymentInvalidCurrency(String basePayload) {
         String invalid = basePayload.replace("\"currency\": \"USD\"", "\"currency\": \"US\"");
         assertValidationError("/payments/authorize", invalid);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/authorize with empty idempotency key")
     public void fuzzAuthorizePaymentEmptyIdempotencyKey(String basePayload) {
         String empty = basePayload.replace("\"idempotencyKey\": \"auth-1-abc123\"", "\"idempotencyKey\": \"\"");
         assertValidationError("/payments/authorize", empty);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/{id}/capture with empty gatewayTransactionId")
     public void fuzzCapturePaymentEmptyGatewayId(String basePayload) {
         String empty = basePayload.replace("\"gatewayTransactionId\": \"txn_123456\"", "\"gatewayTransactionId\": \"\"");
         assertValidationError("/payments/1/capture", empty);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /payments/{id}/refund with negative amount")
     public void fuzzRefundPaymentNegativeAmount(String basePayload) {
         String negative = basePayload.replace("\"amount\": \"100.00\"", "\"amount\": \"-100.00\"");

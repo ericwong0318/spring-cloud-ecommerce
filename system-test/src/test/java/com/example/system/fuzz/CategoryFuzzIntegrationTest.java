@@ -2,12 +2,12 @@ package com.example.system.fuzz;
 
 import com.example.common.dto.CategoryDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.berkeley.cs.jqf.fuzz.Fuzz;
-import edu.berkeley.cs.jqf.fuzz.JQF;
+import edu.berkeley.cs.jqf.junit5.FuzzTest;
+import edu.berkeley.cs.jqf.junit5.JQFTestExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * JQF fuzz tests for CategoryController endpoints.
  * Tests POST /categories and PUT /categories/{id} with malformed JSON payloads.
  */
-@RunWith(JQF.class)
+@ExtendWith(JQFTestExtension.class)
 public class CategoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
 
     private static final String VALID_CATEGORY_JSON = """
@@ -55,7 +55,7 @@ public class CategoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
                 .statusCode(201);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /categories with malformed JSON")
     public void fuzzCreateCategory(String mutatedJson) {
         // Only test if the mutated JSON is different from valid (to avoid false positives)
@@ -64,7 +64,7 @@ public class CategoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         }
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz PUT /categories/{id} with malformed JSON")
     public void fuzzUpdateCategory(String mutatedJson) {
         // Create a category first
@@ -84,28 +84,28 @@ public class CategoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         }
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /categories with oversized payload")
     public void fuzzCreateCategoryOversized(String basePayload) {
         String oversized = generateOversizedPayload(basePayload, 10_000_000); // 10MB
         assertValidationError("/categories", oversized);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /categories with numeric overflow")
     public void fuzzCreateCategoryNumericOverflow(String basePayload) {
         String overflow = generateNumericOverflowPayload(basePayload, "parentId");
         assertValidationError("/categories", overflow);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /categories with deeply nested objects")
     public void fuzzCreateCategoryDeepNesting(int depth) {
         String nested = generateDeeplyNestedPayload(Math.min(depth, 1000));
         assertValidationError("/categories", nested);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /categories with regex bypass attempts")
     public void fuzzCreateCategoryRegexBypass(String fieldName, String maliciousValue) {
         String bypass = generateRegexBypassPayload(VALID_CATEGORY_JSON, fieldName, maliciousValue);

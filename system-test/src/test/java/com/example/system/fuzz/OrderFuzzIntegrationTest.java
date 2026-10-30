@@ -3,12 +3,12 @@ package com.example.system.fuzz;
 import com.example.common.dto.OrderDto;
 import com.example.common.dto.OrderItemDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.berkeley.cs.jqf.fuzz.Fuzz;
-import edu.berkeley.cs.jqf.fuzz.JQF;
+import edu.berkeley.cs.jqf.junit5.FuzzTest;
+import edu.berkeley.cs.jqf.junit5.JQFTestExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * JQF fuzz tests for OrderController endpoints.
  * Tests POST /orders and POST /orders/{id}/cancel with malformed JSON payloads.
  */
-@RunWith(JQF.class)
+@ExtendWith(JQFTestExtension.class)
 public class OrderFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
 
     private static final String VALID_ORDER_JSON = """
@@ -75,7 +75,7 @@ public class OrderFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         // In a real test, we'd create these via the product service
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /orders with malformed JSON")
     public void fuzzCreateOrder(String mutatedJson) {
         if (!mutatedJson.equals(VALID_ORDER_JSON)) {
@@ -83,7 +83,7 @@ public class OrderFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         }
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /orders/{id}/cancel with malformed JSON")
     public void fuzzCancelOrder(String mutatedJson) {
         // Create an order first (or use a mock ID)
@@ -91,21 +91,21 @@ public class OrderFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         assertValidationError("/orders/1/cancel", mutatedJson);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /orders with oversized payload")
     public void fuzzCreateOrderOversized(String basePayload) {
         String oversized = generateOversizedPayload(basePayload, 10_000_000); // 10MB
         assertValidationError("/orders", oversized);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /orders with numeric overflow on totalAmount")
     public void fuzzCreateOrderNumericOverflow(String basePayload) {
         String overflow = generateNumericOverflowPayload(basePayload, "totalAmount");
         assertValidationError("/orders", overflow);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /orders with deeply nested items array")
     public void fuzzCreateOrderDeepNesting(int depth) {
         // Create deeply nested items array
@@ -119,28 +119,28 @@ public class OrderFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
         assertValidationError("/orders", payload);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /orders with regex bypass on customerId")
     public void fuzzCreateOrderRegexBypass(String fieldName, String maliciousValue) {
         String bypass = generateRegexBypassPayload(VALID_ORDER_JSON, fieldName, maliciousValue);
         assertValidationError("/orders", bypass);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /orders with negative price in items")
     public void fuzzCreateOrderNegativePrice(String basePayload) {
         String negative = basePayload.replace("\"price\": \"999.99\"", "\"price\": \"-999.99\"");
         assertValidationError("/orders", negative);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /orders with zero quantity in items")
     public void fuzzCreateOrderZeroQuantity(String basePayload) {
         String zero = basePayload.replace("\"quantity\": 2", "\"quantity\": 0");
         assertValidationError("/orders", zero);
     }
 
-    @Fuzz
+    @FuzzTest
     @DisplayName("Fuzz POST /orders with huge quantity in items")
     public void fuzzCreateOrderHugeQuantity(String basePayload) {
         String huge = basePayload.replace("\"quantity\": 2", "\"quantity\": 2147483648");
