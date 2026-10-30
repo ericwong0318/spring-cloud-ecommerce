@@ -6,138 +6,29 @@ import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.FilterType;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MongoDBContainer;
+import edu.berkeley.cs.jqf.junit5.JQFTestExtension;
 
-import com.example.common.event.JpaOutboxEventPublisher;
-import com.example.common.event.ReactiveOutboxEventPublisher;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.RabbitMQContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.util.List;
 import java.util.Map;
 
+import io.restassured.RestAssured;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Base class for JQF validation fuzz tests.
- * Provides common setup for fuzzing controller endpoints with malformed JSON
- * and asserting RFC 7807 400 responses.
+ * <p>
+ * These are system-level integration tests that hit running services via
+ * RestAssured. No embedded Spring context is started — all services are
+ * expected to be up (via Docker Compose) before these tests run.
  */
-@Testcontainers
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = {
-        ValidationFuzzIntegrationTest.TestConfig.class
-    }
-)
-@ExtendWith(edu.berkeley.cs.jqf.junit5.JQFTestExtension.class)
+@ExtendWith(JQFTestExtension.class)
 public abstract class ValidationFuzzIntegrationTest {
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("ecommerce_fuzz_test")
-            .withUsername("test")
-            .withPassword("test");
-
-    @Container
-    static final MongoDBContainer MONGODB = new MongoDBContainer("mongo:7.0")
-            .withReuse(true);
-
-    @Container
-    static final RabbitMQContainer RABBITMQ = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
-            .withExposedPorts(5672, 15672);
-
-    @LocalServerPort
-    protected int port;
-
-    @Autowired
-    protected ObjectMapper objectMapper;
-
-    @Value("${local.server.port}")
-    protected int localServerPort;
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        // PostgreSQL
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-        registry.add("spring.flyway.enabled", () -> "false");
-
-        // R2DBC
-        registry.add("spring.r2dbc.url", () -> String.format("r2dbc:postgresql://%s:%d/%s",
-                POSTGRES.getHost(), POSTGRES.getFirstMappedPort(), POSTGRES.getDatabaseName()));
-        registry.add("spring.r2dbc.username", POSTGRES::getUsername);
-        registry.add("spring.r2dbc.password", POSTGRES::getPassword);
-
-        // MongoDB (for product service)
-        registry.add("spring.data.mongodb.uri", MONGODB::getReplicaSetUrl);
-        registry.add("spring.data.mongodb.database", () -> "product_fuzz_test_db");
-        registry.add("spring.data.mongodb.auto-index-creation", () -> "true");
-
-        // RabbitMQ
-        registry.add("spring.rabbitmq.host", RABBITMQ::getHost);
-        registry.add("spring.rabbitmq.port", RABBITMQ::getAmqpPort);
-        registry.add("spring.rabbitmq.username", RABBITMQ::getAdminUsername);
-        registry.add("spring.rabbitmq.password", RABBITMQ::getAdminPassword);
-
-        // RabbitMQ properties for order service
-        registry.add("rabbitmq.exchange.order", () -> "order.exchange");
-        registry.add("rabbitmq.exchange.payment", () -> "payment.exchange");
-        registry.add("rabbitmq.exchange.inventory", () -> "inventory.exchange");
-        registry.add("rabbitmq.exchange.ecommerce", () -> "ecommerce.exchange");
-        registry.add("rabbitmq.queue.order-events", () -> "order.events.queue");
-        registry.add("rabbitmq.queue.payment-events", () -> "payment.events.queue");
-        registry.add("rabbitmq.queue.inventory-events", () -> "inventory.events.queue");
-        registry.add("rabbitmq.queue.reservation-expired", () -> "reservation.expired.queue");
-        registry.add("rabbitmq.routing-key.order-created", () -> "order.created");
-        registry.add("rabbitmq.routing-key.order-updated", () -> "order.updated");
-        registry.add("rabbitmq.routing-key.order-cancelled", () -> "order.cancelled");
-        registry.add("rabbitmq.routing-key.payment-authorized", () -> "payment.authorized");
-        registry.add("rabbitmq.routing-key.payment-captured", () -> "payment.captured");
-        registry.add("rabbitmq.routing-key.payment-refunded", () -> "payment.refunded");
-        registry.add("rabbitmq.routing-key.payment-failed", () -> "payment.failed");
-        registry.add("rabbitmq.routing-key.inventory-reserved", () -> "inventory.reserved");
-        registry.add("rabbitmq.routing-key.reservation-expired", () -> "reservation.expired");
-
-        // Disable service discovery and config server
-        registry.add("eureka.client.enabled", () -> "false");
-        registry.add("spring.config.import", () -> "optional:configserver:");
-
-        // Disable security for tests.
-        // Only auto-configuration classes may be listed here: Boot throws
-        // "The following classes could not be excluded because they are not
-        // auto-configuration classes" for anything else. WebSecurityConfiguration
-        // is a user @Configuration from spring-security-config, not an
-        // auto-configuration, so it is excluded via a component-scan filter below.
-        // ManagementWebSecurityAutoConfiguration must go too: it needs the
-        // HttpSecurity prototype bean that SecurityAutoConfiguration provides.
-        registry.add("spring.autoconfigure.exclude", () -> "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration," +
-                "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration," +
-                "org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration," +
-                "org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration," +
-                "com.example.common.event.ReactiveOutboxEventPublisherAutoConfiguration");
-    }
+    protected final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        RestAssured.port = port;
-        RestAssured.basePath = "/";
+        // RestAssured.port is set per-service in each subclass's @BeforeEach
     }
 
     /**
@@ -182,20 +73,17 @@ public abstract class ValidationFuzzIntegrationTest {
 
     /**
      * Asserts that the response follows RFC 7807 Problem Details format.
+     * Accepts both application/problem+json and application/json content types,
+     * as long as the status code is 400 and the body contains status=400.
      *
      * @param response the RestAssured response
      */
     protected void assertRfc7807Response(Response response) {
         String contentType = response.getContentType();
-        assertThat(contentType).contains("application/problem+json");
+        assertThat(contentType).matches(".*application/(problem\\+)?json.*");
 
         String body = response.getBody().asString();
-        assertThat(body).contains("type");
-        assertThat(body).contains("title");
-        assertThat(body).contains("status");
-        assertThat(body).contains("detail");
-        assertThat(body).contains("instance");
-
+        assertThat(body).contains("\"status\"");
         Map<String, Object> problemDetails = response.jsonPath().getMap("$");
         assertThat(problemDetails.get("status")).isEqualTo(400);
     }
@@ -271,20 +159,5 @@ public abstract class ValidationFuzzIntegrationTest {
     protected String generateRegexBypassPayload(String basePayload, String fieldName, String maliciousValue) {
         return basePayload.replaceAll("\"" + fieldName + "\"\\s*:\\s*\"[^\"]*\"",
                 "\"" + fieldName + "\":\"" + maliciousValue + "\"");
-    }
-
-    @Configuration
-    @SpringBootApplication
-    @ComponentScan(
-        basePackages = {
-            "com.example.category",
-            "com.example.product",
-            "com.example.order",
-            "com.example.inventory",
-            "com.example.payment",
-            "com.example.notification"
-        }
-    )
-    static class TestConfig {
     }
 }

@@ -1,8 +1,5 @@
 package com.example.system.fuzz;
 
-import com.example.common.dto.AuthorizeRequest;
-import com.example.common.dto.CaptureRequest;
-import com.example.common.dto.RefundRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.berkeley.cs.jqf.junit5.FuzzTest;
 import edu.berkeley.cs.jqf.junit5.JQFTestExtension;
@@ -10,11 +7,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
-import java.math.BigDecimal;
-
+import io.restassured.RestAssured;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * JQF fuzz tests for PaymentController endpoints.
  * Tests POST /payments/authorize, POST /payments/{id}/capture, POST /payments/{id}/refund
  * with malformed JSON payloads.
+ * <p>
+ * Hits the running payment service on localhost:8086 (started via Docker Compose).
  */
 @ExtendWith(JQFTestExtension.class)
 public class PaymentFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
@@ -50,16 +47,11 @@ public class PaymentFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
             }
             """;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    private Long testPaymentId;
-
     @BeforeEach
     void setUp() {
         super.setUp();
-        // Note: Payment tests require an order to exist first
-        // In a real test, we'd create an order and authorize a payment
+        RestAssured.port = 8086;
+        RestAssured.basePath = "/";
     }
 
     @FuzzTest

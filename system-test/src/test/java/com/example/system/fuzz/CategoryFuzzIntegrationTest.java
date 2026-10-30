@@ -1,6 +1,5 @@
 package com.example.system.fuzz;
 
-import com.example.common.dto.CategoryDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.berkeley.cs.jqf.junit5.FuzzTest;
 import edu.berkeley.cs.jqf.junit5.JQFTestExtension;
@@ -8,15 +7,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import io.restassured.RestAssured;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * JQF fuzz tests for CategoryController endpoints.
  * Tests POST /categories and PUT /categories/{id} with malformed JSON payloads.
+ * <p>
+ * Hits the running category service on localhost:8082 (started via Docker Compose).
  */
 @ExtendWith(JQFTestExtension.class)
 public class CategoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
@@ -39,12 +40,11 @@ public class CategoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
             }
             """;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @BeforeEach
     void setUp() {
         super.setUp();
+        RestAssured.port = 8082;
+        RestAssured.basePath = "/";
         // Create a parent category for tests that need parentId
         given()
                 .contentType(MediaType.APPLICATION_JSON_VALUE)

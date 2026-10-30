@@ -1,7 +1,5 @@
 package com.example.system.fuzz;
 
-import com.example.common.dto.ConfirmStockRequest;
-import com.example.common.dto.ReserveStockRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.berkeley.cs.jqf.junit5.FuzzTest;
 import edu.berkeley.cs.jqf.junit5.JQFTestExtension;
@@ -9,9 +7,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import io.restassured.RestAssured;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * JQF fuzz tests for InventoryController endpoints.
  * Tests POST /inventory/reserve, DELETE /inventory/reserve/{orderItemId},
  * POST /inventory/confirm with malformed JSON payloads.
+ * <p>
+ * Hits the running inventory service on localhost:8084 (started via Docker Compose).
  */
 @ExtendWith(JQFTestExtension.class)
 public class InventoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
@@ -38,12 +38,11 @@ public class InventoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest 
             }
             """;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @BeforeEach
     void setUp() {
         super.setUp();
+        RestAssured.port = 8084;
+        RestAssured.basePath = "/";
     }
 
     @FuzzTest
