@@ -286,8 +286,16 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
       - name: Build all modules (excluding system-test)
-        run: mvn clean install -DskipTests -B -pl '!system-test'
+        run: mvn clean install -DskipTests -B -T1 -pl '!system-test'
 
       - name: Start infrastructure
         run: docker compose -f docker-compose.test.yml up -d
