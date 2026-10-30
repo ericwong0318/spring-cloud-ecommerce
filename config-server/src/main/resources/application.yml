@@ -10,7 +10,7 @@ spring:
     config:
       server:
         native:
-          search-locations: file:///app/config
+          search-locations: classpath:/config/
 
 management:
   endpoints:

@@ -330,6 +330,8 @@ jobs:
             -Dspring-boot.run.profiles=docker \
             -Dspring.cloud.config.uri=http://localhost:8888 \
             -Deureka.client.service-url.defaultZone=http://localhost:8761/eureka/ \
+            -Dspring.datasource.url=jdbc:postgresql://localhost:5432/ecommerce_test \
+            -Dspring.datasource.password=test \
             > ../logs/auth-server.log 2>&1 &)
 
       - name: Wait for Auth Server
@@ -344,6 +346,8 @@ jobs:
             -Dspring-boot.run.profiles=docker \
             -Dspring.cloud.config.uri=http://localhost:8888 \
             -Deureka.client.service-url.defaultZone=http://localhost:8761/eureka/ \
+            -Dspring.rabbitmq.host=localhost \
+            -Dspring.data.redis.host=localhost \
             > ../logs/gateway.log 2>&1 &)
 
       - name: Wait for Gateway
@@ -358,10 +362,20 @@ jobs:
             svc=${svc_port%:*}
             port=${svc_port#*:}
             echo "Starting $svc..."
+            case $svc in
+              product)
+                DB_ARG="-Dspring.data.mongodb.uri=mongodb://localhost:27017/product_db"
+                ;;
+              *)
+                DB_ARG="-Dspring.r2dbc.url=r2dbc:postgresql://localhost:5432/ecommerce_test -Dspring.r2dbc.password=test -Dspring.datasource.url=jdbc:postgresql://localhost:5432/ecommerce_test -Dspring.datasource.password=test -DDB_USERNAME=postgres -DDB_PASSWORD=test"
+                ;;
+            esac
             (cd $svc && nohup mvn spring-boot:run \
               -Dspring-boot.run.profiles=docker \
               -Dspring.cloud.config.uri=http://localhost:8888 \
               -Deureka.client.service-url.defaultZone=http://localhost:8761/eureka/ \
+              -Dspring.rabbitmq.host=localhost \
+              $DB_ARG \
               > ../logs/$svc.log 2>&1 &)
           done
 
