@@ -86,18 +86,18 @@ public class ReactiveOutboxEventPublisher<T extends OutboxEvent> implements Outb
     }
 
     public Mono<Void> saveEvent(String aggregateType, String aggregateId, String eventType, Object payload) {
-        return Mono.fromRunnable(() -> {
+        return Mono.defer(() -> {
                     try {
                         String jsonPayload = objectMapper.writeValueAsString(payload);
                         T event = createOutboxEvent(aggregateType, aggregateId, eventType, jsonPayload);
-                        outboxEventRepository.save(event).subscribe();
-                        log.debug("Saved outbox event: aggregateType={}, aggregateId={}, eventType={}", aggregateType, aggregateId, eventType);
+                        return outboxEventRepository.save(event)
+                                .doOnNext(saved -> log.debug("Saved outbox event: aggregateType={}, aggregateId={}, eventType={}", aggregateType, aggregateId, eventType))
+                                .then();
                     } catch (JsonProcessingException e) {
                         log.error("Failed to serialize outbox event payload", e);
-                        throw new RuntimeException("Failed to serialize outbox event payload", e);
+                        return Mono.error(new RuntimeException("Failed to serialize outbox event payload", e));
                     }
                 })
-                .then()
                 .as(transactionalOperator::transactional);
     }
 

@@ -1,6 +1,8 @@
 package com.example.order.config;
 
 import com.example.common.event.OutboxEventPublisher;
+import com.example.common.event.OutboxPublisherProperties;
+import com.example.common.event.ReactiveOutboxEventPublisher;
 import com.example.common.event.ReactiveOutboxEventRepository;
 import com.example.common.event.RoutingKeyStrategy;
 import com.example.order.outbox.R2dbcOutboxEvent;
@@ -78,6 +80,43 @@ public class OutboxConfig {
             @Override
             public Mono<R2dbcOutboxEvent> save(R2dbcOutboxEvent event) {
                 return outboxEventRepository.save(event);
+            }
+        };
+    }
+
+    /**
+     * Order-service {@link OutboxEventPublisher} that persists {@link R2dbcOutboxEvent} instances
+     * (rather than the common module's base {@link OutboxEvent}), so that outbox events written by
+     * {@code ReactiveOutboxEventPublisher.saveEvent} match the {@code event_outbox} table columns
+     * expected by {@link R2dbcOutboxEventRepository}.
+     *
+     * <p>Marked {@link Primary} so order-service components inject this publisher instead of the one
+     * auto-configured by {@code OutboxPublisherAutoConfiguration} (which cannot know about
+     * order-service's {@code R2dbcOutboxEvent} subtype).
+     */
+    @Bean
+    @Primary
+    public OutboxEventPublisher orderOutboxEventPublisher(
+            ReactiveOutboxEventRepository<R2dbcOutboxEvent> outboxEventRepository,
+            RabbitTemplate rabbitTemplate,
+            ObjectMapper objectMapper,
+            R2dbcTransactionManager transactionManager,
+            OutboxPublisherProperties properties,
+            RoutingKeyStrategy routingKeyStrategy) {
+
+        TransactionalOperator transactionalOperator = TransactionalOperator.create(transactionManager);
+        return new ReactiveOutboxEventPublisher<R2dbcOutboxEvent>(
+                outboxEventRepository,
+                rabbitTemplate,
+                objectMapper,
+                transactionalOperator,
+                properties,
+                routingKeyStrategy) {
+
+            @Override
+            protected R2dbcOutboxEvent createOutboxEvent(
+                    String aggregateType, String aggregateId, String eventType, String payload) {
+                return new R2dbcOutboxEvent(aggregateType, aggregateId, eventType, payload);
             }
         };
     }
