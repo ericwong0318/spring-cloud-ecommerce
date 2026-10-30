@@ -180,7 +180,7 @@ jobs:
             svc=${svc_port%:*}
             port=${svc_port#*:}
             echo "Waiting for $svc on port $port..."
-            timeout 180 bash -c "until curl -sf http://localhost:$port/actuator/health | grep -q UP; do sleep 5; done"
+            timeout 300 bash -c "until curl -sf http://localhost:$port/actuator/health | grep -q UP; do sleep 5; done"
           done
 
       - name: Run OpenAPI constraint verification
@@ -304,7 +304,7 @@ jobs:
         run: |
           for service in mongodb postgres rabbitmq; do
             echo "Waiting for $service..."
-            timeout 180 bash -c "until docker compose -f docker-compose.test.yml ps $service | grep -q healthy; do sleep 5; done"
+            timeout 300 bash -c "until docker compose -f docker-compose.test.yml ps $service | grep -q healthy; do sleep 5; done"
           done
 
       - name: Start Config Server
@@ -349,7 +349,7 @@ jobs:
       - name: Wait for Config Server
         run: |
           echo "Waiting for config-server..."
-          timeout 180 bash -c "until curl -sf http://localhost:8888/actuator/health | grep -q UP; do sleep 5; done"
+          timeout 300 bash -c "until curl -sf http://localhost:8888/actuator/health | grep -q UP; do sleep 5; done"
 
       - name: Wait for Eureka Server
         run: |
@@ -359,12 +359,12 @@ jobs:
       - name: Wait for Auth Server
         run: |
           echo "Waiting for auth-server..."
-          timeout 180 bash -c "until curl -sf http://localhost:9000/actuator/health | grep -q UP; do sleep 5; done"
+          timeout 300 bash -c "until curl -sf http://localhost:9000/actuator/health | grep -q UP; do sleep 5; done"
 
       - name: Wait for Gateway
         run: |
           echo "Waiting for gateway..."
-          timeout 180 bash -c "until curl -sf http://localhost:8080/actuator/health | grep -q UP; do sleep 5; done"
+          timeout 300 bash -c "until curl -sf http://localhost:8080/actuator/health | grep -q UP; do sleep 5; done"
 
       - name: Wait for all services
         run: |
