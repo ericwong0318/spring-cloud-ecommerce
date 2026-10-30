@@ -9,7 +9,7 @@ spring:
       - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
       - org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
   config:
-    import: optional:configserver:http://config-server:8888
+    import: optional:configserver:http://localhost:8888
 ---
 server:
   port: 8086

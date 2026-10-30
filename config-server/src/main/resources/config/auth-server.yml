@@ -5,10 +5,10 @@ spring:
   application:
     name: auth-server
   datasource:
-    url: jdbc:postgresql://postgres-auth:5432/auth_db
+    url: jdbc:postgresql://localhost:5432/ecommerce_test
     driver-class-name: org.postgresql.Driver
-    username: postgres
-    password: ${POSTGRES_AUTH_PASSWORD}
+    username: test
+    password: test
   jpa:
     hibernate:
       ddl-auto: create

@@ -29,9 +29,9 @@ spring:
   eureka:
     client:
       service-url:
-        default-zone: http://eureka-server:8761/eureka/
+        default-zone: http://localhost:8761/eureka/
   rabbitmq:
-    host: rabbitmq
+    host: localhost
     port: 5672
     username: guest
     password: guest
@@ -71,9 +71,9 @@ spring:
       - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
       - org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
   r2dbc:
-    url: r2dbc:postgresql://postgres-payment:5432/payment_db
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: r2dbc:postgresql://localhost:5432/ecommerce_test
+    username: test
+    password: test
     pool:
       enabled: true
       max-size: 20
@@ -82,10 +82,10 @@ spring:
       max-life-time: 1800s
       validation-query: SELECT 1
   datasource:
-    url: jdbc:postgresql://postgres:5432/payment_db
+    url: jdbc:postgresql://localhost:5432/ecommerce_test
     driver-class-name: org.postgresql.Driver
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    username: test
+    password: test
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -105,9 +105,9 @@ spring:
   eureka:
     client:
       service-url:
-        default-zone: http://eureka-server:8761/eureka/
+        default-zone: http://localhost:8761/eureka/
   rabbitmq:
-    host: rabbitmq
+    host: localhost
     port: 5672
     username: guest
     password: guest

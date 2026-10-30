@@ -5,8 +5,8 @@ spring:
   application:
     name: order-service
   r2dbc:
-    url: r2dbc:postgresql://localhost:5437/order_db
-    username: postgres
+    url: r2dbc:postgresql://localhost:5432/ecommerce_test
+    username: test
     password: postgres
   rabbitmq:
     host: localhost
@@ -70,11 +70,11 @@ spring:
     activate:
       on-profile: docker
   r2dbc:
-    url: r2dbc:postgresql://postgres-order:5432/order_db
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: r2dbc:postgresql://localhost:5432/ecommerce_test
+    username: test
+    password: test
   rabbitmq:
-    host: rabbitmq
+    host: localhost
     port: 5672
     username: guest
     password: guest
@@ -125,11 +125,11 @@ spring:
     activate:
       on-profile: prod
   r2dbc:
-    url: ${R2DBC_URL:r2dbc:postgresql://postgres:5432/order_db}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: ${R2DBC_URL:r2dbc:postgresql://localhost:5432/ecommerce_test}
+    username: test
+    password: test
   rabbitmq:
-    host: ${RABBITMQ_HOST:rabbitmq}
+    host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASSWORD:guest}

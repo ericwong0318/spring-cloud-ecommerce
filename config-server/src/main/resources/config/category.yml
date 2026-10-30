@@ -23,10 +23,10 @@ spring:
     activate:
       on-profile: docker
   datasource:
-    url: jdbc:postgresql://postgres-category:5432/category_db
+    url: jdbc:postgresql://localhost:5432/ecommerce_test
     driver-class-name: org.postgresql.Driver
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    username: test
+    password: test
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
