@@ -23,9 +23,6 @@ spring:
   flyway:
     enabled: false
     locations: classpath:db/migration/auth
-  cloud:
-    config:
-      import: optional:configserver:http://config-server:8888
 
 management:
   endpoints:

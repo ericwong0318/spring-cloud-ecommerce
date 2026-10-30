@@ -331,6 +331,7 @@ jobs:
             -Dspring.cloud.config.uri=http://localhost:8888 \
             -Deureka.client.service-url.defaultZone=http://localhost:8761/eureka/ \
             -Dspring.datasource.url=jdbc:postgresql://localhost:5432/ecommerce_test \
+            -Dspring.datasource.username=test \
             -Dspring.datasource.password=test \
             > ../logs/auth-server.log 2>&1 &)
 
@@ -367,7 +368,7 @@ jobs:
                 DB_ARG="-Dspring.data.mongodb.uri=mongodb://localhost:27017/product_db"
                 ;;
               *)
-                DB_ARG="-Dspring.r2dbc.url=r2dbc:postgresql://localhost:5432/ecommerce_test -Dspring.r2dbc.password=test -Dspring.datasource.url=jdbc:postgresql://localhost:5432/ecommerce_test -Dspring.datasource.password=test -DDB_USERNAME=postgres -DDB_PASSWORD=test"
+                DB_ARG="-Dspring.r2dbc.url=r2dbc:postgresql://localhost:5432/ecommerce_test -Dspring.r2dbc.username=test -Dspring.r2dbc.password=test -Dspring.datasource.url=jdbc:postgresql://localhost:5432/ecommerce_test -Dspring.datasource.username=test -Dspring.datasource.password=test -DDB_USERNAME=test -DDB_PASSWORD=test"
                 ;;
             esac
             (cd $svc && nohup mvn spring-boot:run \
