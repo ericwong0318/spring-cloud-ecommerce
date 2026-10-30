@@ -313,40 +313,20 @@ jobs:
           mkdir -p logs
           (cd config-server && nohup java -jar target/config-server-*.jar --spring.profiles.active=native > ../logs/config-server.log 2>&1 &)
 
-      - name: Wait for Config Server
-        run: |
-          echo "Waiting for config-server..."
-          timeout 180 bash -c "until curl -sf http://localhost:8888/actuator/health | grep -q UP; do sleep 5; done"
-
       - name: Start Eureka Server
         run: |
           echo "Starting eureka-server..."
           (cd eureka-server && nohup java -jar target/eureka-server-*.jar --spring.profiles.active=docker --spring.config.import= --server.port=8761 --eureka.client.service-url.defaultZone=http://localhost:8761/eureka/ --eureka.client.register-with-eureka=false --eureka.client.fetch-registry=false --eureka.server.enable-self-preservation=false --management.endpoints.web.exposure.include=health,info,prometheus --management.endpoint.health.show-details=always > ../logs/eureka-server.log 2>&1 &)
-
-      - name: Wait for Eureka Server
-        run: |
-          echo "Waiting for eureka-server..."
-          timeout 300 bash -c "until curl -sf http://localhost:8761/actuator/health | grep -q UP; do sleep 5; done"
 
       - name: Start Auth Server
         run: |
           echo "Starting auth-server..."
           (cd auth-server && nohup java -jar target/auth-server-*.jar --spring.profiles.active=docker --spring.cloud.config.uri=http://localhost:8888 --eureka.client.service-url.defaultZone=http://localhost:8761/eureka/ --spring.datasource.url=jdbc:postgresql://localhost:5432/ecommerce_test --spring.datasource.username=test --spring.datasource.password=test > ../logs/auth-server.log 2>&1 &)
 
-      - name: Wait for Auth Server
-        run: |
-          echo "Waiting for auth-server..."
-          timeout 180 bash -c "until curl -sf http://localhost:9000/actuator/health | grep -q UP; do sleep 5; done"
-
       - name: Start Gateway
         run: |
           echo "Starting gateway..."
           (cd gateway && nohup java -jar target/gateway-*.jar --spring.profiles.active=docker --spring.cloud.config.uri=http://localhost:8888 --eureka.client.service-url.defaultZone=http://localhost:8761/eureka/ --spring.rabbitmq.host=localhost --spring.data.redis.host=localhost > ../logs/gateway.log 2>&1 &)
-
-      - name: Wait for Gateway
-        run: |
-          echo "Waiting for gateway..."
-          timeout 180 bash -c "until curl -sf http://localhost:8080/actuator/health | grep -q UP; do sleep 5; done"
 
       - name: Start Business Services
         run: |
@@ -365,6 +345,26 @@ jobs:
             esac
             (cd $svc && nohup java -jar target/${svc}-*.jar --spring.profiles.active=docker --spring.cloud.config.uri=http://localhost:8888 --eureka.client.service-url.defaultZone=http://localhost:8761/eureka/ --spring.rabbitmq.host=localhost $DB_ARG > ../logs/$svc.log 2>&1 &)
           done
+
+      - name: Wait for Config Server
+        run: |
+          echo "Waiting for config-server..."
+          timeout 180 bash -c "until curl -sf http://localhost:8888/actuator/health | grep -q UP; do sleep 5; done"
+
+      - name: Wait for Eureka Server
+        run: |
+          echo "Waiting for eureka-server..."
+          timeout 300 bash -c "until curl -sf http://localhost:8761/actuator/health | grep -q UP; do sleep 5; done"
+
+      - name: Wait for Auth Server
+        run: |
+          echo "Waiting for auth-server..."
+          timeout 180 bash -c "until curl -sf http://localhost:9000/actuator/health | grep -q UP; do sleep 5; done"
+
+      - name: Wait for Gateway
+        run: |
+          echo "Waiting for gateway..."
+          timeout 180 bash -c "until curl -sf http://localhost:8080/actuator/health | grep -q UP; do sleep 5; done"
 
       - name: Wait for all services
         run: |
