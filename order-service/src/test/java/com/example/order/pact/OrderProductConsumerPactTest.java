@@ -7,7 +7,6 @@ import au.com.dius.pact.consumer.junit5.PactTestFor;
 import au.com.dius.pact.consumer.MockServer;
 import au.com.dius.pact.core.model.V4Pact;
 import au.com.dius.pact.core.model.annotations.Pact;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -71,7 +70,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productCreateRequestNameBlank(PactDslWithProvider builder) {
         return builder
                 .given("product create request - name blank")
@@ -89,7 +87,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productCreateRequestNameNull(PactDslWithProvider builder) {
         return builder
                 .given("product create request - name null")
@@ -97,7 +94,6 @@ class OrderProductConsumerPactTest {
                 .path("/products")
                 .method("POST")
                 .body(new PactDslJsonBody()
-                        .stringType("name", null)
                         .stringType("description", "High-performance laptop")
                         .decimalType("price", new BigDecimal("1999.99"))
                         .stringType("categoryId", "cat-123"))
@@ -107,7 +103,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productCreateRequestNameTooLong(PactDslWithProvider builder) {
         return builder
                 .given("product create request - name too long")
@@ -125,7 +120,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productCreateRequestDescriptionTooLong(PactDslWithProvider builder) {
         return builder
                 .given("product create request - description too long")
@@ -143,7 +137,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productCreateRequestPriceNull(PactDslWithProvider builder) {
         return builder
                 .given("product create request - price null")
@@ -153,7 +146,6 @@ class OrderProductConsumerPactTest {
                 .body(new PactDslJsonBody()
                         .stringType("name", "Laptop Pro 15")
                         .stringType("description", "High-performance laptop")
-                        .stringType("price", null)
                         .stringType("categoryId", "cat-123"))
                 .willRespondWith()
                 .status(400)
@@ -161,7 +153,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productCreateRequestPriceNotPositive(PactDslWithProvider builder) {
         return builder
                 .given("product create request - price not positive")
@@ -179,7 +170,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productCreateRequestPriceNegative(PactDslWithProvider builder) {
         return builder
                 .given("product create request - price negative")
@@ -197,7 +187,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productUpdateRequestNameBlank(PactDslWithProvider builder) {
         return builder
                 .given("product update request - name blank")
@@ -215,7 +204,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productUpdateRequestNameNull(PactDslWithProvider builder) {
         return builder
                 .given("product update request - name null")
@@ -223,7 +211,6 @@ class OrderProductConsumerPactTest {
                 .path("/api/products/1")
                 .method("PUT")
                 .body(new PactDslJsonBody()
-                        .stringType("name", null)
                         .stringType("description", "High-performance laptop")
                         .decimalType("price", new BigDecimal("1999.99"))
                         .stringType("categoryId", "cat-123"))
@@ -233,7 +220,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productUpdateRequestNameTooLong(PactDslWithProvider builder) {
         return builder
                 .given("product update request - name too long")
@@ -251,7 +237,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productUpdateRequestDescriptionTooLong(PactDslWithProvider builder) {
         return builder
                 .given("product update request - description too long")
@@ -269,7 +254,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productUpdateRequestPriceNull(PactDslWithProvider builder) {
         return builder
                 .given("product update request - price null")
@@ -279,7 +263,6 @@ class OrderProductConsumerPactTest {
                 .body(new PactDslJsonBody()
                         .stringType("name", "Laptop Pro 15")
                         .stringType("description", "High-performance laptop")
-                        .stringType("price", null)
                         .stringType("categoryId", "cat-123"))
                 .willRespondWith()
                 .status(400)
@@ -287,7 +270,6 @@ class OrderProductConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact productUpdateRequestPriceNotPositive(PactDslWithProvider builder) {
         return builder
                 .given("product update request - price not positive")
@@ -334,6 +316,192 @@ class OrderProductConsumerPactTest {
                 .bodyValue(new ProductUpdateRequest("Laptop Pro 16", "Updated high-performance laptop", new BigDecimal("2199.99"), "cat-123"))
                 .retrieve()
                 .toBodilessEntity()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productCreateRequestNameBlank")
+    void testProductCreateRequestNameBlank(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/products")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"\",\"description\":\"High-performance laptop\",\"price\":1999.99,\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productCreateRequestNameNull")
+    void testProductCreateRequestNameNull(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/products")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"description\":\"High-performance laptop\",\"price\":1999.99,\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productCreateRequestNameTooLong")
+    void testProductCreateRequestNameTooLong(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        String longName = "A".repeat(256);
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/products")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"" + longName + "\",\"description\":\"High-performance laptop\",\"price\":1999.99,\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productCreateRequestDescriptionTooLong")
+    void testProductCreateRequestDescriptionTooLong(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        String longDesc = "A".repeat(1001);
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/products")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"Laptop Pro 15\",\"description\":\"" + longDesc + "\",\"price\":1999.99,\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productCreateRequestPriceNull")
+    void testProductCreateRequestPriceNull(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/products")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"Laptop Pro 15\",\"description\":\"High-performance laptop\",\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productCreateRequestPriceNotPositive")
+    void testProductCreateRequestPriceNotPositive(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/products")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"Laptop Pro 15\",\"description\":\"High-performance laptop\",\"price\":0.0,\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productCreateRequestPriceNegative")
+    void testProductCreateRequestPriceNegative(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/products")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"Laptop Pro 15\",\"description\":\"High-performance laptop\",\"price\":-10.0,\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productUpdateRequestNameBlank")
+    void testProductUpdateRequestNameBlank(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .put()
+                .uri("/api/products/1")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"\",\"description\":\"High-performance laptop\",\"price\":1999.99,\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productUpdateRequestNameNull")
+    void testProductUpdateRequestNameNull(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .put()
+                .uri("/api/products/1")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"description\":\"High-performance laptop\",\"price\":1999.99,\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productUpdateRequestNameTooLong")
+    void testProductUpdateRequestNameTooLong(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        String longName = "A".repeat(256);
+        WebClient.create(mockServerUrl)
+                .put()
+                .uri("/api/products/1")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"" + longName + "\",\"description\":\"High-performance laptop\",\"price\":1999.99,\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productUpdateRequestDescriptionTooLong")
+    void testProductUpdateRequestDescriptionTooLong(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        String longDesc = "A".repeat(1001);
+        WebClient.create(mockServerUrl)
+                .put()
+                .uri("/api/products/1")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"Laptop Pro 15\",\"description\":\"" + longDesc + "\",\"price\":1999.99,\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productUpdateRequestPriceNull")
+    void testProductUpdateRequestPriceNull(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .put()
+                .uri("/api/products/1")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"Laptop Pro 15\",\"description\":\"High-performance laptop\",\"categoryId\":\"cat-123\"}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "productUpdateRequestPriceNotPositive")
+    void testProductUpdateRequestPriceNotPositive(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .put()
+                .uri("/api/products/1")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"name\":\"Laptop Pro 15\",\"description\":\"High-performance laptop\",\"price\":0.0,\"categoryId\":\"cat-123\"}")
+                .exchange()
                 .block();
         assertNotNull("Pact generated");
     }

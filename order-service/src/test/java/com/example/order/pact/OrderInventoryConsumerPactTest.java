@@ -78,7 +78,6 @@ class OrderInventoryConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact reserveStockRequestVariantIdNull(PactDslWithProvider builder) {
         return builder
                 .given("reserve stock request - variantId null")
@@ -86,7 +85,6 @@ class OrderInventoryConsumerPactTest {
                 .path("/inventory/reserve")
                 .method("POST")
                 .body(new PactDslJsonBody()
-                        .stringType("variantId", null)
                         .integerType("quantity", 5)
                         .integerType("orderItemId", 100L))
                 .willRespondWith()
@@ -95,7 +93,6 @@ class OrderInventoryConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact reserveStockRequestQuantityNull(PactDslWithProvider builder) {
         return builder
                 .given("reserve stock request - quantity null")
@@ -104,7 +101,6 @@ class OrderInventoryConsumerPactTest {
                 .method("POST")
                 .body(new PactDslJsonBody()
                         .integerType("variantId", 1L)
-                        .stringType("quantity", null)
                         .integerType("orderItemId", 100L))
                 .willRespondWith()
                 .status(400)
@@ -112,7 +108,6 @@ class OrderInventoryConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact reserveStockRequestQuantityLessThanOne(PactDslWithProvider builder) {
         return builder
                 .given("reserve stock request - quantity less than 1")
@@ -129,7 +124,7 @@ class OrderInventoryConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
+    @Disabled // Provider returns 500 due to TransactionManager bean conflict in test context (pre-existing issue)
     public V4Pact reserveStockRequestOrderItemIdNull(PactDslWithProvider builder) {
         return builder
                 .given("reserve stock request - orderItemId null")
@@ -138,8 +133,7 @@ class OrderInventoryConsumerPactTest {
                 .method("POST")
                 .body(new PactDslJsonBody()
                         .integerType("variantId", 1L)
-                        .integerType("quantity", 5)
-                        .stringType("orderItemId", null))
+                        .integerType("quantity", 5))
                 .willRespondWith()
                 .status(200)
                 .body(new PactDslJsonBody()
@@ -159,7 +153,6 @@ class OrderInventoryConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact confirmStockRequestVariantIdNull(PactDslWithProvider builder) {
         return builder
                 .given("confirm stock request - variantId null")
@@ -167,7 +160,6 @@ class OrderInventoryConsumerPactTest {
                 .path("/inventory/confirm")
                 .method("POST")
                 .body(new PactDslJsonBody()
-                        .stringType("variantId", null)
                         .integerType("quantity", 5))
                 .willRespondWith()
                 .status(400)
@@ -175,7 +167,6 @@ class OrderInventoryConsumerPactTest {
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact confirmStockRequestQuantityNull(PactDslWithProvider builder) {
         return builder
                 .given("confirm stock request - quantity null")
@@ -183,15 +174,13 @@ class OrderInventoryConsumerPactTest {
                 .path("/inventory/confirm")
                 .method("POST")
                 .body(new PactDslJsonBody()
-                        .integerType("variantId", 1L)
-                        .stringType("quantity", null))
+                        .integerType("variantId", 1L))
                 .willRespondWith()
                 .status(400)
                 .toPact().asV4Pact().get();
     }
 
     @Pact(consumer = "order-service")
-    @Disabled
     public V4Pact confirmStockRequestQuantityLessThanOne(PactDslWithProvider builder) {
         return builder
                 .given("confirm stock request - quantity less than 1")
@@ -236,6 +225,105 @@ class OrderInventoryConsumerPactTest {
                 .bodyValue(new ConfirmStockRequest(1L, 5))
                 .retrieve()
                 .toBodilessEntity()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "reserveStockRequestVariantIdNull")
+    void testReserveStockRequestVariantIdNull(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/inventory/reserve")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"quantity\":5,\"orderItemId\":100}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "reserveStockRequestQuantityNull")
+    void testReserveStockRequestQuantityNull(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/inventory/reserve")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"variantId\":1,\"orderItemId\":100}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "reserveStockRequestQuantityLessThanOne")
+    void testReserveStockRequestQuantityLessThanOne(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/inventory/reserve")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"variantId\":1,\"quantity\":0,\"orderItemId\":100}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @Disabled // Provider returns 500 due to TransactionManager bean conflict in test context
+    @PactTestFor(pactMethod = "reserveStockRequestOrderItemIdNull")
+    void testReserveStockRequestOrderItemIdNull(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/inventory/reserve")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"variantId\":1,\"quantity\":5}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "confirmStockRequestVariantIdNull")
+    void testConfirmStockRequestVariantIdNull(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/inventory/confirm")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"quantity\":5}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "confirmStockRequestQuantityNull")
+    void testConfirmStockRequestQuantityNull(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/inventory/confirm")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"variantId\":1}")
+                .exchange()
+                .block();
+        assertNotNull("Pact generated");
+    }
+
+    @Test
+    @PactTestFor(pactMethod = "confirmStockRequestQuantityLessThanOne")
+    void testConfirmStockRequestQuantityLessThanOne(MockServer mockServer) {
+        String mockServerUrl = mockServer.getUrl();
+        WebClient.create(mockServerUrl)
+                .post()
+                .uri("/inventory/confirm")
+                .header("Content-Type", "application/json; charset=UTF-8")
+                .bodyValue("{\"variantId\":1,\"quantity\":0}")
+                .exchange()
                 .block();
         assertNotNull("Pact generated");
     }
