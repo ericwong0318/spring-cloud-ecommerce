@@ -64,7 +64,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=config-server
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=config-server
-      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -95,7 +95,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=eureka-server
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=eureka-server
-      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -128,7 +128,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=auth-server
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=auth-server
-      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -167,7 +167,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=gateway
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=gateway
-      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -207,7 +207,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=product
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=product
-      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -246,7 +246,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=category
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=category
-      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -304,7 +304,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=order-service
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=order-service
-      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -491,7 +491,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=inventory-service
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=inventory-service
-      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -554,7 +554,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=notification-service
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=notification-service
-      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
@@ -592,7 +592,7 @@ services:
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=payment-service
       - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=local,service.name=payment-service
-      - OTEL_PROPAGATORS=tracecontext
+      - OTEL_PROPAGATORS=w3c,tracecontext
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_LOGS_EXPORTER=otlp
       - OTEL_JAVAAGENT_CONFIG=otel.javaagent.extensions=splunk-otel-profiler
