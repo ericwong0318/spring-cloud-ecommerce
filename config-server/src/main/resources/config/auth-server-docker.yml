@@ -3,7 +3,10 @@ spring:
     activate:
       on-profile: docker
   datasource:
-    url: jdbc:postgresql://postgres-auth:5432/auth_db
+    url: jdbc:postgresql://localhost:5432/ecommerce_test
+    driver-class-name: org.postgresql.Driver
+    username: test
+    password: test
   jpa:
     hibernate:
       ddl-auto: create
