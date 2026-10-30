@@ -18,14 +18,14 @@ spring:
     activate:
       on-profile: docker
   r2dbc:
-    url: r2dbc:postgresql://postgres-payment:5432/payment_db
+    url: r2dbc:postgresql://localhost:5432/payment_db
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     pool:
       enabled: true
       max-size: 20
   datasource:
-    url: jdbc:postgresql://postgres-payment:5432/payment_db
+    url: jdbc:postgresql://localhost:5432/payment_db
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
   flyway:
@@ -33,11 +33,11 @@ spring:
   eureka:
     client:
       service-url:
-        defaultZone: http://eureka-server:8761/eureka/
+        defaultZone: http://localhost:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
   rabbitmq:
-    host: rabbitmq
+    host: localhost
     port: 5672
     username: guest
     password: guest

@@ -11,11 +11,11 @@ spring:
   eureka:
     client:
       serviceUrl:
-        defaultZone: http://eureka-server:8761/eureka/
+        defaultZone: http://localhost:8761/eureka/
       registerWithEureka: true
       fetchRegistry: true
   datasource:
-    url: jdbc:postgresql://postgres-category:5432/category_db
+    url: jdbc:postgresql://localhost:5432/category_db
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
@@ -37,7 +37,7 @@ spring:
     locations: classpath:db/migration/category
     baseline-on-migrate: true
   rabbitmq:
-    host: rabbitmq
+    host: localhost
     port: 5672
     username: guest
     password: guest

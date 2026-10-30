@@ -11,11 +11,11 @@ spring:
     activate:
       on-profile: docker
   r2dbc:
-    url: r2dbc:postgresql://postgres-order:5432/order_db
+    url: r2dbc:postgresql://localhost:5432/order_db
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
   rabbitmq:
-    host: rabbitmq
+    host: localhost
     port: 5672
     username: guest
     password: guest
@@ -28,7 +28,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+      defaultZone: http://localhost:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
   instance:
