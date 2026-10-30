@@ -500,7 +500,7 @@ jobs:
       - name: Generate consumer pacts
         run: |
           mvn test -B -pl order-service,notification-service,product \
-            -Dtest='*PactConsumerTest' -DfailIfNoTests=false
+            -Dtest='*ConsumerPactTest' -DfailIfNoTests=false
 
       - name: Verify provider pacts
         run: |
