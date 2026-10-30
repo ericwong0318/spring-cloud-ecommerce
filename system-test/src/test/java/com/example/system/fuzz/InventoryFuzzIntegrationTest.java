@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * POST /inventory/confirm with malformed JSON payloads.
  */
 @RunWith(JQF.class)
-public class InventoryFuzzTest extends ValidationFuzzTest {
+public class InventoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
 
     private static final String VALID_RESERVE_JSON = """
             {

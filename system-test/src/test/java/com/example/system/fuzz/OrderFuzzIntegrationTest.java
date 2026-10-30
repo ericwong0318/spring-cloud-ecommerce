@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests POST /orders and POST /orders/{id}/cancel with malformed JSON payloads.
  */
 @RunWith(JQF.class)
-public class OrderFuzzTest extends ValidationFuzzTest {
+public class OrderFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
 
     private static final String VALID_ORDER_JSON = """
             {

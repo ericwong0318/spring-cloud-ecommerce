@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -33,6 +34,7 @@ public record ProductDto(
     BigDecimal price,
 
     @Schema(description = "Category ID", example = "1")
+    @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "Category ID must contain only alphanumeric characters, hyphens, or underscores")
     String categoryId,
 
     @Schema(description = "Category name (populated on read)", example = "Electronics", accessMode = Schema.AccessMode.READ_ONLY)

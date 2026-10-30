@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * with malformed JSON payloads.
  */
 @RunWith(JQF.class)
-public class PaymentFuzzTest extends ValidationFuzzTest {
+public class PaymentFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
 
     private static final String VALID_AUTHORIZE_JSON = """
             {

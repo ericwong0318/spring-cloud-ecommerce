@@ -39,10 +39,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     classes = {
-        ValidationFuzzTest.TestConfig.class
+        ValidationFuzzIntegrationTest.TestConfig.class
     }
 )
-public abstract class ValidationFuzzTest {
+public abstract class ValidationFuzzIntegrationTest {
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine")

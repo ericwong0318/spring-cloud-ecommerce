@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests POST /categories and PUT /categories/{id} with malformed JSON payloads.
  */
 @RunWith(JQF.class)
-public class CategoryFuzzTest extends ValidationFuzzTest {
+public class CategoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
 
     private static final String VALID_CATEGORY_JSON = """
             {

@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
     classes = {CategoryApplication.class, TestSecurityConfig.class}
 )
 @ExtendWith(JQFTestExtension.class)
-public class CategoryFuzzTest extends ValidationFuzzTest {
+public class CategoryFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
 
     @MockBean
     private OutboxEventPublisher outboxEventPublisher;

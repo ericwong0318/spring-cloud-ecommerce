@@ -25,6 +25,8 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
@@ -69,7 +71,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = {MinimalTestConfig.class, TestSecurityConfig.class, OrderFuzzTest.FuzzTestConfig.class},
+    classes = {MinimalTestConfig.class, TestSecurityConfig.class, OrderFuzzIntegrationTest.FuzzTestConfig.class},
     properties = {
         "spring.main.web-application-type=reactive",
         // Read oversized bodies into memory so the server can answer with a problem+json
@@ -79,13 +81,15 @@ import static org.mockito.ArgumentMatchers.anyString;
     }
 )
 @ActiveProfiles("test")
-@Import({TestSecurityConfig.class, OrderFuzzTest.FuzzTestConfig.class})
+@Import({TestSecurityConfig.class, OrderFuzzIntegrationTest.FuzzTestConfig.class})
 @EnableAutoConfiguration(exclude = {
     SecurityAutoConfiguration.class,
     OAuth2ResourceServerAutoConfiguration.class,
-    ManagementWebSecurityAutoConfiguration.class
+    ManagementWebSecurityAutoConfiguration.class,
+    HibernateJpaAutoConfiguration.class,
+    org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration.class
 })
-public class OrderFuzzTest {
+public class OrderFuzzIntegrationTest {
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15-alpine")
@@ -118,6 +122,12 @@ public class OrderFuzzTest {
                 POSTGRES.getHost(), POSTGRES.getFirstMappedPort(), POSTGRES.getDatabaseName()));
         registry.add("spring.r2dbc.username", POSTGRES::getUsername);
         registry.add("spring.r2dbc.password", POSTGRES::getPassword);
+
+        registry.add("spring.datasource.url", () -> String.format("jdbc:postgresql://localhost:%d/%s",
+                POSTGRES.getFirstMappedPort(), POSTGRES.getDatabaseName()));
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
 
         registry.add("spring.rabbitmq.host", RABBITMQ::getHost);
         registry.add("spring.rabbitmq.port", RABBITMQ::getAmqpPort);

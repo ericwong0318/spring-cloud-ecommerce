@@ -14,9 +14,9 @@ public final class TestDatabaseMigrations {
         "db/migration/V1__create_order_table.sql",
         "db/migration/V2__create_outbox_table.sql",
         "db/migration/V3__create_processed_events_table.sql",
-        "db/migration/V4__create_order_item_table.sql",
         "db/migration/V4__create_shedlock_table.sql",
-        "db/migration/V5__create_shipment_tables.sql"
+        "db/migration/V5__create_order_item_table.sql",
+        "db/migration/V6__create_shipment_tables.sql"
     };
 
     private TestDatabaseMigrations() {

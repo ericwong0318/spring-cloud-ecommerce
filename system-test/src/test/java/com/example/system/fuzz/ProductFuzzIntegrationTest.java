@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * PUT /products/{productId}/variants/sku/{skuCode} with malformed JSON payloads.
  */
 @RunWith(JQF.class)
-public class ProductFuzzTest extends ValidationFuzzTest {
+public class ProductFuzzIntegrationTest extends ValidationFuzzIntegrationTest {
 
     private static final String VALID_PRODUCT_JSON = """
             {

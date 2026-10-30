@@ -52,7 +52,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 // CategoryApplication (the @SpringBootTest configuration class). Declaring them
 // again here registers the same repository beans twice and fails the context
 // with a BeanDefinitionOverrideException.
-public abstract class ValidationFuzzTest {
+public abstract class ValidationFuzzIntegrationTest {
 
     @LocalServerPort
     protected int port;
