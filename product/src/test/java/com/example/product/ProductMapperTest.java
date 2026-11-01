@@ -16,8 +16,8 @@ class ProductMapperTest {
     void toDto_shouldMapThumbnailAndImageIds() {
         // Arrange
         Product product = new Product("p1", "Widget", "A widget", BigDecimal.TEN, "cat-1", "Electronics");
-        product.setThumbnail("thumb-file-id");
-        product.setImages(List.of("img-1", "img-2"));
+        product.setThumbnailImageId("thumb-file-id");
+        product.setImageIds(List.of("img-1", "img-2"));
 
         // Act
         ProductDto dto = mapper.toDto(product);
@@ -37,8 +37,8 @@ class ProductMapperTest {
         Product product = mapper.toEntity(dto);
 
         // Assert
-        assertThat(product.getThumbnail()).isEqualTo("thumb-file-id");
-        assertThat(product.getImages()).containsExactly("img-1", "img-2");
+        assertThat(product.getThumbnailImageId()).isEqualTo("thumb-file-id");
+        assertThat(product.getImageIds()).containsExactly("img-1", "img-2");
     }
 
     @Test
@@ -52,7 +52,7 @@ class ProductMapperTest {
 
         // Assert - thumbnailUrl/imageUrls are computed read-only accessors on the Dto,
         // not entity fields, so nothing is persisted for them on the Product entity.
-        assertThat(product.getThumbnail()).isEqualTo("thumb-file-id");
-        assertThat(product.getImages()).containsExactly("img-1");
+        assertThat(product.getThumbnailImageId()).isEqualTo("thumb-file-id");
+        assertThat(product.getImageIds()).containsExactly("img-1");
     }
 }

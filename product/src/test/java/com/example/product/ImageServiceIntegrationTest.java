@@ -6,6 +6,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -18,12 +19,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import reactor.core.publisher.Mono;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
 @Testcontainers
 @SpringBootTest
 @ActiveProfiles("test")
@@ -49,7 +47,7 @@ class ImageServiceIntegrationTest {
     }
 
     @Test
-    void storeRetrieveDelete_roundTrip_shouldStoreRetrieveAndDeleteImageBytes() throws IOException {
+    void storeRetrieveDelete_roundTrip_shouldStoreRetrieveAndDeleteImageBytes() {
         // Arrange
         String filename = "product-image.jpg";
         String contentType = "image/jpeg";
@@ -60,16 +58,16 @@ class ImageServiceIntegrationTest {
         String fileId = imageService.store(Mono.just(content), filename, contentType).block();
 
         // Act: retrieve
-        try (InputStream inputStream = imageService.retrieve(fileId).block().getInputStream()) {
-            String retrieved = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+        ImageService.ImageResource imageResource = imageService.retrieve(fileId).block();
+        DataBuffer joined = DataBufferUtils.join(imageResource.content()).block();
+        String retrieved = StandardCharsets.UTF_8.decode(joined.asByteBuffer()).toString();
 
-            // Act: delete
-            imageService.delete(fileId).block();
+        // Act: delete
+        imageService.delete(fileId).block();
 
-            // Assert: file id present and bytes round-trip intact
-            assertThat(fileId).isNotNull();
-            assertThat(retrieved).isEqualTo("gridfs-round-trip-bytes");
-        }
+        // Assert: file id present and bytes round-trip intact
+        assertThat(fileId).isNotNull();
+        assertThat(retrieved).isEqualTo("gridfs-round-trip-bytes");
 
         // Assert: image no longer retrievable after delete
         boolean stillExists = gridFsTemplate.findOne(

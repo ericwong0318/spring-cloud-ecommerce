@@ -50,14 +50,14 @@ class ProductDataInitializerTest {
                 "iPhone 15 Pro", "Latest Apple smartphone", new BigDecimal("999.00"), "cat-1", "Electronics / Smartphones");
 
         // Assert - every product has a non-empty thumbnail image ID and at least one image ID
-        assertThat(product.getThumbnail()).isNotBlank();
-        assertThat(product.getImages()).isNotEmpty();
-        assertThat(product.getImages()).hasSizeGreaterThanOrEqualTo(1);
+        assertThat(product.getThumbnailImageId()).isNotBlank();
+        assertThat(product.getImageIds()).isNotEmpty();
+        assertThat(product.getImageIds()).hasSizeGreaterThanOrEqualTo(1);
 
         // Assert - no picsum.photos URLs remain; GridFS file IDs are stored instead
-        assertThat(product.getThumbnail()).doesNotContain("picsum.photos");
-        assertThat(product.getImages()).noneMatch(id -> id.contains("picsum.photos"));
-        assertThat(product.getImages()).contains(product.getThumbnail());
+        assertThat(product.getThumbnailImageId()).doesNotContain("picsum.photos");
+        assertThat(product.getImageIds()).noneMatch(id -> id.contains("picsum.photos"));
+        assertThat(product.getImageIds()).contains(product.getThumbnailImageId());
 
         // Assert - each image was downloaded and uploaded to GridFS via ImageService
         verify(imageService, times(2)).store(any(), anyString(), anyString());

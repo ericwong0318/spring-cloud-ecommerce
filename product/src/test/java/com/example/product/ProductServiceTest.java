@@ -287,7 +287,7 @@ class ProductServiceTest {
 
         // Assert
         assertThat(result).isEqualTo(productDto);
-        assertThat(product.getImages()).containsExactly("img-123");
+        assertThat(product.getImageIds()).containsExactly("img-123");
         verify(productRepository).save(product);
     }
 
@@ -295,7 +295,7 @@ class ProductServiceTest {
     void attachImageId_whenImageIdAlreadyPresent_shouldNotDuplicate() {
         // Arrange
         Product product = product("1", "Product One", BigDecimal.TEN, 10);
-        product.getImages().add("img-123");
+        product.getImageIds().add("img-123");
         ProductDto productDto = dto("1", "Product One", BigDecimal.TEN, 10);
 
         when(productRepository.findById("1")).thenReturn(Mono.just(product));
@@ -306,7 +306,7 @@ class ProductServiceTest {
         productService.attachImageId("1", "img-123").block();
 
         // Assert
-        assertThat(product.getImages()).containsExactly("img-123");
+        assertThat(product.getImageIds()).containsExactly("img-123");
         verify(productRepository).save(product);
     }
 
@@ -324,8 +324,8 @@ class ProductServiceTest {
     void detachImageId_shouldRemoveImageIdFromProductsImagesAndSave() {
         // Arrange
         Product product = product("1", "Product One", BigDecimal.TEN, 10);
-        product.getImages().add("img-123");
-        product.getImages().add("img-456");
+        product.getImageIds().add("img-123");
+        product.getImageIds().add("img-456");
 
         when(productRepository.findById("1")).thenReturn(Mono.just(product));
         when(productRepository.save(any(Product.class))).thenReturn(Mono.just(product));
@@ -334,7 +334,7 @@ class ProductServiceTest {
         productService.detachImageId("1", "img-123").block();
 
         // Assert
-        assertThat(product.getImages()).containsExactly("img-456");
+        assertThat(product.getImageIds()).containsExactly("img-456");
         verify(productRepository).save(product);
     }
 
@@ -352,8 +352,8 @@ class ProductServiceTest {
     void getProductById_shouldReturnImageIdsInDto() {
         // Arrange
         Product product = product("1", "Product One", BigDecimal.TEN, 10);
-        product.getImages().add("img-1");
-        product.getImages().add("img-2");
+        product.getImageIds().add("img-1");
+        product.getImageIds().add("img-2");
 
         ProductDto productDto = new ProductDto(
                 "1", "Product One", "description", BigDecimal.TEN, "cat-1", null,
@@ -404,7 +404,7 @@ class ProductServiceTest {
     void updateProduct_shouldPreserveExistingImageFields() {
         // Arrange
         Product existing = new Product("1", "Product One", "description", BigDecimal.TEN, "cat-1", null);
-        existing.getImages().add("img-existing");
+        existing.getImageIds().add("img-existing");
         existing.setStockQuantity(10);
 
         ProductDto inputDto = new ProductDto(
@@ -427,6 +427,6 @@ class ProductServiceTest {
         // Assert
         assertThat(result).isEqualTo(outputDto);
         assertThat(result.imageIds()).containsExactly("img-existing");
-        assertThat(existing.getImages()).containsExactly("img-existing");
+        assertThat(existing.getImageIds()).containsExactly("img-existing");
     }
 }

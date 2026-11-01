@@ -58,13 +58,23 @@ public record ProductDto(
     }
 
     /**
+     * Builds the URL used to fetch an image from this service:
+     * {@code /products/{productId}/images/{imageId}}.
+     * Centralized here so the DTO's computed URLs and the image controller's upload
+     * response stay in sync.
+     */
+    public static String imageUrl(String productId, String imageId) {
+        return "/products/" + productId + "/images/" + imageId;
+    }
+
+    /**
      * Computed read-only URL to fetch the thumbnail image from this service.
      * Not persisted; derived from {@link #id()} and {@link #thumbnailImageId()}.
      */
     public String thumbnailUrl() {
         return thumbnailImageId == null
                 ? null
-                : "/products/" + id + "/images/" + thumbnailImageId;
+                : imageUrl(id, thumbnailImageId);
     }
 
     /**
@@ -73,7 +83,7 @@ public record ProductDto(
      */
     public List<String> imageUrls() {
         return imageIds.stream()
-                .map(imageId -> "/products/" + id + "/images/" + imageId)
+                .map(imageId -> imageUrl(id, imageId))
                 .toList();
     }
 }

@@ -449,8 +449,8 @@ public class ProductDataInitializer implements CommandLineRunner {
                 .map(url -> downloadAndStoreImage(url, name))
                 .collect(Collectors.toList());
 
-        product.setThumbnail(imageIds.get(0)); // thumbnailImageId (GridFS file ID)
-        product.setImages(imageIds);          // imageIds (GridFS file IDs)
+        product.setThumbnailImageId(imageIds.get(0)); // thumbnailImageId (GridFS file ID)
+        product.setImageIds(imageIds);          // imageIds (GridFS file IDs)
         return product;
     }
 

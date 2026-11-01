@@ -1,22 +1,20 @@
 package com.example.product;
 
 import com.mongodb.client.gridfs.model.GridFSFile;
+import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.core.io.Resource;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.gridfs.ReactiveGridFsTemplate;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,21 +59,26 @@ class ImageServiceTest {
     }
 
     @Test
-    void retrieve_shouldQueryByFileIdAndReturnResource() {
+    void retrieve_shouldQueryByFileIdAndReturnContentWithStoredContentType() {
         // Arrange
         String fileId = new ObjectId().toHexString();
-        InputStream inputStream = new ByteArrayInputStream("image-bytes".getBytes(StandardCharsets.UTF_8));
+        String contentType = "image/png";
+        DataBuffer dataBuffer = new DefaultDataBufferFactory()
+                .wrap("image-bytes".getBytes(StandardCharsets.UTF_8));
 
         when(gridFsTemplate.findOne(any(Query.class))).thenReturn(Mono.just(gridFSFile));
+        Document metadata = new Document("_contentType", contentType);
+        when(gridFSFile.getMetadata()).thenReturn(metadata);
         when(gridFsTemplate.getResource(any(GridFSFile.class))).thenReturn(Mono.just(gridFsResource));
-        when(gridFsResource.getInputStream()).thenReturn(Mono.just(inputStream));
+        when(gridFsResource.getContent()).thenReturn(Flux.just(dataBuffer));
 
         // Act
-        Resource result = imageService.retrieve(fileId).block();
+        ImageService.ImageResource result = imageService.retrieve(fileId).block();
 
         // Assert
         assertThat(result).isNotNull();
-        assertThat(result).isInstanceOf(InputStreamResource.class);
+        assertThat(result.content()).isNotNull();
+        assertThat(result.contentType()).isEqualTo(contentType);
         verify(gridFsTemplate).findOne(any(Query.class));
         verify(gridFsTemplate).getResource(any(GridFSFile.class));
     }
@@ -99,24 +102,26 @@ class ImageServiceTest {
         DataBuffer dataBuffer = new DefaultDataBufferFactory()
                 .wrap("round-trip-bytes".getBytes(StandardCharsets.UTF_8));
         String fileId = new ObjectId().toHexString();
-        InputStream inputStream = new ByteArrayInputStream("round-trip-bytes".getBytes(StandardCharsets.UTF_8));
 
         when(gridFsTemplate.store(any(Mono.class), anyString(), anyString()))
                 .thenReturn(Mono.just(new ObjectId(fileId)));
         when(gridFsTemplate.findOne(any(Query.class))).thenReturn(Mono.just(gridFSFile));
+        Document metadata = new Document("_contentType", "image/jpeg");
+        when(gridFSFile.getMetadata()).thenReturn(metadata);
         when(gridFsTemplate.getResource(any(GridFSFile.class))).thenReturn(Mono.just(gridFsResource));
-        when(gridFsResource.getInputStream()).thenReturn(Mono.just(inputStream));
+        when(gridFsResource.getContent()).thenReturn(Flux.just(dataBuffer));
         when(gridFsTemplate.delete(any(Query.class))).thenReturn(Mono.empty());
 
         // Act
         String storedId = imageService.store(Mono.just(dataBuffer), "round-trip.jpg", "image/jpeg").block();
-        Resource retrieved = imageService.retrieve(storedId).block();
+        ImageService.ImageResource retrieved = imageService.retrieve(storedId).block();
         imageService.delete(storedId).block();
 
         // Assert
         assertThat(storedId).isEqualTo(fileId);
         assertThat(retrieved).isNotNull();
-        assertThat(retrieved).isInstanceOf(InputStreamResource.class);
+        assertThat(retrieved.content()).isNotNull();
+        assertThat(retrieved.contentType()).isEqualTo("image/jpeg");
         verify(gridFsTemplate).delete(any(Query.class));
     }
 }

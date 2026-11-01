@@ -30,9 +30,9 @@ public class Product {
 
     private BigDecimal price;
 
-    private String thumbnail;
+    private String thumbnailImageId;
 
-    private List<String> images = new ArrayList<>();
+    private List<String> imageIds = new ArrayList<>();
 
     private List<ProductVariant> variants = new ArrayList<>();
 
@@ -51,15 +51,15 @@ public class Product {
     }
 
     public Product(String id, String name, String description, BigDecimal price, String categoryId, String categoryName,
-                   String thumbnail, List<String> images, List<ProductVariant> variants) {
+                   String thumbnailImageId, List<String> imageIds, List<ProductVariant> variants) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.price = price;
         this.categoryId = categoryId;
         this.categoryName = categoryName;
-        this.thumbnail = thumbnail;
-        this.images = images != null ? images : new ArrayList<>();
+        this.thumbnailImageId = thumbnailImageId;
+        this.imageIds = imageIds != null ? imageIds : new ArrayList<>();
         this.variants = variants != null ? variants : new ArrayList<>();
     }
 
@@ -111,20 +111,20 @@ public class Product {
         this.categoryName = categoryName;
     }
 
-    public String getThumbnail() {
-        return thumbnail;
+    public String getThumbnailImageId() {
+        return thumbnailImageId;
     }
 
-    public void setThumbnail(String thumbnail) {
-        this.thumbnail = thumbnail;
+    public void setThumbnailImageId(String thumbnailImageId) {
+        this.thumbnailImageId = thumbnailImageId;
     }
 
-    public List<String> getImages() {
-        return images;
+    public List<String> getImageIds() {
+        return imageIds;
     }
 
-    public void setImages(List<String> images) {
-        this.images = images;
+    public void setImageIds(List<String> imageIds) {
+        this.imageIds = imageIds;
     }
 
     public List<ProductVariant> getVariants() {

@@ -6,7 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.Resource;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -14,6 +15,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,16 +76,10 @@ class ImageControllerTest {
         String productId = "1";
         String imageId = "img-abc";
         byte[] imageBytes = "image-bytes".getBytes(StandardCharsets.UTF_8);
-
-        Resource resource = new ByteArrayResource(imageBytes, "test.png") {
-            @Override
-            public String getFilename() {
-                return "test.png";
-            }
-        };
+        DataBuffer dataBuffer = new DefaultDataBufferFactory().wrap(imageBytes);
 
         when(imageService.retrieve(eq(imageId)))
-                .thenReturn(Mono.just(resource));
+                .thenReturn(Mono.just(new ImageService.ImageResource(Flux.just(dataBuffer), MediaType.IMAGE_PNG.toString())));
 
         // Act
         webTestClient.get()

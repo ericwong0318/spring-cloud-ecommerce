@@ -102,13 +102,13 @@ public class ProductService {
         return productRepository.findById(productId)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", productId)))
                 .flatMap(product -> {
-                    List<String> images = product.getImages();
-                    if (images == null) {
-                        images = new ArrayList<>();
-                        product.setImages(images);
+                    List<String> imageIds = product.getImageIds();
+                    if (imageIds == null) {
+                        imageIds = new ArrayList<>();
+                        product.setImageIds(imageIds);
                     }
-                    if (!images.contains(imageId)) {
-                        images.add(imageId);
+                    if (!imageIds.contains(imageId)) {
+                        imageIds.add(imageId);
                     }
                     return productRepository.save(product);
                 })
@@ -120,9 +120,9 @@ public class ProductService {
         return productRepository.findById(productId)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", productId)))
                 .flatMap(product -> {
-                    List<String> images = product.getImages();
-                    if (images != null) {
-                        images.remove(imageId);
+                    List<String> imageIds = product.getImageIds();
+                    if (imageIds != null) {
+                        imageIds.remove(imageId);
                     }
                     return productRepository.save(product);
                 })

@@ -4,11 +4,10 @@ import com.example.common.dto.ProductDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.core.io.Resource;
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.multipart.Part;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -20,9 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.net.URI;
-import java.util.Locale;
-import java.util.Optional;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -55,20 +53,20 @@ public class ImageController {
                 .flatMap(dataBuffer -> imageService.store(Mono.just(dataBuffer), filename, contentType)
                         .flatMap(fileId -> productService.attachImageId(productId, fileId)
                                 .thenReturn(ResponseEntity.status(HttpStatus.CREATED)
-                                        .location(URI.create("/products/" + productId + "/images/" + fileId))
-                                        .body(new ImageUploadResponse(fileId, "/products/" + productId + "/images/" + fileId)))));
+                                        .location(URI.create(ProductDto.imageUrl(productId, fileId)))
+                                        .body(new ImageUploadResponse(fileId, ProductDto.imageUrl(productId, fileId))))));
     }
 
     @GetMapping("/{productId}/images/{imageId}")
     @Operation(summary = "Stream an image by ID", description = "Returns image bytes with the appropriate Content-Type header")
-    public Mono<ResponseEntity<Resource>> streamImage(
+    public Mono<ResponseEntity<Flux<DataBuffer>>> streamImage(
             @Parameter(description = "Product ID") @PathVariable String productId,
             @Parameter(description = "Image ID") @PathVariable String imageId) {
 
         return imageService.retrieve(imageId)
-                .map(resource -> ResponseEntity.ok()
-                        .contentType(contentTypeOf(resource))
-                        .body(resource));
+                .map(image -> ResponseEntity.ok()
+                        .contentType(contentTypeOf(image.contentType()))
+                        .body(image.content()));
     }
 
     @DeleteMapping("/{productId}/images/{imageId}")
@@ -83,35 +81,18 @@ public class ImageController {
     }
 
     /**
-     * Resolves the {@link MediaType} to use when serving an image resource.
-     * Falls back to the file extension, then to {@code application/octet-stream}.
+     * Resolves the {@link MediaType} to use when serving an image.
+     * Uses the MIME type stored in the image's GridFS metadata; falls back to
+     * {@code application/octet-stream} when no content type was recorded.
      */
-    private static MediaType contentTypeOf(Resource resource) {
-        Optional<MediaType> fromFactory = MediaTypeFactory.getMediaType(resource);
-        if (fromFactory.isPresent()) {
-            return fromFactory.get();
+    private static MediaType contentTypeOf(String contentType) {
+        if (contentType != null && !contentType.isBlank()) {
+            try {
+                return MediaType.parseMediaType(contentType);
+            } catch (IllegalArgumentException ignored) {
+                // Unparseable stored content type; fall back to the default below.
+            }
         }
-        return contentTypeByFilename(resource).orElse(MediaType.APPLICATION_OCTET_STREAM);
-    }
-
-    private static Optional<MediaType> contentTypeByFilename(Resource resource) {
-        String filename = resource.getFilename();
-        if (filename == null) {
-            return Optional.empty();
-        }
-        String lower = filename.toLowerCase(Locale.ROOT);
-        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
-            return Optional.of(MediaType.IMAGE_JPEG);
-        }
-        if (lower.endsWith(".png")) {
-            return Optional.of(MediaType.IMAGE_PNG);
-        }
-        if (lower.endsWith(".gif")) {
-            return Optional.of(MediaType.IMAGE_GIF);
-        }
-        if (lower.endsWith(".webp")) {
-            return Optional.of(MediaType.valueOf("image/webp"));
-        }
-        return Optional.empty();
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 }
