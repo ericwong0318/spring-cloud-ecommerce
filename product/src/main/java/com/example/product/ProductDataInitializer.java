@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -19,6 +20,7 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
 @Component
@@ -30,14 +32,19 @@ public class ProductDataInitializer implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
     private final WebClient.Builder webClientBuilder;
+    private final WebClient imageWebClient;
+    private final ImageService imageService;
 
     @Value("${category-service.url:http://localhost:8082}")
     private String categoryServiceUrl;
 
-    public ProductDataInitializer(ProductRepository productRepository, ProductMapper productMapper, WebClient.Builder webClientBuilder) {
+    public ProductDataInitializer(ProductRepository productRepository, ProductMapper productMapper,
+                                  WebClient.Builder webClientBuilder, ImageService imageService) {
         this.productRepository = productRepository;
         this.productMapper = productMapper;
         this.webClientBuilder = webClientBuilder;
+        this.imageWebClient = webClientBuilder.build();
+        this.imageService = imageService;
     }
 
     @Override
@@ -421,24 +428,42 @@ public class ProductDataInitializer implements CommandLineRunner {
         return id;
     }
 
-    private Product createProduct(String name, String description, BigDecimal price, String categoryId, String categoryName) {
+    Product createProduct(String name, String description, BigDecimal price, String categoryId, String categoryName) {
         Product product = new Product();
         product.setName(name);
         product.setDescription(description);
         product.setPrice(price);
         product.setCategoryId(categoryId);
         product.setCategoryName(categoryName);
-        // Generate placeholder image URLs based on product name hash
+
+        // Download free-to-use images at seed time and store them in GridFS instead of
+        // hotlinking picsum.photos URLs. Products reference images by their GridFS file ID.
         int nameHash = name.hashCode();
         if (nameHash < 0) nameHash = -nameHash;
         String seed = String.valueOf(nameHash);
-        String thumbnail = String.format("https://picsum.photos/400/400?product=%s", seed);
-        List<String> images = new ArrayList<>();
-        images.add(thumbnail);
-        images.add(String.format("https://picsum.photos/800/600?product=%s&random=%d", seed, nameHash));
-        product.setThumbnail(thumbnail);
-        product.setImages(images);
+
+        String thumbnailUrl = String.format("https://picsum.photos/400/400?product=%s", seed);
+        String imageUrl = String.format("https://picsum.photos/800/600?product=%s&random=%d", seed, nameHash);
+
+        List<String> imageIds = List.of(thumbnailUrl, imageUrl).stream()
+                .map(url -> downloadAndStoreImage(url, name))
+                .collect(Collectors.toList());
+
+        product.setThumbnail(imageIds.get(0)); // thumbnailImageId (GridFS file ID)
+        product.setImages(imageIds);          // imageIds (GridFS file IDs)
         return product;
+    }
+
+    private String downloadAndStoreImage(String imageUrl, String productName) {
+        byte[] bytes = imageWebClient.get()
+                .uri(imageUrl)
+                .retrieve()
+                .bodyToMono(byte[].class)
+                .timeout(Duration.ofSeconds(15))
+                .block(Duration.ofSeconds(30));
+        String filename = productName.toLowerCase().replaceAll("[^a-z0-9]+", "-") + ".jpg";
+        return imageService.store(Mono.just(new DefaultDataBufferFactory().wrap(bytes)), filename, "image/jpeg")
+                .block(Duration.ofSeconds(30));
     }
 
     private ProductVariant createVariant(String skuCode, Map<String, String> attributes, BigDecimal price) {
