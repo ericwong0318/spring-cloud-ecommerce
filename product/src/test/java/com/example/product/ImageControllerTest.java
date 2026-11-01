@@ -13,13 +13,11 @@ import org.springframework.web.reactive.function.BodyInserters;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 import reactor.core.publisher.Mono;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,36 +38,34 @@ class ImageControllerTest {
     void uploadImage_shouldReturn201WithImageIdAndUrl() {
         // Arrange
         String productId = "1";
-        String fileId = "file-id-123";
+        String fileId = "507f1f77bcf86cd799439011";
         byte[] imageBytes = "fake-image-bytes".getBytes(StandardCharsets.UTF_8);
 
-        String boundary = "----WebKitFormBoundary" + "test123";
-        String multipartBody = "--" + boundary + "\r\n"
-                + "Content-Disposition: form-data; name=\"file\"; filename=\"test.jpg\"\r\n"
-                + "Content-Type: image/jpeg\r\n"
-                + "\r\n"
-                + new String(imageBytes, StandardCharsets.UTF_8)
-                + "\r\n--" + boundary + "--\r\n";
-
-        ProductDto product = new ProductDto(productId, "Product", "desc", null, "cat-1", null,
+        ProductDto product = new ProductDto(
+                productId, "Product", "Description", null, "cat-1", null,
                 null, List.of(fileId), null, null);
 
-        when(imageService.store(any(Mono.class), anyString(), anyString()))
-                .thenReturn(Mono.just(fileId));
+        when(imageService.store(any(), any(), any())).thenReturn(Mono.just(fileId));
         when(productService.attachImageId(eq(productId), eq(fileId)))
                 .thenReturn(Mono.just(product));
 
-        // Act + diagnose
+        // Act
         webTestClient.post()
                 .uri("/products/{productId}/images", productId)
-                .contentType(new MediaType("multipart", "form-data", Map.of("boundary", boundary)))
-                .body(BodyInserters.fromValue(multipartBody))
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData("file",
+                        new ByteArrayResource(imageBytes, "test.jpg")))
                 .exchange()
-                .expectBody(String.class)
-                .consumeWith(result -> {
-                    System.out.println("UPLOAD STATUS=" + result.getStatus());
-                    System.out.println("UPLOAD BODY=" + new String(result.getResponseBody()));
+                // Assert
+                .expectStatus().isCreated()
+                .expectBody(ImageUploadResponse.class)
+                .value(response -> {
+                    assertThat(response.imageId()).isEqualTo(fileId);
+                    assertThat(response.url()).isEqualTo("/products/1/images/" + fileId);
                 });
+
+        verify(imageService).store(any(), any(), any());
+        verify(productService).attachImageId(eq(productId), eq(fileId));
     }
 
     @Test
@@ -78,16 +74,24 @@ class ImageControllerTest {
         String productId = "1";
         String imageId = "img-abc";
         byte[] imageBytes = "image-bytes".getBytes(StandardCharsets.UTF_8);
-        Resource resource = new ByteArrayResource(imageBytes, "test.jpg");
 
-        when(imageService.retrieve(eq(imageId))).thenReturn(Mono.just(resource));
+        Resource resource = new ByteArrayResource(imageBytes, "test.png") {
+            @Override
+            public String getFilename() {
+                return "test.png";
+            }
+        };
+
+        when(imageService.retrieve(eq(imageId)))
+                .thenReturn(Mono.just(resource));
 
         // Act
         webTestClient.get()
                 .uri("/products/{productId}/images/{imageId}", productId, imageId)
                 .exchange()
+                // Assert
                 .expectStatus().isOk()
-                .expectHeader().contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .expectHeader().contentType(MediaType.IMAGE_PNG)
                 .expectBody(byte[].class)
                 .value(body -> assertThat(body).isEqualTo(imageBytes));
     }
