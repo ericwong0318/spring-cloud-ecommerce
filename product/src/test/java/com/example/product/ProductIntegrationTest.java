@@ -9,6 +9,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
@@ -43,7 +44,11 @@ class ProductIntegrationTest {
     private static final Pageable PAGEABLE = PageRequest.of(0, 20, Sort.by("id"));
 
     private ProductDto product(String id, String name, BigDecimal price, Integer stock) {
-        return new ProductDto(id, name, "Description", price, "1", null, null, List.of(), List.of(), stock);
+        return new ProductDto(
+                id, name, "Description", price, "1", "Electronics",
+                "thumbnail-image-id", List.of("image-id-1", "image-id-2"),
+                List.of(), stock
+        );
     }
 
     private PageResponse<ProductDto> pageResponse(ProductDto content, long totalElements, int totalPages) {
@@ -73,12 +78,20 @@ class ProductIntegrationTest {
                 .uri("/products")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(PageResponse.class)
+                .expectBody(new ParameterizedTypeReference<PageResponse<ProductDto>>() {})
                 .consumeWith(result -> {
-                    PageResponse<?> body = (PageResponse<?>) result.getResponseBody();
+                    PageResponse<ProductDto> body = result.getResponseBody();
                     assertThat(body.totalElements()).isEqualTo(1);
                     assertThat(body.totalPages()).isEqualTo(1);
                     assertThat(body.content()).hasSize(1);
+
+                    ProductDto dto = body.content().get(0);
+                    assertThat(dto.thumbnailImageId()).isNotBlank();
+                    assertThat(dto.imageIds()).isNotEmpty();
+                    assertThat(dto.thumbnailUrl()).isNotBlank();
+                    assertThat(dto.imageUrls()).isNotEmpty();
+                    assertThat(dto.thumbnailUrl()).doesNotContain("picsum.photos");
+                    assertThat(dto.imageUrls()).noneMatch(url -> url.contains("picsum.photos"));
                 });
 
         verify(productService).getAllProducts(any(Pageable.class), isNull(), isNull(), eq(false));
@@ -164,6 +177,12 @@ class ProductIntegrationTest {
                     assertThat(product.id()).isEqualTo("1");
                     assertThat(product.name()).isEqualTo("New Product");
                     assertThat(product.price()).isEqualByComparingTo(BigDecimal.valueOf(49.99));
+                    assertThat(product.thumbnailImageId()).isNotBlank();
+                    assertThat(product.imageIds()).isNotEmpty();
+                    assertThat(product.thumbnailUrl()).isNotBlank();
+                    assertThat(product.imageUrls()).isNotEmpty();
+                    assertThat(product.thumbnailUrl()).doesNotContain("picsum.photos");
+                    assertThat(product.imageUrls()).noneMatch(url -> url.contains("picsum.photos"));
                 });
     }
 }
