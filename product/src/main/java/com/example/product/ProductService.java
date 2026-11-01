@@ -12,6 +12,7 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -94,6 +95,38 @@ public class ProductService {
         return productRepository.findById(id)
                 .map(productMapper::toDto)
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", id)));
+    }
+
+    public Mono<ProductDto> attachImageId(String productId, String imageId) {
+        log.info("Attaching image id {} to product {}", imageId, productId);
+        return productRepository.findById(productId)
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", productId)))
+                .flatMap(product -> {
+                    List<String> images = product.getImages();
+                    if (images == null) {
+                        images = new ArrayList<>();
+                        product.setImages(images);
+                    }
+                    if (!images.contains(imageId)) {
+                        images.add(imageId);
+                    }
+                    return productRepository.save(product);
+                })
+                .map(productMapper::toDto);
+    }
+
+    public Mono<Void> detachImageId(String productId, String imageId) {
+        log.info("Detaching image id {} from product {}", imageId, productId);
+        return productRepository.findById(productId)
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", productId)))
+                .flatMap(product -> {
+                    List<String> images = product.getImages();
+                    if (images != null) {
+                        images.remove(imageId);
+                    }
+                    return productRepository.save(product);
+                })
+                .then();
     }
 
     public Flux<ProductDto> getProductsByCategory(String categoryId) {

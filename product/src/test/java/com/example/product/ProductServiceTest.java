@@ -2,6 +2,7 @@ package com.example.product;
 
 import com.example.common.dto.PageResponse;
 import com.example.common.dto.ProductDto;
+import com.example.common.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -13,12 +14,14 @@ import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -267,5 +270,163 @@ class ProductServiceTest {
         assertThat(response.content()).containsExactly(productDto);
         assertThat(response.totalElements()).isEqualTo(1);
         assertThat(response.totalPages()).isEqualTo(1);
+    }
+
+    @Test
+    void attachImageId_shouldAddImageIdToProductsImagesAndSave() {
+        // Arrange
+        Product product = product("1", "Product One", BigDecimal.TEN, 10);
+        ProductDto productDto = dto("1", "Product One", BigDecimal.TEN, 10);
+
+        when(productRepository.findById("1")).thenReturn(Mono.just(product));
+        when(productRepository.save(any(Product.class))).thenReturn(Mono.just(product));
+        when(productMapper.toDto(product)).thenReturn(productDto);
+
+        // Act
+        ProductDto result = productService.attachImageId("1", "img-123").block();
+
+        // Assert
+        assertThat(result).isEqualTo(productDto);
+        assertThat(product.getImages()).containsExactly("img-123");
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void attachImageId_whenImageIdAlreadyPresent_shouldNotDuplicate() {
+        // Arrange
+        Product product = product("1", "Product One", BigDecimal.TEN, 10);
+        product.getImages().add("img-123");
+        ProductDto productDto = dto("1", "Product One", BigDecimal.TEN, 10);
+
+        when(productRepository.findById("1")).thenReturn(Mono.just(product));
+        when(productRepository.save(any(Product.class))).thenReturn(Mono.just(product));
+        when(productMapper.toDto(product)).thenReturn(productDto);
+
+        // Act
+        productService.attachImageId("1", "img-123").block();
+
+        // Assert
+        assertThat(product.getImages()).containsExactly("img-123");
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void attachImageId_whenProductNotFound_shouldThrowResourceNotFoundException() {
+        // Arrange
+        when(productRepository.findById("999")).thenReturn(Mono.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> productService.attachImageId("999", "img-123").block())
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void detachImageId_shouldRemoveImageIdFromProductsImagesAndSave() {
+        // Arrange
+        Product product = product("1", "Product One", BigDecimal.TEN, 10);
+        product.getImages().add("img-123");
+        product.getImages().add("img-456");
+
+        when(productRepository.findById("1")).thenReturn(Mono.just(product));
+        when(productRepository.save(any(Product.class))).thenReturn(Mono.just(product));
+
+        // Act
+        productService.detachImageId("1", "img-123").block();
+
+        // Assert
+        assertThat(product.getImages()).containsExactly("img-456");
+        verify(productRepository).save(product);
+    }
+
+    @Test
+    void detachImageId_whenProductNotFound_shouldThrowResourceNotFoundException() {
+        // Arrange
+        when(productRepository.findById("999")).thenReturn(Mono.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> productService.detachImageId("999", "img-123").block())
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void getProductById_shouldReturnImageIdsInDto() {
+        // Arrange
+        Product product = product("1", "Product One", BigDecimal.TEN, 10);
+        product.getImages().add("img-1");
+        product.getImages().add("img-2");
+
+        ProductDto productDto = new ProductDto(
+                "1", "Product One", "description", BigDecimal.TEN, "cat-1", null,
+                null, List.of("img-1", "img-2"), List.of(), 10
+        );
+
+        when(productRepository.findById("1")).thenReturn(Mono.just(product));
+        when(productMapper.toDto(product)).thenReturn(productDto);
+
+        // Act
+        ProductDto result = productService.getProductById("1").block();
+
+        // Assert
+        assertThat(result).isEqualTo(productDto);
+        assertThat(result.imageIds()).containsExactly("img-1", "img-2");
+        verify(productMapper).toDto(product);
+    }
+
+    @Test
+    void createProduct_shouldPreserveImageFields() {
+        // Arrange
+        ProductDto inputDto = new ProductDto(
+                null, "Product One", "description", BigDecimal.TEN, "cat-1", null,
+                "thumb-1", List.of("img-1", "img-2"), List.of(), 10
+        );
+        Product product = new Product("1", "Product One", "description", BigDecimal.TEN, "cat-1", null);
+        product.setStockQuantity(10);
+        ProductDto outputDto = new ProductDto(
+                "1", "Product One", "description", BigDecimal.TEN, "cat-1", null,
+                "thumb-1", List.of("img-1", "img-2"), List.of(), 10
+        );
+
+        when(productMapper.toEntity(inputDto)).thenReturn(product);
+        when(productRepository.save(product)).thenReturn(Mono.just(product));
+        when(productMapper.toDto(product)).thenReturn(outputDto);
+        when(categoryClient.getCategoryName(1L)).thenReturn(Optional.of("Electronics"));
+
+        // Act
+        ProductDto result = productService.createProduct(inputDto).block();
+
+        // Assert
+        assertThat(result).isEqualTo(outputDto);
+        assertThat(result.thumbnailImageId()).isEqualTo("thumb-1");
+        assertThat(result.imageIds()).containsExactly("img-1", "img-2");
+    }
+
+    @Test
+    void updateProduct_shouldPreserveExistingImageFields() {
+        // Arrange
+        Product existing = new Product("1", "Product One", "description", BigDecimal.TEN, "cat-1", null);
+        existing.getImages().add("img-existing");
+        existing.setStockQuantity(10);
+
+        ProductDto inputDto = new ProductDto(
+                "1", "Updated", "new description", BigDecimal.valueOf(20.00), "cat-1", null,
+                null, List.of(), List.of(), 10
+        );
+        ProductDto outputDto = new ProductDto(
+                "1", "Updated", "new description", BigDecimal.valueOf(20.00), "cat-1", null,
+                null, List.of("img-existing"), List.of(), 10
+        );
+
+        when(productRepository.findById("1")).thenReturn(Mono.just(existing));
+        when(productRepository.save(existing)).thenReturn(Mono.just(existing));
+        when(productMapper.toDto(existing)).thenReturn(outputDto);
+        when(categoryClient.getCategoryName(1L)).thenReturn(Optional.of("Electronics"));
+
+        // Act
+        ProductDto result = productService.updateProduct("1", inputDto).block();
+
+        // Assert
+        assertThat(result).isEqualTo(outputDto);
+        assertThat(result.imageIds()).containsExactly("img-existing");
+        assertThat(existing.getImages()).containsExactly("img-existing");
     }
 }
