@@ -40,11 +40,11 @@ public record ProductDto(
     @Schema(description = "Category name (populated on read)", example = "Electronics", accessMode = Schema.AccessMode.READ_ONLY)
     String categoryName,
 
-    @Schema(description = "Product thumbnail image URL")
-    String thumbnail,
+    @Schema(description = "Product thumbnail GridFS file ID")
+    String thumbnailImageId,
 
-    @Schema(description = "Product image URLs")
-    List<String> images,
+    @Schema(description = "Product image GridFS file IDs")
+    List<String> imageIds,
 
     @Schema(description = "Product variants")
     List<ProductVariantDto> variants,
@@ -54,6 +54,26 @@ public record ProductDto(
 ) {
     public ProductDto {
         variants = variants != null ? new ArrayList<>(variants) : new ArrayList<>();
-        images = images != null ? new ArrayList<>(images) : new ArrayList<>();
+        imageIds = imageIds != null ? new ArrayList<>(imageIds) : new ArrayList<>();
+    }
+
+    /**
+     * Computed read-only URL to fetch the thumbnail image from this service.
+     * Not persisted; derived from {@link #id()} and {@link #thumbnailImageId()}.
+     */
+    public String thumbnailUrl() {
+        return thumbnailImageId == null
+                ? null
+                : "/products/" + id + "/images/" + thumbnailImageId;
+    }
+
+    /**
+     * Computed read-only URLs to fetch the product images from this service.
+     * Not persisted; derived from {@link #id()} and {@link #imageIds()}.
+     */
+    public List<String> imageUrls() {
+        return imageIds.stream()
+                .map(imageId -> "/products/" + id + "/images/" + imageId)
+                .toList();
     }
 }
