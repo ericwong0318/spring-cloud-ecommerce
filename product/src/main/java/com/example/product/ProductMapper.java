@@ -16,13 +16,13 @@ public interface ProductMapper {
 
     @Mapping(target = "categoryName", source = "categoryName")
     @Mapping(target = "variants", source = "variants")
-    @Mapping(target = "thumbnail", source = "thumbnail")
-    @Mapping(target = "images", source = "images")
+    @Mapping(target = "thumbnailImageId", source = "thumbnail")
+    @Mapping(target = "imageIds", source = "images")
     ProductDto toDto(Product product);
 
     @Mapping(target = "variants", ignore = true)
-    @Mapping(target = "thumbnail", source = "thumbnail")
-    @Mapping(target = "images", source = "images")
+    @Mapping(target = "thumbnail", source = "thumbnailImageId")
+    @Mapping(target = "images", source = "imageIds")
     Product toEntity(ProductDto productDto);
 
     default List<ProductVariantDto> mapVariants(List<ProductVariant> variants) {
