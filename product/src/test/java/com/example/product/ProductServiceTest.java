@@ -2,6 +2,7 @@ package com.example.product;
 
 import com.example.common.dto.PageResponse;
 import com.example.common.dto.ProductDto;
+import com.example.common.dto.ProductVariantDto;
 import com.example.common.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.IntStream;
 
@@ -428,5 +430,163 @@ class ProductServiceTest {
         assertThat(result).isEqualTo(outputDto);
         assertThat(result.imageIds()).containsExactly("img-existing");
         assertThat(existing.getImageIds()).containsExactly("img-existing");
+    }
+
+    @Test
+    void getProductsByCategory_shouldReturnProductsForCategory() {
+        // Arrange
+        Product product = product("1", "Product One", BigDecimal.TEN, 10);
+        ProductDto productDto = dto("1", "Product One", BigDecimal.TEN, 10);
+
+        when(productRepository.findByCategoryId("cat-1")).thenReturn(Flux.just(product));
+        when(productMapper.toDto(product)).thenReturn(productDto);
+
+        // Act
+        List<ProductDto> results = productService.getProductsByCategory("cat-1").collectList().block();
+
+        // Assert
+        assertThat(results).containsExactly(productDto);
+        verify(productRepository).findByCategoryId("cat-1");
+    }
+
+    @Test
+    void getProductsByCategory_withPagination_shouldReturnPagedProducts() {
+        // Arrange
+        Product product = product("1", "Product One", BigDecimal.TEN, 10);
+        ProductDto productDto = dto("1", "Product One", BigDecimal.TEN, 10);
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("id"));
+
+        when(productRepository.findByCategoryId("cat-1", pageable)).thenReturn(Flux.just(product));
+        when(productMapper.toDto(product)).thenReturn(productDto);
+
+        // Act
+        List<ProductDto> results = productService.getProductsByCategory("cat-1", pageable).collectList().block();
+
+        // Assert
+        assertThat(results).containsExactly(productDto);
+        verify(productRepository).findByCategoryId("cat-1", pageable);
+    }
+
+    @Test
+    void searchProducts_shouldReturnProductsMatchingName() {
+        // Arrange
+        Product product = product("1", "Laptop Pro", BigDecimal.TEN, 10);
+        ProductDto productDto = dto("1", "Laptop Pro", BigDecimal.TEN, 10);
+
+        when(productRepository.findByNameContainingIgnoreCase("laptop")).thenReturn(Flux.just(product));
+        when(productMapper.toDto(product)).thenReturn(productDto);
+
+        // Act
+        List<ProductDto> results = productService.searchProducts("laptop").collectList().block();
+
+        // Assert
+        assertThat(results).containsExactly(productDto);
+        verify(productRepository).findByNameContainingIgnoreCase("laptop");
+    }
+
+    @Test
+    void searchProducts_withPagination_shouldReturnPagedResults() {
+        // Arrange
+        Product product = product("1", "Laptop Pro", BigDecimal.TEN, 10);
+        ProductDto productDto = dto("1", "Laptop Pro", BigDecimal.TEN, 10);
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("id"));
+
+        when(productRepository.findByNameContainingIgnoreCase("laptop")).thenReturn(Flux.just(product));
+        when(productMapper.toDto(product)).thenReturn(productDto);
+
+        // Act
+        List<ProductDto> results = productService.searchProducts("laptop", pageable).collectList().block();
+
+        // Assert
+        assertThat(results).containsExactly(productDto);
+        verify(productRepository).findByNameContainingIgnoreCase("laptop");
+    }
+
+    @Test
+    void findByAttribute_shouldReturnProductsWithMatchingVariantAttribute() {
+        // Arrange
+        Product product = product("1", "Product One", BigDecimal.TEN, 10);
+        ProductDto productDto = dto("1", "Product One", BigDecimal.TEN, 10);
+
+        when(productRepository.findByVariantsAttributesKeyAndVariantsAttributesValue("color", "red"))
+                .thenReturn(Flux.just(product));
+        when(productMapper.toDto(product)).thenReturn(productDto);
+
+        // Act
+        List<ProductDto> results = productService.findByAttribute("color", "red").collectList().block();
+
+        // Assert
+        assertThat(results).containsExactly(productDto);
+        verify(productRepository).findByVariantsAttributesKeyAndVariantsAttributesValue("color", "red");
+    }
+
+    @Test
+    void findByAttribute_withPagination_shouldReturnPagedResults() {
+        // Arrange
+        Product product = product("1", "Product One", BigDecimal.TEN, 10);
+        ProductDto productDto = dto("1", "Product One", BigDecimal.TEN, 10);
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("id"));
+
+        when(productRepository.findByVariantsAttributesKeyAndVariantsAttributesValue("color", "red", pageable))
+                .thenReturn(Flux.just(product));
+        when(productMapper.toDto(product)).thenReturn(productDto);
+
+        // Act
+        List<ProductDto> results = productService.findByAttribute("color", "red", pageable).collectList().block();
+
+        // Assert
+        assertThat(results).containsExactly(productDto);
+        verify(productRepository).findByVariantsAttributesKeyAndVariantsAttributesValue("color", "red", pageable);
+    }
+
+    @Test
+    void filterByAttributes_shouldFilterByAllAttributes() {
+        // Arrange
+        Map<String, String> attrs = Map.of("color", "red", "size", "large");
+        Product product = product("1", "Product One", BigDecimal.TEN, 10);
+        ProductVariantDto variant = new ProductVariantDto(
+                null, null, "SKU-001", attrs, BigDecimal.TEN, "inv-1"
+        );
+        ProductDto productDto = new ProductDto(
+                "1", "Product One", "description", BigDecimal.TEN, "cat-1", null,
+                null, List.of(), List.of(variant), 10
+        );
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("id"));
+
+        when(productRepository.findAllBy(pageable)).thenReturn(Flux.just(product));
+        when(productRepository.findAllBy(Pageable.unpaged())).thenReturn(Flux.just(product));
+        when(productMapper.toDto(product)).thenReturn(productDto);
+
+        // Act
+        List<ProductDto> results = productService.filterByAttributes(attrs, pageable).collectList().block();
+
+        // Assert
+        assertThat(results).containsExactly(productDto);
+        verify(productRepository).findAllBy(pageable);
+    }
+
+    @Test
+    void deleteProduct_shouldDeleteProductById() {
+        // Arrange
+        Product product = product("1", "Product One", BigDecimal.TEN, 10);
+        when(productRepository.findById("1")).thenReturn(Mono.just(product));
+        when(productRepository.delete(any(Product.class))).thenReturn(Mono.empty());
+
+        // Act
+        productService.deleteProduct("1").block();
+
+        // Assert
+        verify(productRepository).findById("1");
+        verify(productRepository).delete(product);
+    }
+
+    @Test
+    void deleteProduct_whenProductNotFound_shouldThrowResourceNotFoundException() {
+        // Arrange
+        when(productRepository.findById("999")).thenReturn(Mono.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> productService.deleteProduct("999").block())
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 }

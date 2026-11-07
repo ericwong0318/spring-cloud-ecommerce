@@ -25,8 +25,8 @@ public final class TestDatabaseMigrations {
     public static void run(PostgreSQLContainer<?> postgres) {
         try {
             org.apache.commons.dbcp2.BasicDataSource dataSource = new org.apache.commons.dbcp2.BasicDataSource();
-            dataSource.setUrl(String.format("jdbc:postgresql://%s:%d/%s",
-                    postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName()));
+            dataSource.setUrl(String.format("jdbc:postgresql://localhost:%d/%s",
+                    postgres.getFirstMappedPort(), postgres.getDatabaseName()));
             dataSource.setUsername(postgres.getUsername());
             dataSource.setPassword(postgres.getPassword());
             dataSource.setDriverClassName("org.postgresql.Driver");

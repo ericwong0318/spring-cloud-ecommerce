@@ -14,6 +14,7 @@ import com.example.order.repository.ShipmentRepository;
 import com.example.order.service.OrderService;
 import org.mockito.Mockito;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -65,7 +66,7 @@ import reactor.core.publisher.Mono;
 )
 public class MinimalTestConfig {
     @Bean
-    @Primary
+    @ConditionalOnMissingBean(OutboxEventPublisher.class)
     public OutboxEventPublisher outboxEventPublisher() {
         return emptyMonoMock(OutboxEventPublisher.class);
     }

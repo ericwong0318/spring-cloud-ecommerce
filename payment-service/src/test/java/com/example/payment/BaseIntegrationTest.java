@@ -17,6 +17,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
+import org.springframework.core.env.Environment;
 
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = {PaymentServiceTestApplication.class, com.example.payment.config.TestSecurityConfig.class, BaseIntegrationTest.TestDataSourceConfig.class, BaseIntegrationTest.TestFlywayRunner.class})
@@ -41,20 +42,26 @@ public abstract class BaseIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
+        // OrbStack does not route host.docker.internal from the macOS host JVM.
+        // Use localhost so the Spring app can reach Testcontainers' containers
+        // via Docker's published ports on 127.0.0.1.
+        String dbHost = "localhost";
+        String rabbitHost = "localhost";
+
         // JDBC (Flyway) - point to the Testcontainers instance
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.url", () -> postgres.getJdbcUrl().replace("host.docker.internal", dbHost));
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
 
         // R2DBC (Application) - same container, dynamic port
         registry.add("spring.r2dbc.url", () -> String.format("r2dbc:postgresql://%s:%d/%s",
-                postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName()));
+                dbHost, postgres.getFirstMappedPort(), postgres.getDatabaseName()));
         registry.add("spring.r2dbc.username", postgres::getUsername);
         registry.add("spring.r2dbc.password", postgres::getPassword);
 
         // RabbitMQ
-        registry.add("spring.rabbitmq.host", rabbitmq::getHost);
+        registry.add("spring.rabbitmq.host", () -> rabbitHost);
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
         registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);
         registry.add("spring.rabbitmq.password", rabbitmq::getAdminPassword);
@@ -75,7 +82,7 @@ public abstract class BaseIntegrationTest {
         @Bean
         public DataSource dataSource() {
             HikariDataSource ds = new HikariDataSource();
-            ds.setJdbcUrl(postgres.getJdbcUrl());
+            ds.setJdbcUrl(postgres.getJdbcUrl().replace("host.docker.internal", "localhost"));
             ds.setUsername(postgres.getUsername());
             ds.setPassword(postgres.getPassword());
             ds.setDriverClassName("org.postgresql.Driver");
@@ -91,13 +98,18 @@ public abstract class BaseIntegrationTest {
     public static class TestFlywayRunner implements ApplicationListener<ContextRefreshedEvent> {
 
         private final DataSource dataSource;
+        private final Environment environment;
 
-        public TestFlywayRunner(DataSource dataSource) {
+        public TestFlywayRunner(DataSource dataSource, Environment environment) {
             this.dataSource = dataSource;
+            this.environment = environment;
         }
 
         @Override
         public void onApplicationEvent(ContextRefreshedEvent event) {
+            if ("false".equalsIgnoreCase(environment.getProperty("spring.flyway.enabled", "true"))) {
+                return;
+            }
             Flyway flyway = Flyway.configure()
                     .dataSource(dataSource)
                     .locations("classpath:db/migration")

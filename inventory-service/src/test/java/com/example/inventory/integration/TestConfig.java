@@ -3,9 +3,9 @@ package com.example.inventory.integration;
 import com.example.common.event.BaseEvent;
 import com.example.common.event.IdempotentEventProcessor;
 import org.mockito.Mockito;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
 import java.util.function.Consumer;
 
@@ -13,7 +13,7 @@ import java.util.function.Consumer;
 public class TestConfig {
 
     @Bean
-    @Primary
+    @ConditionalOnMissingBean(IdempotentEventProcessor.class)
     public IdempotentEventProcessor idempotentEventProcessor() {
         IdempotentEventProcessor mock = Mockito.mock(IdempotentEventProcessor.class);
         Mockito.doAnswer(invocation -> {

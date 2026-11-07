@@ -9,6 +9,7 @@ import com.example.order.outbox.R2dbcOutboxEvent;
 import com.example.order.outbox.R2dbcOutboxEventRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.r2dbc.connection.R2dbcTransactionManager;
@@ -58,6 +59,7 @@ public class OutboxConfig {
      */
     @Bean
     @Primary
+    @ConditionalOnMissingBean(R2dbcOutboxEventRepository.class)
     public ReactiveOutboxEventRepository<R2dbcOutboxEvent> reactiveOutboxEventRepository(
             R2dbcOutboxEventRepository outboxEventRepository) {
 

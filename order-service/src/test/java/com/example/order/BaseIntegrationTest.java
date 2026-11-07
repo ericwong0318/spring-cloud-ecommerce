@@ -65,14 +65,18 @@ public abstract class BaseIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
+        // OrbStack does not route host.docker.internal from the macOS host JVM.
+        // Use localhost so the Spring app can reach Testcontainers' containers
+        // via Docker's published ports on 127.0.0.1.
+        String dbHost = "localhost";
         registry.add("spring.r2dbc.url", () -> String.format("r2dbc:postgresql://%s:%d/%s",
-                postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName()));
+                dbHost, postgres.getFirstMappedPort(), postgres.getDatabaseName()));
         registry.add("spring.r2dbc.username", postgres::getUsername);
         registry.add("spring.r2dbc.password", postgres::getPassword);
         
         // JDBC DataSource for Flyway migrations (manual)
         registry.add("spring.datasource.url", () -> String.format("jdbc:postgresql://%s:%d/%s",
-                postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName()));
+                dbHost, postgres.getFirstMappedPort(), postgres.getDatabaseName()));
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
@@ -145,8 +149,8 @@ public abstract class BaseIntegrationTest {
         @Primary
         public DataSource dataSource() {
             org.apache.commons.dbcp2.BasicDataSource dataSource = new org.apache.commons.dbcp2.BasicDataSource();
-            dataSource.setUrl(String.format("jdbc:postgresql://%s:%d/%s",
-                    postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName()));
+            dataSource.setUrl(String.format("jdbc:postgresql://localhost:%d/%s",
+                    postgres.getFirstMappedPort(), postgres.getDatabaseName()));
             dataSource.setUsername(postgres.getUsername());
             dataSource.setPassword(postgres.getPassword());
             dataSource.setDriverClassName("org.postgresql.Driver");

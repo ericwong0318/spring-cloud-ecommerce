@@ -32,9 +32,17 @@ spring:
         concurrency: 1
         max-concurrency: 1
         prefetch: 1
+  component:
+    scan:
+      exclude-filters: com.example.payment.pact.*,com.example.payment.*PactProviderTest.*,com.example.payment.*PactConsumerTest.*,com.example.payment.*PactTestConfig.*
 
 server:
   port: 0
+
+# Allow Pact provider test placeholder resolution in integration test context
+local:
+  server:
+    port: 0
 
 eureka:
   client:

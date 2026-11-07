@@ -43,7 +43,9 @@ class ImageServiceIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", mongo::getConnectionString);
+        // OrbStack does not route host.docker.internal from the macOS host JVM.
+        String mongoUri = mongo.getConnectionString().replace("host.docker.internal", "localhost");
+        registry.add("spring.data.mongodb.uri", () -> mongoUri);
     }
 
     @Test

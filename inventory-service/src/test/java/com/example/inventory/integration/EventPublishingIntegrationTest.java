@@ -68,7 +68,10 @@ class EventPublishingIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        // OrbStack does not route host.docker.internal from the macOS host JVM.
+        String dbHost = "localhost";
+        String rabbitHost = "localhost";
+        registry.add("spring.datasource.url", () -> postgres.getJdbcUrl().replace("host.docker.internal", dbHost));
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
@@ -77,7 +80,7 @@ class EventPublishingIntegrationTest {
         registry.add("spring.jpa.show-sql", () -> "false");
         registry.add("spring.jpa.properties.hibernate.format_sql", () -> "true");
         registry.add("spring.flyway.enabled", () -> "false");
-        registry.add("spring.rabbitmq.host", rabbitmq::getHost);
+        registry.add("spring.rabbitmq.host", () -> rabbitHost);
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
         registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);
         registry.add("spring.rabbitmq.password", rabbitmq::getAdminPassword);

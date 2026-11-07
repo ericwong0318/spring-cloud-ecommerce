@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -37,6 +38,7 @@ public class InventoryServiceApplication {
     }
 
     @Bean
+    @ConditionalOnMissingBean(PlatformTransactionManager.class)
     public PlatformTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
         return new JpaTransactionManager(entityManagerFactory);
     }
@@ -66,6 +68,7 @@ public class InventoryServiceApplication {
     }
 
     @Bean
+    @ConditionalOnMissingBean(IdempotentEventProcessor.class)
     public IdempotentEventProcessor idempotentEventProcessor(
             CommonProcessedEventRepository processedEventRepository) {
         return new IdempotentEventProcessor(processedEventRepository);

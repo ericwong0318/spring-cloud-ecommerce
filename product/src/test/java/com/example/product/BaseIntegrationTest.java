@@ -39,8 +39,12 @@ public abstract class BaseIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.data.mongodb.uri", mongo::getConnectionString);
-        registry.add("spring.rabbitmq.host", rabbitmq::getHost);
+        // OrbStack does not route host.docker.internal from the macOS host JVM.
+        // Use localhost so the Spring app can reach Testcontainers' containers
+        // via Docker's published ports on 127.0.0.1.
+        String mongoUri = mongo.getConnectionString().replace("host.docker.internal", "localhost");
+        registry.add("spring.data.mongodb.uri", () -> mongoUri);
+        registry.add("spring.rabbitmq.host", () -> "localhost");
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
         registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);
         registry.add("spring.rabbitmq.password", rabbitmq::getAdminPassword);

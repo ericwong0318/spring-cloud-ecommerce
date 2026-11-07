@@ -8,6 +8,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
@@ -21,7 +22,16 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
     org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration.class
 })
 // Only scan payment package (main and test) to avoid Servlet security config from common
-@ComponentScan(basePackages = {"com.example.payment"})
+// Exclude Pact test beans from integration test context
+@ComponentScan(
+    basePackages = {"com.example.payment"},
+    excludeFilters = {
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.payment.pact.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.payment.*PactProviderTest.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.payment.*PactConsumerTest.*"),
+        @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com.example.payment.*PactTestConfig.*")
+    }
+)
 @EnableDiscoveryClient
 @EnableR2dbcRepositories(basePackages = {"com.example.payment.repository", "com.example.payment.event"})
 @EnableTransactionManagement
@@ -39,7 +49,8 @@ public class PaymentServiceTestApplication {
                         + "org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,"
                         + "org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration,"
                         + "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration,"
-                        + "org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration"
+                        + "org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration",
+                    "spring.component.scan.exclude-filters=com.example.payment.pact.*;com.example.payment.*PactProviderTest.*;com.example.payment.*PactConsumerTest.*;com.example.payment.*PactTestConfig.*"
                 );
     }
 }

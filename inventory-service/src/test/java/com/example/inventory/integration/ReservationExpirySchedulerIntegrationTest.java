@@ -55,12 +55,15 @@ class ReservationExpirySchedulerIntegrationTest {
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        // OrbStack does not route host.docker.internal from the macOS host JVM.
+        String dbHost = "localhost";
+        String rabbitHost = "localhost";
+        registry.add("spring.datasource.url", () -> postgres.getJdbcUrl().replace("host.docker.internal", dbHost));
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("spring.flyway.enabled", () -> "false");
-        registry.add("spring.rabbitmq.host", rabbitmq::getHost);
+        registry.add("spring.rabbitmq.host", () -> rabbitHost);
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
     }
 
