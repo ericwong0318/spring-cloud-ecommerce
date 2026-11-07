@@ -7,6 +7,7 @@ import com.example.inventory.model.Reservation;
 import com.example.inventory.repository.InventoryRepository;
 import com.example.inventory.repository.ReservationRepository;
 import com.example.inventory.service.InventoryService;
+import com.example.inventory.service.ReserveStockCommand;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -181,7 +182,7 @@ class EventPublishingIntegrationTest {
     void shouldPublishReservedEventWithCorrectSchema() {
         Queue queue = createAndBindTestQueue("inventory.reserved");
 
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 10, testOrderItemId, null, null, null));
 
         InventoryEvent event = consumeAndDeserializeEvent(queue, 5);
 
@@ -205,7 +206,7 @@ class EventPublishingIntegrationTest {
     void shouldPublishReleasedEventWithCorrectSchema() {
         Queue queue = createAndBindTestQueue("inventory.released");
 
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 10, testOrderItemId, null, null, null));
         inventoryService.releaseReservation(testVariantId, 10, testOrderItemId);
 
         InventoryEvent event = consumeAndDeserializeEvent(queue, 5);
@@ -228,7 +229,7 @@ class EventPublishingIntegrationTest {
     void shouldPublishConfirmedEventWithCorrectSchema() {
         Queue queue = createAndBindTestQueue("inventory.confirmed");
 
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 10, testOrderItemId, null, null, null));
         inventoryService.confirmStock(testVariantId, 10);
 
         InventoryEvent event = consumeAndDeserializeEvent(queue, 5);
@@ -259,7 +260,7 @@ class EventPublishingIntegrationTest {
         testInventory.setLowStockNotified(false);
         inventoryRepository.save(testInventory);
 
-        inventoryService.reserveStock(testVariantId, 6, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 6, testOrderItemId, null, null, null));
 
         InventoryEvent event = consumeAndDeserializeEvent(queue, 5);
 
@@ -285,7 +286,7 @@ class EventPublishingIntegrationTest {
         testInventory.setReservedQuantity(0);
         inventoryRepository.save(testInventory);
 
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 10, testOrderItemId, null, null, null));
 
         InventoryEvent event = consumeAndDeserializeEvent(queue, 5);
 
@@ -301,7 +302,7 @@ class EventPublishingIntegrationTest {
     void shouldDeserializePublishedEventsCorrectly() {
         // Test reserved event
         Queue reservedQueue = createAndBindTestQueue("inventory.reserved");
-        inventoryService.reserveStock(testVariantId, 5, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 5, testOrderItemId, null, null, null));
         InventoryEvent reservedEvent = consumeAndDeserializeEvent(reservedQueue, 5);
         assertThat(reservedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.RESERVED.name());
         assertThat(reservedEvent.getVariantId()).isEqualTo(testVariantId);
@@ -315,7 +316,7 @@ class EventPublishingIntegrationTest {
 
         // Test second reserved event
         Queue reservedQueue2 = createAndBindTestQueue("inventory.reserved");
-        inventoryService.reserveStock(testVariantId, 5, testOrderItemId + 1);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 5, testOrderItemId + 1, null, null, null));
         InventoryEvent secondReservedEvent = consumeAndDeserializeEvent(reservedQueue2, 5);
         assertThat(secondReservedEvent.getEventType()).isEqualTo(InventoryEvent.EventType.RESERVED.name());
         assertThat(secondReservedEvent.getVariantId()).isEqualTo(testVariantId);
@@ -333,10 +334,10 @@ class EventPublishingIntegrationTest {
     void shouldHandleDuplicateReservedEventsIdempotently() {
         Queue queue = createAndBindTestQueue("inventory.reserved");
 
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 10, testOrderItemId, null, null, null));
         InventoryEvent firstEvent = consumeAndDeserializeEvent(queue, 5);
 
-        inventoryService.reserveStock(testVariantId, 5, testOrderItemId + 1);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 5, testOrderItemId + 1, null, null, null));
         InventoryEvent secondEvent = consumeAndDeserializeEvent(queue, 5);
 
         assertThat(firstEvent.getEventId()).isNotEqualTo(secondEvent.getEventId());
@@ -354,11 +355,11 @@ class EventPublishingIntegrationTest {
     void shouldHandleDuplicateReleasedEventsIdempotently() {
         Queue queue = createAndBindTestQueue("inventory.released");
 
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 10, testOrderItemId, null, null, null));
         inventoryService.releaseReservation(testVariantId, 10, testOrderItemId);
         InventoryEvent firstEvent = consumeAndDeserializeEvent(queue, 5);
 
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId + 1);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 10, testOrderItemId + 1, null, null, null));
         inventoryService.releaseReservation(testVariantId, 10, testOrderItemId + 1);
         InventoryEvent secondEvent = consumeAndDeserializeEvent(queue, 5);
 
@@ -383,10 +384,10 @@ class EventPublishingIntegrationTest {
         testInventory.setLowStockNotified(false);
         inventoryRepository.save(testInventory);
 
-        inventoryService.reserveStock(testVariantId, 6, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 6, testOrderItemId, null, null, null));
         InventoryEvent firstEvent = consumeAndDeserializeEvent(queue, 5);
 
-        inventoryService.reserveStock(testVariantId, 1, testOrderItemId + 1);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 1, testOrderItemId + 1, null, null, null));
         await().atMost(2, TimeUnit.SECONDS).untilAsserted(() -> {
             Inventory updated = inventoryRepository.findByVariantId(testVariantId).orElseThrow();
             assertThat(updated.getLowStockNotified()).isTrue();
@@ -411,7 +412,7 @@ class EventPublishingIntegrationTest {
         Queue queue = createAndBindTestQueue("inventory.reserved");
 
         LocalDateTime beforePublish = LocalDateTime.now().minusSeconds(1);
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 10, testOrderItemId, null, null, null));
         LocalDateTime afterPublish = LocalDateTime.now().plusSeconds(1);
 
         InventoryEvent event = consumeAndDeserializeEvent(queue, 5);
@@ -426,10 +427,10 @@ class EventPublishingIntegrationTest {
     void shouldVerifyEventIdIsUniquePerEvent() {
         Queue queue = createAndBindTestQueue("inventory.reserved");
 
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 10, testOrderItemId, null, null, null));
         InventoryEvent event1 = consumeAndDeserializeEvent(queue, 5);
 
-        inventoryService.reserveStock(testVariantId, 5, testOrderItemId + 1);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 5, testOrderItemId + 1, null, null, null));
         InventoryEvent event2 = consumeAndDeserializeEvent(queue, 5);
 
         assertThat(event1.getEventId()).isNotNull();
@@ -442,7 +443,7 @@ class EventPublishingIntegrationTest {
     void shouldVerifyEventJsonStructureMatchesInventoryEventClass() {
         Queue queue = createAndBindTestQueue("inventory.reserved");
 
-        inventoryService.reserveStock(testVariantId, 10, testOrderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(testVariantId, 10, testOrderItemId, null, null, null));
         InventoryEvent event = consumeAndDeserializeEvent(queue, 5);
 
         String json;

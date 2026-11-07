@@ -9,6 +9,7 @@ import com.example.inventory.model.Reservation;
 import com.example.inventory.repository.InventoryRepository;
 import com.example.inventory.repository.ReservationRepository;
 import com.example.inventory.service.InventoryService;
+import com.example.inventory.service.ReserveStockCommand;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -151,7 +152,7 @@ class InventoryControllerIntegrationTest {
     @Test
     void shouldConfirmStockViaController() throws Exception {
         // Given: Reserve first
-        inventoryService.reserveStock(variantId, 10, orderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(variantId, 10, orderItemId, null, null, null));
         Inventory afterReserve = inventoryRepository.findByVariantId(variantId).orElseThrow();
         assertThat(afterReserve.getReservedQuantity()).isEqualTo(10);
         assertThat(afterReserve.getAvailableQuantity()).isEqualTo(90);
@@ -183,7 +184,7 @@ class InventoryControllerIntegrationTest {
     @Test
     void shouldReleaseReservationViaController() throws Exception {
         // Given: Reserve first
-        inventoryService.reserveStock(variantId, 10, orderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(variantId, 10, orderItemId, null, null, null));
         Inventory afterReserve = inventoryRepository.findByVariantId(variantId).orElseThrow();
         assertThat(afterReserve.getReservedQuantity()).isEqualTo(10);
         assertThat(afterReserve.getAvailableQuantity()).isEqualTo(90);

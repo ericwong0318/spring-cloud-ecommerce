@@ -112,13 +112,11 @@ public class OrderSagaOrchestratorImpl implements OrderSagaHandler {
                 item.setVariantId(itemDto.variantId());
                 item.setQuantityOrdered(itemDto.quantity());
                 item.setQuantityShipped(0);
-                // Use default price since CreateOrderItemRequest doesn't have price field
-                BigDecimal unitPrice = BigDecimal.ZERO;
+                BigDecimal unitPrice = itemDto.unitPrice();
                 item.setUnitPrice(unitPrice);
                 item.setStatus(OrderItem.OrderItemStatus.PENDING);
                 item.setReservedAt(now);
                 orderItems.add(item);
-                // Calculate total amount (using default price for now)
                 totalAmount = totalAmount.add(unitPrice.multiply(BigDecimal.valueOf(itemDto.quantity())));
             }
         }

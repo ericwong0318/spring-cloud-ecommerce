@@ -5,6 +5,7 @@ import com.example.common.dto.InventoryDto;
 import com.example.common.dto.ReserveStockRequest;
 import com.example.inventory.model.Inventory;
 import com.example.inventory.service.InventoryService;
+import com.example.inventory.service.ReserveStockCommand;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +27,8 @@ public class InventoryController {
     @PostMapping("/reserve")
     @Operation(summary = "Reserve stock", description = "Reserves stock for a product variant")
     public ResponseEntity<InventoryDto> reserveStock(@Valid @RequestBody ReserveStockRequest request) {
-        var result = inventoryService.reserveStock(request.variantId(), request.quantity(), request.orderItemId());
+        var result = inventoryService.reserveStock(new ReserveStockCommand(
+                request.variantId(), request.quantity(), request.orderItemId(), null, null, null));
         Inventory inventory = inventoryService.getInventory(request.variantId())
                 .orElseThrow(() -> new RuntimeException("Inventory not found for variant: " + request.variantId()));
         return ResponseEntity.ok(toDto(inventory));

@@ -169,4 +169,48 @@ public class Inventory {
     public boolean isLowStock() {
         return getAvailableQuantity() <= reorderLevel;
     }
+
+    /**
+     * Reserve stock against this inventory. Returns how much was reserved vs. backordered
+     * without requiring callers to know the available-quantity calculation.
+     */
+    public ReservationOutcome reserve(Integer quantity) {
+        int available = getAvailableQuantity();
+        if (available >= quantity) {
+            this.reservedQuantity += quantity;
+            return new ReservationOutcome(quantity, 0);
+        } else if (available > 0) {
+            int backordered = quantity - available;
+            this.reservedQuantity += available;
+            return new ReservationOutcome(available, backordered);
+        } else {
+            return new ReservationOutcome(0, quantity);
+        }
+    }
+
+    public void release(Integer quantity) {
+        this.reservedQuantity = Math.max(0, this.reservedQuantity - quantity);
+    }
+
+    public void confirm(Integer quantity) {
+        this.quantity -= quantity;
+        this.reservedQuantity -= quantity;
+    }
+
+    /**
+     * Outcome of a stock reservation: how many units were reserved and how many are backordered.
+     */
+    public record ReservationOutcome(int reserved, int backordered) {
+        public boolean isFullyReserved() {
+            return backordered == 0;
+        }
+
+        public boolean isPartiallyReserved() {
+            return reserved > 0 && backordered > 0;
+        }
+
+        public boolean isFullyBackordered() {
+            return reserved == 0 && backordered > 0;
+        }
+    }
 }

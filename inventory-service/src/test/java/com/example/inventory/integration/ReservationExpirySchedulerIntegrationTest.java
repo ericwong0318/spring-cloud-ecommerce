@@ -9,6 +9,7 @@ import com.example.inventory.repository.InventoryRepository;
 import com.example.inventory.repository.ReservationRepository;
 import com.example.inventory.scheduler.ReservationExpiryScheduler;
 import com.example.inventory.service.InventoryService;
+import com.example.inventory.service.ReserveStockCommand;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -110,7 +111,7 @@ class ReservationExpirySchedulerIntegrationTest {
     void shouldReleaseExpiredReservationAndPublishEvents() {
         // Given: Create a reservation with reservedAt set to 16 minutes ago
         int quantity = 10;
-        inventoryService.reserveStock(variantId, quantity, orderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(variantId, quantity, orderItemId, null, null, null));
 
         // Manually update the reservation's reservedAt to 16 minutes ago (expired)
         Optional<Reservation> reservationOpt = reservationRepository.findByOrderItemId(orderItemId);
@@ -144,7 +145,7 @@ class ReservationExpirySchedulerIntegrationTest {
     void shouldNotReleaseNonExpiredReservation() {
         // Given: Create a reservation with reservedAt set to 5 minutes ago (not expired)
         int quantity = 10;
-        inventoryService.reserveStock(variantId, quantity, orderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(variantId, quantity, orderItemId, null, null, null));
 
         // Manually update the reservation's reservedAt to 5 minutes ago
         Optional<Reservation> reservationOpt = reservationRepository.findByOrderItemId(orderItemId);
@@ -176,7 +177,7 @@ class ReservationExpirySchedulerIntegrationTest {
         inventoryRepository.save(testInventory);
 
         // When: Reserve 6 units, available becomes 9 (below reorder level 10)
-        inventoryService.reserveStock(variantId, 6, orderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(variantId, 6, orderItemId, null, null, null));
 
         // Then: LOW_STOCK event should be published
         // Note: We verify the inventory state and lowStockNotified flag
@@ -186,7 +187,7 @@ class ReservationExpirySchedulerIntegrationTest {
 
         // Verify LOW_STOCK event was published by checking we can't publish it again
         // (idempotency - lowStockNotified is true)
-        inventoryService.reserveStock(variantId, 1, orderItemId + 1);
+        inventoryService.reserveStock(new ReserveStockCommand(variantId, 1, orderItemId + 1, null, null, null));
         Inventory afterSecondReserve = inventoryRepository.findByVariantId(variantId).orElseThrow();
         assertThat(afterSecondReserve.getLowStockNotified()).isTrue();
     }
@@ -209,7 +210,7 @@ class ReservationExpirySchedulerIntegrationTest {
         inventoryRepository.save(afterRelease);
 
         // When: Check low stock again by triggering a reservation
-        inventoryService.reserveStock(variantId, 5, orderItemId + 1);
+        inventoryService.reserveStock(new ReserveStockCommand(variantId, 5, orderItemId + 1, null, null, null));
 
         // Then: lowStockNotified should be reset to false
         Inventory updatedInventory = inventoryRepository.findByVariantId(variantId).orElseThrow();
@@ -241,7 +242,7 @@ class ReservationExpirySchedulerIntegrationTest {
     void shouldNotProcessAlreadyReleasedReservation() {
         // Given: Create and release a reservation
         int quantity = 10;
-        inventoryService.reserveStock(variantId, quantity, orderItemId);
+        inventoryService.reserveStock(new ReserveStockCommand(variantId, quantity, orderItemId, null, null, null));
         inventoryService.releaseReservation(variantId, quantity, orderItemId);
 
         // Manually set reservedAt to 16 minutes ago

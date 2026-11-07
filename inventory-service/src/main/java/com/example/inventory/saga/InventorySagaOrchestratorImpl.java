@@ -1,15 +1,16 @@
 package com.example.inventory.saga;
 
-import com.example.commonsaga.InventorySagaHandler;
 import com.example.common.event.OrderEvent;
+import com.example.inventory.model.Inventory;
 import com.example.inventory.service.InventoryService;
+import com.example.inventory.service.ReserveStockCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 @Service
-public class InventorySagaOrchestratorImpl implements InventorySagaOrchestrator, InventorySagaHandler {
+public class InventorySagaOrchestratorImpl implements InventorySagaOrchestrator {
 
     private static final Logger log = LoggerFactory.getLogger(InventorySagaOrchestratorImpl.class);
 
@@ -28,11 +29,12 @@ public class InventorySagaOrchestratorImpl implements InventorySagaOrchestrator,
             Long orderItemId = item.getOrderItemId();
 
             if (variantId != null) {
-                InventoryService.ReservationResult result = inventoryService.reserveStock(
-                        variantId, quantity, orderItemId, event.getOrderId(), event.getCustomerId(), event.getCustomerEmail());
-                if (result.getBackordered() > 0) {
+                Inventory.ReservationOutcome outcome = inventoryService.reserveStock(
+                        new ReserveStockCommand(variantId, quantity, orderItemId,
+                                event.getOrderId(), event.getCustomerId(), event.getCustomerEmail()));
+                if (outcome.backordered() > 0) {
                     log.warn("Partial reservation for variant {}: reserved={}, backordered={}",
-                            variantId, result.getReserved(), result.getBackordered());
+                            variantId, outcome.reserved(), outcome.backordered());
                 }
             }
         }
