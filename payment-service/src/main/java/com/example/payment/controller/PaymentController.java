@@ -6,6 +6,7 @@ import com.example.common.dto.PaymentDto;
 import com.example.common.dto.RefundRequest;
 import com.example.payment.service.PaymentService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
@@ -58,8 +59,9 @@ public class PaymentController {
             @RequestBody String payload,
             @RequestHeader("X-Signature") String signature) {
         log.info("Received webhook from {}: {}", gateway, payload);
-        // TODO: Verify signature, parse event, update payment status
-        return Mono.just(ResponseEntity.ok().build());
+        // Not implemented: this personal project does not integrate with a real
+        // payment gateway. Webhook handling returns 501 until wired up.
+        return Mono.just(ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build());
     }
 
     @GetMapping("/{id}")
