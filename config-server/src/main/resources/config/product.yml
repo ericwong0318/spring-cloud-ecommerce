@@ -122,6 +122,66 @@ eureka:
 spring:
   config:
     activate:
+      on-profile: dev
+  application:
+    name: product
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017
+      database: product_db
+      auto-index-creation: true
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 5s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 3
+        max-concurrency: 10
+        prefetch: 10
+  eureka:
+    client:
+      service-url:
+        defaultZone: http://localhost:8761/eureka/
+      register-with-eureka: true
+      fetch-registry: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,circuitbreakers,ratelimiters
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  otlp:
+    metrics:
+      export:
+        url: http://localhost:4318/v1/metrics
+  health:
+    mongodb:
+      enabled: false
+    rabbit:
+      enabled: false
+    elasticsearch:
+      enabled: false
+
+logging:
+  level:
+    root: DEBUG
+
+---
+spring:
+  config:
+    activate:
       on-profile: prod
   data:
     mongodb:

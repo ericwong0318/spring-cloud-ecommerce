@@ -70,7 +70,11 @@ mvn spring-boot:run -pl payment-service
 ## Configuration
 - Local config: `config-server/src/main/resources/config/` (Git repo)
 - Each service: `bootstrap.yml` for Config Client, `application.yml` for local overrides
-- Profiles: `dev`, `docker`, `prod`
+- Spring Profiles (in Config Server config files):
+  - **`dev`** — Local bare-metal dev on Mac. `localhost` connections (PostgreSQL, Redis, RabbitMQ), H2 fallback, DEBUG logging.
+  - **`docker`** — Docker Compose + GitHub Actions CI. Docker DNS hostnames (`redis`, `eureka-server`, `postgres`), hardcoded `guest`/`guest` credentials.
+  - **`prod`** — Production. All credentials via `${ENV_VAR}` placeholders, `hibernate.ddl-auto=validate`, INFO logging.
+- Do **not** merge `dev` and `docker` — they use different networking (localhost vs Docker DNS).
 
 ## Testing
 - Unit: `*Test.java` (Surefire)
@@ -92,11 +96,21 @@ mvn spring-boot:run -pl payment-service
 8. **Gateway** uses Redis Reactive for rate limiting/session; Resilience4j CircuitBreaker enabled
 
 ## Development Workflow
+
+### Local Docker Compose (recommended)
 1. Modify code in module
 2. `mvn test -pl <module>` - run unit tests
 3. `mvn verify -pl <module>` - run integration tests (Testcontainers)
 4. `mvn clean install -DskipTests` - build all
-5. `docker-compose up -d` - run full stack locally
+5. `docker compose up -d` - run full stack locally (services use `docker` profile)
+
+### Bare-metal local dev (no Docker)
+1. `SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run -pl config-server`
+2. `SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run -pl eureka-server`
+3. `SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run -pl <service>`
+
+### Production
+1. `SPRING_PROFILES_ACTIVE=prod java -jar target/*.jar` (env vars provide credentials)
 
 ## Ticket Tracking Rule
 **After completing work on a ticket, tick the checkboxes in the ticket file (`.scratch/*/issues/*.md`) to mark tasks as done.**

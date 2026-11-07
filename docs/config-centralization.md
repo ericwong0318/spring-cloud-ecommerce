@@ -61,11 +61,11 @@ spring:
 
 ## Config Server Profile Structure
 
-Each service config has three profiles:
+Each service config has four profile layers:
 ```yaml
 # product.yml
 # ─────────────────────────────────────────
-# BASE (dev - local development)
+# BASE (fallback when no profile set)
 server:
   port: 8081
 spring:
@@ -78,47 +78,71 @@ spring:
     ...
 
 ---
-# DOCKER (docker-compose / k8s)
+# DEV (local bare-metal on Mac)
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:postgresql://localhost:5432/product_db
+  ...
+management:
+  ...
+logging:
+  level:
+    root: DEBUG
+
+---
+# DOCKER (Docker Compose / GitHub Actions CI)
 spring:
   config:
     activate:
       on-profile: docker
-  data:
-    mongodb:
-      uri: mongodb://mongodb:27017
-  rabbitmq:
-    host: rabbitmq
-    ...
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ecommerce_test
+  ...
+management:
+  ...
 
 ---
-# PROD (production k8s)
+# PROD (production)
 spring:
   config:
     activate:
       on-profile: prod
-  data:
-    mongodb:
-      uri: ${MONGODB_URI}
-      database: ${MONGODB_DATABASE:product_db}
-  rabbitmq:
-    host: ${RABBITMQ_HOST:rabbitmq}
-    ...
+  datasource:
+    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/product_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  ...
+management:
+  ...
+logging:
+  level:
+    root: INFO
 ```
 
-## Migration Checklist
+### Profile Selection Guide
 
-| Service | Status | Notes |
-|---------|--------|-------|
-| config-server | ✅ | Native profile, serves all configs |
-| eureka-server | ✅ | Only bootstrap.yml |
-| auth-server | ✅ | bootstrap.yml + docker profile in Config Server |
-| gateway | ✅ | Moved docker profile (rabbitmq, management, logging) to Config Server |
-| product | ✅ | Moved mongodb, rabbitmq, management to Config Server |
-| category | ✅ | bootstrap.yml only (uses H2 locally, PostgreSQL in docker) |
-| order-service | ✅ | bootstrap.yml only (R2DBC config in Config Server) |
-| inventory-service | ✅ | bootstrap.yml only |
-| payment-service | ✅ | bootstrap.yml only |
-| notification-service | ✅ | bootstrap.yml only |
+| Environment | Profile | Command |
+|---|---|---|
+| Local Mac (bare metal) | `dev` | `SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run -pl <service>` |
+| Local Mac (Docker Compose) | `docker` | `docker compose up -d` (set in compose) |
+| GitHub Actions CI | `docker` | `--spring.profiles.active=docker` (in ci.yml) |
+| Production | `prod` | `SPRING_PROFILES_ACTIVE=prod` + env vars for credentials |
+
+### Key Differences Between Profiles
+
+| Setting | `dev` | `docker` | `prod` |
+|---|---|---|---|
+| Database host | `localhost` | `localhost` (Compose port-mapped) | `${DATASOURCE_URL}` |
+| Redis host | `localhost` | `redis` (Docker DNS) | Not configured |
+| Eureka URL | `http://localhost:8761/eureka/` | `http://eureka-server:8761/eureka/` | `${EUREKA_CLIENT_SERVICE_URL_DEFAULT_ZONE}` |
+| Credentials | Hardcoded `test`/`test` | Hardcoded `guest`/`guest` | `${ENV_VAR}` injection |
+| Hibernate ddl-auto | `update` / `create` | `update` | `validate` |
+| Logging level | `DEBUG` | Framework default | `INFO` |
+
+**Do not merge `dev` and `docker`** — `dev` uses `localhost` networking (bare metal), `docker` uses Docker DNS hostnames. Merging breaks one or the other.
 
 ## Docker Compose Environment Variables
 

@@ -123,6 +123,51 @@ rabbitmq:
 spring:
   config:
     activate:
+      on-profile: dev
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/order_db
+    username: test
+    password: test
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 5s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 3
+        max-concurrency: 10
+        prefetch: 10
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+  health:
+    db:
+      enabled: true
+
+logging:
+  level:
+    root: DEBUG
+
+---
+spring:
+  config:
+    activate:
       on-profile: prod
   r2dbc:
     url: ${R2DBC_URL:r2dbc:postgresql://localhost:5432/ecommerce_test}

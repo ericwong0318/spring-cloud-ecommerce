@@ -28,3 +28,36 @@ spring:
       fetch-registry: false
 server:
   port: 8761
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  eureka:
+    client:
+      register-with-eureka: false
+      fetch-registry: false
+server:
+  port: 8761
+
+logging:
+  level:
+    root: DEBUG
+    org.springframework.netflix: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  eureka:
+    client:
+      register-with-eureka: false
+      fetch-registry: false
+server:
+  port: 8761
+
+logging:
+  level:
+    root: INFO

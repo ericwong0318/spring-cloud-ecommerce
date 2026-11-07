@@ -262,9 +262,11 @@ Each service loads configuration from:
 
 ### Local Dev vs Docker vs K8s Profiles
 
-- `dev`: Local machine (H2 database, no Docker)
-- `docker`: Docker Compose (PostgreSQL, service discovery via Docker DNS)
-- `kubernetes`: K8s deployment (PostgreSQL via service DNS)
+- `dev`: Local bare-metal dev on Mac. `localhost` connections (PostgreSQL, Redis, RabbitMQ), DEBUG logging.
+- `docker`: Docker Compose or GitHub Actions CI. Docker DNS hostnames (`redis`, `eureka-server`, `postgres`), hardcoded `guest`/`guest` credentials.
+- `prod`: Production. All credentials via `${ENV_VAR}` placeholders, `hibernate.ddl-auto=validate`, INFO logging.
+
+**Do not merge `dev` and `docker`** — `dev` uses `localhost` networking (bare metal), `docker` uses Docker DNS hostnames.
 
 ## Code Style
 

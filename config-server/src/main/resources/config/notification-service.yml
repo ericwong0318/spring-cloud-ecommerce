@@ -108,6 +108,76 @@ rabbitmq:
 spring:
   config:
     activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:postgresql://localhost:5432/notification_db
+    driver-class-name: org.postgresql.Driver
+    username: test
+    password: test
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 5s
+    exchange:
+      order: order-events
+    queue:
+      order-events: order-events
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  rabbitmq:
+    exchange:
+      order: order.exchange
+      payment: payment.exchange
+    queue:
+      notification-order-events: notification.order.events.queue
+      notification-payment-events: notification.payment.events.queue
+    routing-key:
+      order-created: order.created
+      order-cancelled: order.cancelled
+      payment-authorized: payment.authorized
+      payment-captured: payment.captured
+      payment-refunded: payment.refunded
+      payment-failed: payment.failed
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+  health:
+    db:
+      enabled: true
+
+logging:
+  level:
+    root: DEBUG
+
+---
+spring:
+  config:
+    activate:
       on-profile: prod
   datasource:
     url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/ecommerce_test}
