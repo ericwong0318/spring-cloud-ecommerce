@@ -1,29 +1,22 @@
 package com.example.product;
 
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.CompoundIndex;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-@Document(collection = "products")
-@CompoundIndex(name = "idx_category_name", def = "{'categoryId': 1, 'name': 'text'}")
-@CompoundIndex(name = "idx_variant_attributes", def = "{'variants.attributes': 1}")
+@Table("products")
 public class Product {
 
     @Id
     private String id;
 
-    @Indexed(name = "idx_product_name")
     private String name;
 
     private String description;
 
-    @Indexed(name = "idx_category_id")
     private String categoryId;
 
     private String categoryName;
@@ -32,9 +25,7 @@ public class Product {
 
     private String thumbnailImageId;
 
-    private List<String> imageIds = new ArrayList<>();
-
-    private List<ProductVariant> variants = new ArrayList<>();
+    private List<String> imageIds;
 
     private Integer stockQuantity = 0;
 
@@ -48,10 +39,11 @@ public class Product {
         this.price = price;
         this.categoryId = categoryId;
         this.categoryName = categoryName;
+        this.imageIds = new java.util.ArrayList<>();
     }
 
     public Product(String id, String name, String description, BigDecimal price, String categoryId, String categoryName,
-                   String thumbnailImageId, List<String> imageIds, List<ProductVariant> variants) {
+                   String thumbnailImageId, List<String> imageIds, Integer stockQuantity) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -59,8 +51,8 @@ public class Product {
         this.categoryId = categoryId;
         this.categoryName = categoryName;
         this.thumbnailImageId = thumbnailImageId;
-        this.imageIds = imageIds != null ? imageIds : new ArrayList<>();
-        this.variants = variants != null ? variants : new ArrayList<>();
+        this.imageIds = imageIds != null ? imageIds : new java.util.ArrayList<>();
+        this.stockQuantity = stockQuantity;
     }
 
     public String getId() {
@@ -87,14 +79,6 @@ public class Product {
         this.description = description;
     }
 
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
     public String getCategoryId() {
         return categoryId;
     }
@@ -109,6 +93,14 @@ public class Product {
 
     public void setCategoryName(String categoryName) {
         this.categoryName = categoryName;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
     }
 
     public String getThumbnailImageId() {
@@ -127,28 +119,12 @@ public class Product {
         this.imageIds = imageIds;
     }
 
-    public List<ProductVariant> getVariants() {
-        return variants;
-    }
-
-    public void setVariants(List<ProductVariant> variants) {
-        this.variants = variants;
-    }
-
     public Integer getStockQuantity() {
         return stockQuantity;
     }
 
     public void setStockQuantity(Integer stockQuantity) {
         this.stockQuantity = stockQuantity;
-    }
-
-    public void addVariant(ProductVariant variant) {
-        variants.add(variant);
-    }
-
-    public void removeVariant(ProductVariant variant) {
-        variants.remove(variant);
     }
 
     @Override

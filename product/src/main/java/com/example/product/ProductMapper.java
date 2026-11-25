@@ -3,44 +3,24 @@ package com.example.product;
 import com.example.common.dto.ProductDto;
 import com.example.common.dto.ProductVariantDto;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Mapper(componentModel = "spring")
 public interface ProductMapper {
 
     ProductMapper INSTANCE = Mappers.getMapper(ProductMapper.class);
 
-    @Mapping(target = "categoryName", source = "categoryName")
-    @Mapping(target = "variants", source = "variants")
-    @Mapping(target = "thumbnailImageId", source = "thumbnailImageId")
-    @Mapping(target = "imageIds", source = "imageIds")
     ProductDto toDto(Product product);
 
-    @Mapping(target = "variants", ignore = true)
-    @Mapping(target = "thumbnailImageId", source = "thumbnailImageId")
-    @Mapping(target = "imageIds", source = "imageIds")
     Product toEntity(ProductDto productDto);
-
-    default List<ProductVariantDto> mapVariants(List<ProductVariant> variants) {
-        if (variants == null) {
-            return null;
-        }
-        return variants.stream()
-                .map(this::toVariantDto)
-                .collect(Collectors.toList());
-    }
 
     default ProductVariantDto toVariantDto(ProductVariant variant) {
         if (variant == null) {
             return null;
         }
         return new ProductVariantDto(
-                null,
-                null,
+                variant.getId(),
+                variant.getProductId(),
                 variant.getSkuCode(),
                 variant.getAttributes(),
                 variant.getPrice(),

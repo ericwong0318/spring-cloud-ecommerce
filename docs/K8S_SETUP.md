@@ -121,6 +121,7 @@ kubectl apply -f k8s/deployments.yaml
 
 This creates:
 - A `ConfigMap` named `otel-config` with OTel environment variables
+- A `Secret` named `spring-cloud-secrets` with database credentials (PostgreSQL + Neon connection strings)
 - 10 `Deployments` (config-server, eureka-server, gateway, product, category, auth-server, order-service, inventory-service, payment-service, notification-service)
 - 10 `Services` (one per deployment)
 

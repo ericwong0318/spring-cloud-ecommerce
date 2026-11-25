@@ -49,9 +49,10 @@ spring:
   config:
     activate:
       on-profile: docker
-  data:
-    mongodb:
-      uri: mongodb://mongodb:27017
+  r2dbc:
+    url: r2dbc:postgresql://postgres:5432/product_db
+    username: postgres
+    password: postgres
 ```
 
 Services import config via `bootstrap.yml`:

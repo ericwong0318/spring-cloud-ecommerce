@@ -170,9 +170,9 @@ spring:
     activate:
       on-profile: prod
   r2dbc:
-    url: ${R2DBC_URL:r2dbc:postgresql://localhost:5432/ecommerce_test}
-    username: test
-    password: test
+    url: ${R2DBC_URL}
+    username: ${R2DBC_USERNAME}
+    password: ${R2DBC_PASSWORD}
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}

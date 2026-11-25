@@ -1,21 +1,24 @@
 package com.example.product;
 
-import java.math.BigDecimal;
-
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
-import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.r2dbc.repository.Query;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.math.BigDecimal;
 
 @Repository
-public interface ProductRepository extends ReactiveMongoRepository<Product, String> {
+public interface ProductRepository extends R2dbcRepository<Product, String> {
 
     Flux<Product> findByCategoryId(String categoryId);
 
     Flux<Product> findByCategoryId(String categoryId, Pageable pageable);
 
     Flux<Product> findByNameContainingIgnoreCase(String name);
+
+    Flux<Product> findByNameContainingIgnoreCase(String name, Pageable pageable);
 
     Flux<Product> findAllBy(Pageable pageable);
 
@@ -29,9 +32,15 @@ public interface ProductRepository extends ReactiveMongoRepository<Product, Stri
 
     Flux<Product> findByPriceLessThanEqual(BigDecimal maxPrice, Pageable pageable);
 
-    @Query("{ 'variants.attributes.?0': ?1 }")
-    Flux<Product> findByVariantsAttributesKeyAndVariantsAttributesValue(String key, String value);
+    Mono<Product> findById(String id);
 
-    @Query("{ 'variants.attributes.?0': ?1 }")
-    Flux<Product> findByVariantsAttributesKeyAndVariantsAttributesValue(String key, String value, Pageable pageable);
+    Mono<Void> deleteById(String id);
+
+    <S extends Product> Mono<S> save(S entity);
+
+    <S extends Product> Flux<S> saveAll(Iterable<S> entities);
+
+    Flux<Product> findAll();
+
+    Mono<Long> count();
 }

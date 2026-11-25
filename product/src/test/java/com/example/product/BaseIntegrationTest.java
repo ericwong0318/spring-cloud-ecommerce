@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -26,24 +26,26 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public abstract class BaseIntegrationTest {
 
     @Container
-    static final MongoDBContainer mongo = new MongoDBContainer("mongo:7.0");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
+            .withDatabaseName("product_db")
+            .withUsername("postgres")
+            .withPassword("postgres");
 
     @Container
     static final RabbitMQContainer rabbitmq = new RabbitMQContainer("rabbitmq:3.13-management-alpine")
             .withExposedPorts(5672, 15672);
 
     static {
-        mongo.start();
+        postgres.start();
         rabbitmq.start();
     }
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        // OrbStack does not route host.docker.internal from the macOS host JVM.
-        // Use localhost so the Spring app can reach Testcontainers' containers
-        // via Docker's published ports on 127.0.0.1.
-        String mongoUri = mongo.getConnectionString().replace("host.docker.internal", "localhost");
-        registry.add("spring.data.mongodb.uri", () -> mongoUri);
+        registry.add("spring.r2dbc.url", () -> postgres.getJdbcUrl().replace("jdbc:postgresql:", "r2dbc:postgresql:"));
+        registry.add("spring.r2dbc.username", postgres::getUsername);
+        registry.add("spring.r2dbc.password", postgres::getPassword);
+        registry.add("spring.flyway.enabled", () -> "true");
         registry.add("spring.rabbitmq.host", () -> "localhost");
         registry.add("spring.rabbitmq.port", rabbitmq::getAmqpPort);
         registry.add("spring.rabbitmq.username", rabbitmq::getAdminUsername);

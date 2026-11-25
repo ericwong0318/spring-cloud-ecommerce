@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Integration tests for {@link ProductService} backed by a real MongoDB instance
+ * Integration tests for {@link ProductService} backed by a real PostgreSQL instance
  * (via Testcontainers). Verifies end-to-end persistence and retrieval of products,
  * including image-id fields and pagination.
  */

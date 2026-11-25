@@ -5,7 +5,7 @@ Multi-module Maven project with 10 services plus a `system-test` module:
 - `config-server` - Spring Cloud Config Server (Git backend)
 - `eureka-server` - Service discovery (Netflix Eureka)
 - `gateway` - Spring Cloud Gateway (routes + OAuth2 resource server + Redis + Resilience4j)
-- `product` - Product domain service (WebFlux + MongoDB Reactive)
+- `product` - Product domain service (WebFlux + R2DBC + PostgreSQL JSONB)
 - `category` - Category domain service (WebMVC + JPA)
 - `auth-server` - Spring Authorization Server (OAuth2/JWT, WebMVC + JPA + PostgreSQL)
 - `order-service` - Order domain service (WebFlux + R2DBC + PostgreSQL)
@@ -92,7 +92,7 @@ mvn spring-boot:run -pl payment-service
 4. **OpenAPI docs**: `/swagger-ui.html` on each service, `/v3/api-docs` for JSON
 5. **Actuator endpoints**: `/actuator/health`, `/actuator/prometheus`, `/actuator/info`
 6. **Testcontainers** requires Docker/OrbStack running; uses `docker-java` 3.4+ for Docker API 1.40+
-7. **Database per service**: Product uses MongoDB; Category, Order, Inventory, Payment, Notification, Auth Server use dedicated PostgreSQL instances
+7. **Database per service**: Product uses PostgreSQL JSONB (R2DBC); Category, Order, Inventory, Payment, Notification, Auth Server use dedicated PostgreSQL instances
 8. **Gateway** uses Redis Reactive for rate limiting/session; Resilience4j CircuitBreaker enabled
 
 ## Development Workflow
@@ -109,8 +109,17 @@ mvn spring-boot:run -pl payment-service
 2. `SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run -pl eureka-server`
 3. `SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run -pl <service>`
 
-### Production
-1. `SPRING_PROFILES_ACTIVE=prod java -jar target/*.jar` (env vars provide credentials)
+### Neon Postgres (Production)
+Production uses Neon PostgreSQL as a shared database host with per-service logical databases/schemas. Connection details are injected via the `spring-cloud-secrets` Kubernetes Secret:
+
+| Variable | Source |
+|----------|--------|
+| `DATASOURCE_URL` | K8s Secret `spring-cloud-secrets` → Neon JDBC URL (`sslmode=require&channel_binding=require`) |
+| `DB_USERNAME` | K8s Secret `spring-cloud-secrets` → `neondb_owner` |
+| `DB_PASSWORD` | K8s Secret `spring-cloud-secrets` → Neon password |
+| `R2DBC_URL` | K8s Secret `spring-cloud-secrets` → Neon R2DBC URL |
+| `R2DBC_USERNAME` | K8s Secret `spring-cloud-secrets` → `neondb_owner` |
+| `R2DBC_PASSWORD` | K8s Secret `spring-cloud-secrets` → Neon password |
 
 ## Ticket Tracking Rule
 **After completing work on a ticket, tick the checkboxes in the ticket file (`.scratch/*/issues/*.md`) to mark tasks as done.**

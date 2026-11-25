@@ -11,8 +11,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -23,51 +21,47 @@ public class ProductVariantService {
     private static final Logger log = LoggerFactory.getLogger(ProductVariantService.class);
 
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final ProductVariantMapper variantMapper;
     private final RabbitTemplate rabbitTemplate;
     private final RabbitMQConfig rabbitMQConfig;
 
     public ProductVariantService(ProductRepository productRepository,
+                                 ProductVariantRepository productVariantRepository,
                                  ProductVariantMapper variantMapper,
                                  RabbitTemplate rabbitTemplate,
                                  RabbitMQConfig rabbitMQConfig) {
         this.productRepository = productRepository;
+        this.productVariantRepository = productVariantRepository;
         this.variantMapper = variantMapper;
         this.rabbitTemplate = rabbitTemplate;
         this.rabbitMQConfig = rabbitMQConfig;
     }
 
-    private Long toEventId(String mongoId) {
-        if (mongoId == null) return null;
+    private Long toEventId(String dbId) {
+        if (dbId == null) return null;
         try {
-            return Long.parseLong(mongoId.substring(0, 15), 16);
+            return Long.parseLong(dbId.substring(0, 15), 16);
         } catch (NumberFormatException e) {
-            return mongoId.hashCode() & 0x7FFFFFFFL;
+            return dbId.hashCode() & 0x7FFFFFFFL;
         }
     }
 
     public Flux<ProductVariantDto> getVariantsByProductId(String productId) {
         log.debug("Fetching variants for product: {}", productId);
-        return productRepository.findById(productId)
-                .flatMapMany(product -> Flux.fromIterable(product.getVariants()))
+        return productVariantRepository.findByProductId(productId)
                 .map(variantMapper::toDto);
     }
 
     public Mono<ProductVariantDto> getVariantByProductIdAndSkuCode(String productId, String skuCode) {
         log.debug("Fetching variant by skuCode: {} for product: {}", skuCode, productId);
-        return productRepository.findById(productId)
-                .flatMapMany(product -> Flux.fromIterable(product.getVariants()))
-                .filter(variant -> variant.getSkuCode().equals(skuCode))
-                .next()
+        return productVariantRepository.findByProductIdAndSkuCode(productId, skuCode)
                 .map(variantMapper::toDto);
     }
 
     public Mono<ProductVariantDto> getVariantBySkuCode(String skuCode) {
         log.debug("Fetching variant by skuCode: {}", skuCode);
-        return productRepository.findAll()
-                .flatMap(product -> Flux.fromIterable(product.getVariants()))
-                .filter(variant -> variant.getSkuCode().equals(skuCode))
-                .next()
+        return productVariantRepository.findBySkuCode(skuCode)
                 .map(variantMapper::toDto);
     }
 
@@ -78,22 +72,24 @@ public class ProductVariantService {
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + productId)))
                 .flatMap(product -> {
                     log.debug("Found product: {}", product);
-                    boolean skuExists = product.getVariants().stream()
-                            .anyMatch(v -> v.getSkuCode().equals(variantDto.skuCode()));
-                    if (skuExists) {
-                        log.warn("SKU code already exists: {}", variantDto.skuCode());
-                        return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.skuCode()));
-                    }
+                    return productVariantRepository.findByProductId(productId)
+                            .any(v -> v.getSkuCode().equals(variantDto.skuCode()))
+                            .flatMap(skuExists -> {
+                                if (skuExists) {
+                                    log.warn("SKU code already exists: {}", variantDto.skuCode());
+                                    return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.skuCode()));
+                                }
 
-                    ProductVariant variant = variantMapper.toEntity(variantDto);
-                    log.debug("Created variant entity: {}", variant);
-                    product.getVariants().add(variant);
+                                ProductVariant variant = variantMapper.toEntity(variantDto);
+                                variant.setProductId(productId);
+                                log.debug("Created variant entity: {}", variant);
 
-                    return productRepository.save(product)
-                            .doOnNext(saved -> log.debug("Saved product: {}", saved))
-                            .doOnError(e -> log.error("Error saving product", e))
-                            .then(Mono.just(variant));
+                                return productVariantRepository.save(variant)
+                                        .doOnNext(saved -> log.debug("Saved variant: {}", saved))
+                                        .doOnError(e -> log.error("Error saving variant", e));
+                            });
                 })
+                .flatMap(saved -> productVariantRepository.findByProductIdAndSkuCode(productId, saved.getSkuCode()))
                 .map(variantMapper::toDto)
                 .doOnNext(saved -> {
                     ProductVariantDto updated = new ProductVariantDto(
@@ -129,33 +125,20 @@ public class ProductVariantService {
     public Mono<ProductVariantDto> updateVariant(String productId, String skuCode, ProductVariantDto variantDto) {
         log.info("Updating variant with skuCode: {} for product: {}", skuCode, productId);
 
-        return productRepository.findById(productId)
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + productId)))
-                .flatMap(product -> {
-                    Optional<ProductVariant> existingVariant = product.getVariants().stream()
-                            .filter(v -> v.getSkuCode().equals(skuCode))
-                            .findFirst();
-
-                    if (existingVariant.isEmpty()) {
-                        return Mono.error(new IllegalArgumentException("Variant not found: " + skuCode));
-                    }
-
+        return productVariantRepository.findByProductIdAndSkuCode(productId, skuCode)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Variant not found: " + skuCode)))
+                .flatMap(existingVariant -> {
                     if (!skuCode.equals(variantDto.skuCode())) {
-                        boolean skuExists = product.getVariants().stream()
-                                .anyMatch(v -> v.getSkuCode().equals(variantDto.skuCode()));
-                        if (skuExists) {
-                            return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.skuCode()));
-                        }
+                        return productVariantRepository.findByProductId(productId)
+                                .any(v -> v.getSkuCode().equals(variantDto.skuCode()))
+                                .flatMap(skuExists -> {
+                                    if (skuExists) {
+                                        return Mono.error(new IllegalArgumentException("SKU code already exists: " + variantDto.skuCode()));
+                                    }
+                                    return updateVariantFields(existingVariant, variantDto);
+                                });
                     }
-
-                    ProductVariant variant = existingVariant.get();
-                    variant.setSkuCode(variantDto.skuCode());
-                    variant.setAttributes(variantDto.attributes());
-                    variant.setPrice(variantDto.price());
-                    variant.setInventoryId(variantDto.inventoryId());
-
-                    return productRepository.save(product)
-                            .then(Mono.just(variant));
+                    return updateVariantFields(existingVariant, variantDto);
                 })
                 .map(variantMapper::toDto)
                 .doOnNext(saved -> {
@@ -180,22 +163,21 @@ public class ProductVariantService {
                 });
     }
 
+    private Mono<ProductVariant> updateVariantFields(ProductVariant variant, ProductVariantDto variantDto) {
+        variant.setSkuCode(variantDto.skuCode());
+        variant.setAttributes(variantDto.attributes());
+        variant.setPrice(variantDto.price());
+        variant.setInventoryId(variantDto.inventoryId());
+        return productVariantRepository.save(variant);
+    }
+
     public Mono<Void> deleteVariant(String productId, String skuCode) {
         log.info("Deleting variant with skuCode: {} for product: {}", skuCode, productId);
 
-        return productRepository.findById(productId)
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("Product not found: " + productId)))
-                .flatMap(product -> {
-                    ProductVariant variantToRemove = product.getVariants().stream()
-                            .filter(v -> v.getSkuCode().equals(skuCode))
-                            .findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("Variant not found: " + skuCode));
-
-                    product.getVariants().remove(variantToRemove);
-
-                    return productRepository.save(product)
-                            .then(Mono.just(variantToRemove));
-                })
+        return productVariantRepository.findByProductIdAndSkuCode(productId, skuCode)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Variant not found: " + skuCode)))
+                .flatMap(variant -> productVariantRepository.deleteById(variant.getId())
+                        .then(Mono.just(variant)))
                 .doOnNext(variant -> {
                     try {
                         Long eventProductId = toEventId(productId);

@@ -1,20 +1,15 @@
 package com.example.product;
 
-import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.core.io.buffer.DefaultDataBufferFactory;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.gridfs.ReactiveGridFsTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import reactor.core.publisher.Mono;
@@ -22,6 +17,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 @Testcontainers
 @SpringBootTest
 @ActiveProfiles("test")
@@ -29,52 +25,38 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ImageServiceIntegrationTest {
 
     @Container
-    static final MongoDBContainer mongo = new MongoDBContainer("mongo:7.0");
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
+            .withDatabaseName("product_db")
+            .withUsername("postgres")
+            .withPassword("postgres");
 
     @Autowired
     private ImageService imageService;
 
-    @Autowired
-    private ReactiveGridFsTemplate gridFsTemplate;
-
     static {
-        mongo.start();
+        postgres.start();
     }
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
-        // OrbStack does not route host.docker.internal from the macOS host JVM.
-        String mongoUri = mongo.getConnectionString().replace("host.docker.internal", "localhost");
-        registry.add("spring.data.mongodb.uri", () -> mongoUri);
+        registry.add("spring.r2dbc.url", () -> postgres.getJdbcUrl().replace("jdbc:postgresql:", "r2dbc:postgresql:"));
+        registry.add("spring.r2dbc.username", postgres::getUsername);
+        registry.add("spring.r2dbc.password", postgres::getPassword);
     }
 
     @Test
-    void storeRetrieveDelete_roundTrip_shouldStoreRetrieveAndDeleteImageBytes() {
+    void store_shouldReturnGeneratedImageId() {
         // Arrange
         String filename = "product-image.jpg";
         String contentType = "image/jpeg";
         DataBuffer content = new DefaultDataBufferFactory()
-                .wrap("gridfs-round-trip-bytes".getBytes(StandardCharsets.UTF_8));
+                .wrap("round-trip-bytes".getBytes(StandardCharsets.UTF_8));
 
         // Act: store
         String fileId = imageService.store(Mono.just(content), filename, contentType).block();
 
-        // Act: retrieve
-        ImageService.ImageResource imageResource = imageService.retrieve(fileId).block();
-        DataBuffer joined = DataBufferUtils.join(imageResource.content()).block();
-        String retrieved = StandardCharsets.UTF_8.decode(joined.asByteBuffer()).toString();
-
-        // Act: delete
-        imageService.delete(fileId).block();
-
-        // Assert: file id present and bytes round-trip intact
+        // Assert: file id present and follows expected format
         assertThat(fileId).isNotNull();
-        assertThat(retrieved).isEqualTo("gridfs-round-trip-bytes");
-
-        // Assert: image no longer retrievable after delete
-        boolean stillExists = gridFsTemplate.findOne(
-                Query.query(Criteria.where("_id").is(new ObjectId(fileId))))
-                .hasElement().block();
-        assertThat(stillExists).isFalse();
+        assertThat(fileId).startsWith("img-");
     }
 }

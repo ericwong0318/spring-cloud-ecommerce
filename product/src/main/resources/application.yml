@@ -10,11 +10,14 @@ spring:
       on-profile: local
   application:
     name: product
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017
-      database: product_db
-      auto-index-creation: true
+  r2dbc:
+    url: ${R2DBC_URL:r2dbc:postgresql://localhost:5432/product_db}
+    username: ${R2DBC_USERNAME:postgres}
+    password: ${R2DBC_PASSWORD:postgres}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
   rabbitmq:
     host: localhost
     port: 5672
@@ -35,9 +38,14 @@ spring:
       on-profile: seed-data
   application:
     name: product
-  data:
-    mongodb:
-      auto-index-creation: true
+  r2dbc:
+    url: ${R2DBC_URL:r2dbc:postgresql://localhost:5432/product_db}
+    username: ${R2DBC_USERNAME:postgres}
+    password: ${R2DBC_PASSWORD:postgres}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
 
 ---
 spring:

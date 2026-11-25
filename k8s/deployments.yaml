@@ -51,6 +51,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: otel-config
+            - secretRef:
+                name: spring-cloud-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
@@ -91,6 +93,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: otel-config
+            - secretRef:
+                name: spring-cloud-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
@@ -131,6 +135,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: otel-config
+            - secretRef:
+                name: spring-cloud-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
@@ -171,6 +177,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: otel-config
+            - secretRef:
+                name: spring-cloud-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
@@ -211,6 +219,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: otel-config
+            - secretRef:
+                name: spring-cloud-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
@@ -251,6 +261,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: otel-config
+            - secretRef:
+                name: spring-cloud-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
@@ -291,6 +303,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: otel-config
+            - secretRef:
+                name: spring-cloud-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
@@ -415,6 +429,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: otel-config
+            - secretRef:
+                name: spring-cloud-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
@@ -455,6 +471,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: otel-config
+            - secretRef:
+                name: spring-cloud-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"
@@ -495,6 +513,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: otel-config
+            - secretRef:
+                name: spring-cloud-secrets
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "prod"

@@ -69,10 +69,10 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/auth_db}
+    url: ${DATASOURCE_URL}
     driver-class-name: org.postgresql.Driver
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate

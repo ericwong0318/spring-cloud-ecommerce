@@ -21,7 +21,7 @@ A production-ready, cloud-native E-Commerce microservices platform built with **
 This platform is a distributed E-Commerce system demonstrating modern microservice patterns. It supports **product catalog management**, **order processing**, and **category organization** with full OAuth2 security, service discovery, and centralized configuration.
 
 ### Core Features
-- 🛍️ **Product Management** — CRUD operations with MongoDB persistence
+- 🛍️ **Product Management** — CRUD operations with PostgreSQL persistence (JSONB attributes)
 - 📦 **Order Management** — Reactive order processing with R2DBC + PostgreSQL
 - 🏷️ **Category Management** — Categorize and organize products
 - 🔐 **OAuth2 Authorization** — JWT-based authentication with Spring Authorization Server
@@ -44,7 +44,7 @@ See [docs/architecture.md](docs/architecture.md) for the complete architecture d
 |---------|------|-----------|----------|----------|-----------------|
 | Gateway | 8080 | Spring Cloud Gateway (WebFlux) | Redis | ✅ | Resilience4j |
 | Auth Server | 9000 | Spring Auth Server (WebMVC) | PostgreSQL | ❌ | - |
-| Product | 8081 | WebFlux | MongoDB | ✅ | - |
+| Product | 8081 | WebFlux | PostgreSQL (R2DBC + JSONB) | ✅ | - |
 | Category | 8082 | WebMVC | PostgreSQL | ❌ | - |
 | Order | 8083 | WebFlux | PostgreSQL (R2DBC) | ✅ | Resilience4j |
 | Inventory | 8084 | WebMVC | PostgreSQL | ❌ | Resilience4j |
@@ -124,7 +124,7 @@ A decoupled, event-driven architecture where:
 | **eureka-server** | 8761 | Netflix Eureka | — | Service discovery & registration |
 | **gateway** | 8080 | Spring Cloud Gateway | — | API routing + OAuth2 resource server |
 | **auth-server** | 9000 | Spring Authorization Server | PostgreSQL (oauth2_db) | OAuth2 token issuance (JWT) |
-| **product** | 8081 | WebFlux + MongoDB Reactive | MongoDB (product_db) | Product catalog CRUD |
+| **product** | 8081 | WebFlux + R2DBC | PostgreSQL (product_db) | Product catalog CRUD |
 | **category** | 8082 | WebMVC + JPA | H2 (dev) / PostgreSQL (docker) | Category management CRUD |
 | **order-service** | 8083 | WebFlux + R2DBC | H2 (dev) / PostgreSQL (docker) | Reactive order processing |
 | **inventory-service** | 8084 | WebFlux + R2DBC | H2 (dev) / PostgreSQL (docker) | Inventory management, stock reservation |
@@ -147,7 +147,7 @@ config-server  →  eureka-server  →  auth-server  →  gateway  →  business
 | **Language** | Java 21 |
 | **Framework** | Spring Boot 3.3.5, Spring Cloud 2023.0.4 |
 | **Build** | Maven (multi-module), Maven Wrapper |
-| **Databases** | PostgreSQL 16 (docker/prod), H2 (dev profile), MongoDB (product service) |
+| **Databases** | PostgreSQL 16 (docker/prod), H2 (dev profile), Neon PostgreSQL (prod) |
 | **Persistence** | Spring Data JPA, Spring Data R2DBC (reactive) |
 | **Migrations** | Flyway |
 | **Service Discovery** | Netflix Eureka |
@@ -338,15 +338,27 @@ curl -X POST http://localhost:9000/oauth2/token \
 
 ## Database Schema
 
-### product_db (MongoDB)
-| Field | Type | Description |
-|-------|------|-------------|
-| id | ObjectId PK | Product ID |
-| name | String | Product name |
-| description | String | Description |
-| price | Decimal128 | Price |
-| category_id | ObjectId | FK → category |
-| created_at | DateTime | Creation time |
+### product_db (PostgreSQL + JSONB)
+| Table | Column | Type | Description |
+|-------|--------|------|-------------|
+| products | id | VARCHAR PK | Product ID |
+| products | name | VARCHAR(255) | Product name |
+| products | description | TEXT | Description |
+| products | price | NUMERIC | Price |
+| products | category_id | VARCHAR | Category reference |
+| products | category_name | VARCHAR | Denormalized category name |
+| products | thumbnail_image_id | VARCHAR | Thumbnail image reference |
+| products | stock_quantity | INTEGER | Available stock |
+| product_variants | id | VARCHAR PK | Variant ID |
+| product_variants | product_id | VARCHAR FK | → products.id |
+| product_variants | sku_code | VARCHAR | SKU code |
+| product_variants | attributes | JSONB | Variant attributes (size, color, etc.) |
+| product_variants | variant_price | NUMERIC | Variant price |
+| product_variants | inventory_id | VARCHAR | Linked inventory ID |
+| product_images | id | SERIAL PK | Image ID |
+| product_images | product_id | VARCHAR FK | → products.id |
+| product_images | image_url | VARCHAR | Image URL |
+| product_images | is_thumbnail | BOOLEAN | Is thumbnail flag |
 
 ### category_db (H2/PostgreSQL)
 | Column | Type | Description |

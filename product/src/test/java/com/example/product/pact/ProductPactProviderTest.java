@@ -17,9 +17,7 @@ import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -36,14 +34,11 @@ import java.util.Optional;
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
         "spring.main.web-application-type=reactive",
-        "eureka.client.enabled=false",
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration,org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration"
+        "eureka.client.enabled=false"
     }
 )
 @ActiveProfiles("test")
 @EnableAutoConfiguration(exclude = {
-    MongoAutoConfiguration.class,
-    MongoDataAutoConfiguration.class,
     DataSourceAutoConfiguration.class
 })
 @Import(RabbitMQConfig.class)

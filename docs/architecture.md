@@ -26,7 +26,7 @@ flowchart TB
     end
 
     subgraph Databases["Databases (Per Service)"]
-        MongoDB[("🍃 MongoDB :27017\nproduct_db")]
+        PgProduct[("🐘 PostgreSQL :5435\nproduct_db (Neon)\nJSONB attributes")]
         PgCategory[("🐘 PostgreSQL :5436\ncategory_db")]
         PgOrder[("🐘 PostgreSQL :5437\norder_db")]
         PgInventory[("🐘 PostgreSQL :5433\ninventory_db")]
@@ -36,7 +36,7 @@ flowchart TB
     end
 
     subgraph Services["Business Services"]
-        Product["📦 Product Service :8081\nWebFlux + MongoDB Reactive\nAMQP"]
+        Product["📦 Product Service :8081\nWebFlux + R2DBC + PostgreSQL JSONB\nAMQP"]
         Category["📂 Category Service :8082\nWebMVC + JPA + Flyway\nAMQP"]
         Order["📋 Order Service :8083\nWebFlux + R2DBC + Flyway\nResilience4j + AMQP"]
         Inventory["📊 Inventory Service :8084\nWebMVC + JPA + Flyway\nResilience4j + AMQP"]
@@ -77,7 +77,7 @@ flowchart TB
     Eureka -.->|fetch config| ConfigServer
 
     %% Databases
-    Product --> MongoDB
+    Product --> PgProduct
     Category --> PgCategory
     Order --> PgOrder
     Inventory --> PgInventory
@@ -116,7 +116,7 @@ flowchart TB
     class Gateway gateway
     class AuthServer auth
     class ConfigServer,Eureka,OTel,RabbitMQ infra
-    class MongoDB,PgCategory,PgOrder,PgInventory,PgPayment,PgNotification,PgAuth db
+    class PgProduct,PgCategory,PgOrder,PgInventory,PgPayment,PgNotification,PgAuth db
     class Product,Category,Order,Inventory,Payment,Notification svc
     class Browser client
 ```
@@ -158,7 +158,7 @@ sequenceDiagram
 |---------|------|-----------|----------|---------|-----------|-----------------|
 | Gateway | 8080 | Spring Cloud Gateway (WebFlux) | Redis | 6379 | ✅ | Resilience4j |
 | Auth Server | 9000 | Spring Auth Server (WebMVC) | PostgreSQL | 5432 | ❌ | - |
-| Product | 8081 | WebFlux | MongoDB | 27017 | ✅ | - |
+| Product | 8081 | WebFlux | PostgreSQL (R2DBC + JSONB) | 5435 | ✅ | - |
 | Category | 8082 | WebMVC | PostgreSQL | 5436 | ❌ | - |
 | Order | 8083 | WebFlux | PostgreSQL (R2DBC) | 5437 | ✅ | Resilience4j |
 | Inventory | 8084 | WebMVC | PostgreSQL | 5433 | ❌ | Resilience4j |
@@ -175,7 +175,7 @@ Each service owns its **dedicated database instance** (no shared schemas):
 ┌─────────────┐     ┌──────────────────┐
 │   Service   │────▶│  Database        │
 ├─────────────┤     ├──────────────────┤
-│ Product     │     │ MongoDB:27017    │
+│ Product     │     │ PostgreSQL:5435   │
 │ Category    │     │ PostgreSQL:5436  │
 │ Order       │     │ PostgreSQL:5437  │
 │ Inventory   │     │ PostgreSQL:5433  │

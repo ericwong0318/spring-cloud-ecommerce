@@ -65,8 +65,11 @@
 | `CONTEXT.md:8-20` | **10 services** in the table |
 | `docs/K8S_SETUP.md:99-100` | **7 Deployments** (config-server, eureka-server, gateway, product, category, auth-server, order-service) — **missing inventory-service, payment-service, notification-service** |
 
-### 3.2 README misstates Product's database
-`README.md:24` (Core Features): *"Product Management — CRUD operations with **PostgreSQL** persistence"*. Product uses **MongoDB** (`CONTEXT.md:14`, `docs/architecture.md:39`, `README.md:47` all say MongoDB).
+### 3.2 README Product database claim (RESOLVED)
+All docs now agree: Product service uses PostgreSQL JSONB (R2DBC).
+- `README.md:24` — "CRUD operations with **PostgreSQL** persistence"
+- `docs/architecture.md:39` — "WebFlux + R2DBC + PostgreSQL JSONB"
+- `AGENTS.md:8` — "Product uses PostgreSQL JSONB (R2DBC)"
 
 ### 3.3 CI pipeline documentation is outdated / incomplete
 `README.md:488-494`, `AGENTS.md:82`, and `docs/BUILD_GUIDE.md:309-317` all describe a 5-stage pipeline: `validate → test → build → docker → security-scan`.
@@ -151,7 +154,6 @@ Unclear whether there is one exchange or six; docs disagree.
 | # | Doc A | Doc B | Conflict |
 |---|-------|-------|----------|
 | 1 | `docs/adr/001-service-decomposition.md` | `AGENTS.md` / `CONTEXT.md` | 9 vs 11 vs 10 services |
-| 2 | `README.md:24` | `CONTEXT.md` / `architecture.md` | Product DB: PostgreSQL vs MongoDB |
 | 3 | `README/AGENTS/BUILD_GUIDE` CI summary | `.github/workflows/ci.yml` | 5 stages vs 11 jobs |
 | 4 | `AGENTS.md` Lombok removal | `BUILD_GUIDE.md:272`, `pact-cdc-workflow.md:207` | Lombok banned vs Lombok encouraged/configured |
 | 5 | `README.md:96` | `docs/event-driven-architecture.md:116,315` | TTL 15 min vs 30 min |
@@ -165,7 +167,7 @@ Unclear whether there is one exchange or six; docs disagree.
 
 1. **Create `.scratch/` structure** (per `docs/agents/issue-tracker.md`) and port the dangling references from ADR 011, ADR 013, AGENTS.md, and the superpowers plan into tracked tickets. Then tick checkboxes as work completes.
 2. **Reconcile service count** — update ADR 001, AGENTS.md, CONTEXT.md, and K8S_SETUP.md to agree (actual: 10 deployable services + system-test).
-3. **Fix README Product DB claim** (`README.md:24`) → MongoDB.
+3. **Product DB consistency** — RESOLVED: All docs now agree Product uses PostgreSQL JSONB.
 4. **Update CI documentation** — README, AGENTS.md, BUILD_GUIDE.md CI sections to reflect all 11 ci.yml jobs (especially Pact, SonarQube, OpenAPI check, VALIDATION.md generation).
 5. **Resolve Lombok contradiction** — align BUILD_GUIDE.md code style and pact-cdc-workflow troubleshooting with the AGENTS.md Lombok Removal Policy (or formally reverse the policy).
 6. **Fix Reservation TTL** — pick 15 min or 30 min and update README, event-driven-architecture.md config block, and any code constants consistently.
@@ -188,7 +190,7 @@ This review file itself (`docs/DOCUMENT_REVIEW.md`) is the record of items worth
 
 | # | Item | File(s) | Change |
 |---|------|---------|--------|
-| 1 | Product DB claim | `README.md` | PostgreSQL → MongoDB |
+| 1 | Product DB consistency | `README.md`, `architecture.md`, `AGENTS.md`, `adr/002.md` | All aligned to PostgreSQL JSONB (resolved MongoDB vs PostgreSQL conflict) |
 | 2 | CI pipeline summary | `README.md`, `AGENTS.md` | 5 stages → 11 ci.yml jobs (verify nightly-only, Pact, SonarQube, OpenAPI check, VALIDATION.md gen, fullstack-verification) |
 | 3 | Service count | `AGENTS.md` | "11 services" → "10 services plus system-test module" |
 | 4 | `.scratch/` location note | `AGENTS.md` | Added note that `.scratch/` lives in main branch worktree, not this feature worktree |

@@ -23,11 +23,16 @@ public class ProductService {
     private static final Logger log = LoggerFactory.getLogger(ProductService.class);
 
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final ProductMapper productMapper;
     private final CategoryClient categoryClient;
 
-    public ProductService(ProductRepository productRepository, ProductMapper productMapper, CategoryClient categoryClient) {
+    public ProductService(ProductRepository productRepository,
+                          ProductVariantRepository productVariantRepository,
+                          ProductMapper productMapper,
+                          CategoryClient categoryClient) {
         this.productRepository = productRepository;
+        this.productVariantRepository = productVariantRepository;
         this.productMapper = productMapper;
         this.categoryClient = categoryClient;
     }
@@ -45,7 +50,11 @@ public class ProductService {
             products = products.filter(p -> p.getStockQuantity() != null && p.getStockQuantity() > 0);
         }
 
-        Mono<List<ProductDto>> content = products.map(productMapper::toDto).collectList();
+        Mono<List<ProductDto>> content = products
+                .flatMap(product -> productVariantRepository.findByProductId(product.getId())
+                        .collectList()
+                        .map(variants -> toDtoWithVariants(product, variants)))
+                .collectList();
 
         Mono<Long> totalElements = selectProducts(Pageable.unpaged(), minPrice, maxPrice)
                 .filter(product -> !stockOnly || (product.getStockQuantity() != null && product.getStockQuantity() > 0))
@@ -90,11 +99,32 @@ public class ProductService {
         }
     }
 
+    private ProductDto toDtoWithVariants(Product product, List<ProductVariant> variants) {
+        List<com.example.common.dto.ProductVariantDto> variantDtos = new ArrayList<>();
+        for (ProductVariant variant : variants) {
+            variantDtos.add(productMapper.toVariantDto(variant));
+        }
+        return new ProductDto(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getCategoryId(),
+                product.getCategoryName(),
+                product.getThumbnailImageId(),
+                product.getImageIds(),
+                variantDtos,
+                product.getStockQuantity()
+        );
+    }
+
     public Mono<ProductDto> getProductById(String id) {
         log.debug("Fetching product by id: {}", id);
         return productRepository.findById(id)
-                .map(productMapper::toDto)
-                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", id)));
+                .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", id)))
+                .flatMap(product -> productVariantRepository.findByProductId(id)
+                        .collectList()
+                        .map(variants -> toDtoWithVariants(product, variants)));
     }
 
     public Mono<ProductDto> attachImageId(String productId, String imageId) {
@@ -112,7 +142,9 @@ public class ProductService {
                     }
                     return productRepository.save(product);
                 })
-                .map(productMapper::toDto);
+                .flatMap(product -> productVariantRepository.findByProductId(productId)
+                        .collectList()
+                        .map(variants -> toDtoWithVariants(product, variants)));
     }
 
     public Mono<Void> detachImageId(String productId, String imageId) {
@@ -132,13 +164,17 @@ public class ProductService {
     public Flux<ProductDto> getProductsByCategory(String categoryId) {
         log.debug("Fetching products by category id: {}", categoryId);
         return productRepository.findByCategoryId(categoryId)
-                .map(productMapper::toDto);
+                .flatMap(product -> productVariantRepository.findByProductId(product.getId())
+                        .collectList()
+                        .map(variants -> toDtoWithVariants(product, variants)));
     }
 
     public Flux<ProductDto> getProductsByCategory(String categoryId, Pageable pageable) {
         log.debug("Fetching products by category id: {} with pagination", categoryId);
         return productRepository.findByCategoryId(categoryId, pageable)
-                .map(productMapper::toDto);
+                .flatMap(product -> productVariantRepository.findByProductId(product.getId())
+                        .collectList()
+                        .map(variants -> toDtoWithVariants(product, variants)));
     }
 
     public Mono<ProductDto> createProduct(ProductDto productDto) {
@@ -149,7 +185,14 @@ public class ProductService {
                     product.setCategoryName(categoryName.orElse(null));
                     return productRepository.save(product);
                 })
-                .map(productMapper::toDto);
+                .flatMap(saved -> productVariantRepository.saveAll(
+                        productDto.variants().stream()
+                                .map(v -> new ProductVariant(v.skuCode(), v.attributes(), v.price(), null))
+                                .toList()
+                ).then(Mono.just(saved)))
+                .flatMap(saved -> productVariantRepository.findByProductId(saved.getId())
+                        .collectList()
+                        .map(variants -> toDtoWithVariants(saved, variants)));
     }
 
     public Mono<ProductDto> updateProduct(String id, ProductDto productDto) {
@@ -167,14 +210,15 @@ public class ProductService {
                                 return productRepository.save(existing);
                             });
                 })
-                .map(productMapper::toDto);
+                .flatMap(updated -> productVariantRepository.findByProductId(updated.getId())
+                        .collectList()
+                        .map(variants -> toDtoWithVariants(updated, variants)));
     }
 
     private Mono<Optional<String>> fetchCategoryName(String categoryId) {
         if (categoryId == null || categoryId.isBlank()) {
             return Mono.just(Optional.empty());
         }
-        // Extract numeric ID from formats like "cat-123" or just "123"
         String numericId = categoryId.replaceAll("\\D+", "");
         if (numericId.isEmpty()) {
             log.warn("Invalid categoryId format: {}", categoryId);
@@ -191,33 +235,52 @@ public class ProductService {
 
     public Mono<Void> deleteProduct(String id) {
         log.info("Deleting product id: {}", id);
-        return productRepository.findById(id)
+        return productVariantRepository.findByProductId(id)
+                .flatMap(variant -> productVariantRepository.deleteById(variant.getId()))
+                .then(productRepository.findById(id))
                 .switchIfEmpty(Mono.error(new ResourceNotFoundException("Product", id)))
-                .flatMap(productRepository::delete);
+                .flatMap(product -> productRepository.deleteById(product.getId()))
+                .then();
     }
 
     public Flux<ProductDto> searchProducts(String name) {
         log.debug("Searching products by name: {}", name);
         return productRepository.findByNameContainingIgnoreCase(name)
-                .map(productMapper::toDto);
+                .flatMap(product -> productVariantRepository.findByProductId(product.getId())
+                        .collectList()
+                        .map(variants -> toDtoWithVariants(product, variants)));
     }
 
     public Flux<ProductDto> searchProducts(String name, Pageable pageable) {
         log.debug("Searching products by name: {} with pagination", name);
-        return productRepository.findByNameContainingIgnoreCase(name)
-                .map(productMapper::toDto);
+        return productRepository.findByNameContainingIgnoreCase(name, pageable)
+                .flatMap(product -> productVariantRepository.findByProductId(product.getId())
+                        .collectList()
+                        .map(variants -> toDtoWithVariants(product, variants)));
     }
 
     public Flux<ProductDto> findByAttribute(String key, String value) {
         log.debug("Finding products by attribute {}:{}", key, value);
-        return productRepository.findByVariantsAttributesKeyAndVariantsAttributesValue(key, value)
-                .map(productMapper::toDto);
+        return productVariantRepository.findAll()
+                .filter(variant -> variant.getAttributes().containsKey(key)
+                        && value.equals(variant.getAttributes().get(key)))
+                .map(ProductVariant::getProductId)
+                .distinct()
+                .flatMap(productId -> productRepository.findById(productId))
+                .flatMap(product -> productVariantRepository.findByProductId(product.getId())
+                        .collectList()
+                        .map(variants -> toDtoWithVariants(product, variants)));
     }
 
     public Flux<ProductDto> findByAttribute(String key, String value, Pageable pageable) {
         log.debug("Finding products by attribute {}:{} with pagination", key, value);
-        return productRepository.findByVariantsAttributesKeyAndVariantsAttributesValue(key, value, pageable)
-                .map(productMapper::toDto);
+        return findByAttribute(key, value)
+                .collectList()
+                .flatMapMany(list -> {
+                    int from = Math.min((int) pageable.getOffset(), list.size());
+                    int to = Math.min(from + pageable.getPageSize(), list.size());
+                    return Flux.fromIterable(list.subList(from, to));
+                });
     }
 
     public Flux<ProductDto> filterByAttributes(Map<String, String> attrs, Pageable pageable) {

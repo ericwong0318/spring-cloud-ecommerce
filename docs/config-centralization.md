@@ -18,7 +18,7 @@ This document describes the migration from scattered local configuration to cent
 │                    CONFIG SERVER :8888                       │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │  classpath:/config/                                 │   │
-│  │  ├── product.yml      (dev, docker, prod profiles) │   │
+│  │  ├── product.yml      (dev, docker, prod profiles - R2DBC + JSONB) │   │
 │  │  ├── category.yml     (dev, docker, prod profiles) │   │
 │  │  ├── order-service.yml                                │
 │  │  ├── inventory-service.yml                           │
@@ -46,7 +46,7 @@ spring:
     import: optional:configserver:http://config-server:8888
 ```
 
-### Bootstrap.yml (Legacy Services - Category, Product)
+### Bootstrap.yml (Legacy Services - Category)
 ```yaml
 spring:
   application:
@@ -69,10 +69,14 @@ Each service config has four profile layers:
 server:
   port: 8081
 spring:
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017
-      database: product_db
+  r2dbc:
+    url: ${R2DBC_URL:r2dbc:postgresql://localhost:5432/product_db}
+    username: ${R2DBC_USERNAME:postgres}
+    password: ${R2DBC_PASSWORD:postgres}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
   rabbitmq:
     host: localhost
     ...
@@ -83,8 +87,8 @@ spring:
   config:
     activate:
       on-profile: dev
-  datasource:
-    url: jdbc:postgresql://localhost:5432/product_db
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/product_db
   ...
 management:
   ...
@@ -98,8 +102,8 @@ spring:
   config:
     activate:
       on-profile: docker
-  datasource:
-    url: jdbc:postgresql://localhost:5432/ecommerce_test
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/ecommerce_test
   ...
 management:
   ...
@@ -110,11 +114,14 @@ spring:
   config:
     activate:
       on-profile: prod
-  datasource:
-    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/product_db}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
-  ...
+  r2dbc:
+    url: ${R2DBC_URL}
+    username: ${R2DBC_USERNAME}
+    password: ${R2DBC_PASSWORD}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
 management:
   ...
 logging:

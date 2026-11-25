@@ -16,7 +16,7 @@ Current reality:
 - Default profile (`dev`) uses H2 in-memory databases for fast local development
 - `docker` profile uses PostgreSQL via Docker Compose
 - Integration tests use Testcontainers PostgreSQL
-- Product service uses MongoDB (not PostgreSQL)
+- Product service uses PostgreSQL JSONB (not MongoDB)
 
 ## Decision
 **Keep H2 for `dev` profile for fast local development. Use PostgreSQL for `docker`/`prod` profiles and all integration tests via Testcontainers.**

@@ -210,9 +210,9 @@ spring:
       - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
       - org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
   r2dbc:
-    url: ${R2DBC_URL:r2dbc:postgresql://localhost:5432/payment_db}
-    username: ${R2DBC_USERNAME:test}
-    password: ${R2DBC_PASSWORD:test}
+    url: ${R2DBC_URL}
+    username: ${R2DBC_USERNAME}
+    password: ${R2DBC_PASSWORD}
     pool:
       enabled: true
       max-size: 20
@@ -221,10 +221,10 @@ spring:
       max-life-time: 1800s
       validation-query: SELECT 1
   datasource:
-    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/payment_db}
+    url: ${DATASOURCE_URL}
     driver-class-name: org.postgresql.Driver
-    username: ${DB_USERNAME:test}
-    password: ${DB_PASSWORD:test}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5

@@ -107,10 +107,10 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: ${DATASOURCE_URL:jdbc:postgresql://localhost:5432/category_db}
+    url: ${DATASOURCE_URL}
     driver-class-name: org.postgresql.Driver
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5

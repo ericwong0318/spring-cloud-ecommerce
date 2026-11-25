@@ -37,7 +37,7 @@ public class ImageController {
     }
 
     @PostMapping(value = "/{productId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Upload an image for a product", description = "Stores the image in GridFS and attaches its ID to the product")
+    @Operation(summary = "Upload an image for a product", description = "Stores the image and attaches its ID to the product")
     public Mono<ResponseEntity<ImageUploadResponse>> uploadImage(
             @Parameter(description = "Product ID") @PathVariable String productId,
             @Parameter(description = "Image file") @RequestPart("file") Part file) {
@@ -70,7 +70,7 @@ public class ImageController {
     }
 
     @DeleteMapping("/{productId}/images/{imageId}")
-    @Operation(summary = "Delete an image", description = "Removes the image from GridFS and detaches it from the product")
+    @Operation(summary = "Delete an image", description = "Removes the image and detaches it from the product")
     public Mono<ResponseEntity<Void>> deleteImage(
             @Parameter(description = "Product ID") @PathVariable String productId,
             @Parameter(description = "Image ID") @PathVariable String imageId) {
@@ -82,8 +82,7 @@ public class ImageController {
 
     /**
      * Resolves the {@link MediaType} to use when serving an image.
-     * Uses the MIME type stored in the image's GridFS metadata; falls back to
-     * {@code application/octet-stream} when no content type was recorded.
+     * Falls back to {@code application/octet-stream} when no content type was recorded.
      */
     private static MediaType contentTypeOf(String contentType) {
         if (contentType != null && !contentType.isBlank()) {

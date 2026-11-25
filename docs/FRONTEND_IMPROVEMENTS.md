@@ -348,7 +348,7 @@ export function ForgotPassword() {
 - The product service is running locally on port 8080 with seed data (33 products)
 - The category service has a permissive security config for local development
 - The product service needs the category service to be running for seeding
-- Both services connect to local databases (PostgreSQL for category, MongoDB for product)
+- Both services connect to local databases (PostgreSQL for category, PostgreSQL JSONB for product)
 - Eureka server is running on port 8761
 - Config server is running on port 8888
 - Auth server is running on port 9000 (but unhealthy)

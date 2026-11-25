@@ -4,26 +4,6 @@ server:
 spring:
   application:
     name: product
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017
-      database: product_db
-      auto-index-creation: true
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-    virtual-host: /
-    connection-timeout: 5s
-    publisher-confirm-type: correlated
-    publisher-returns: true
-    listener:
-      simple:
-        acknowledge-mode: manual
-        concurrency: 3
-        max-concurrency: 10
-        prefetch: 10
   cloud:
     config:
       import: optional:configserver:http://localhost:8888
@@ -32,23 +12,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus,circuitbreakers,ratelimiters
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: always
-      probes:
-        enabled: true
-  otlp:
-    metrics:
-      export:
-        url: http://otel-collector:4318/v1/metrics
   health:
-    mongodb:
-      enabled: false
-    rabbit:
-      enabled: false
-    elasticsearch:
-      enabled: false
     db:
       enabled: true
 
@@ -56,172 +24,16 @@ management:
 spring:
   config:
     activate:
-      on-profile: docker
-  application:
-    name: product
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017
-      database: product_db
-      auto-index-creation: true
-
-category-service:
-  url: http://category:8082
-
-rabbitmq:
-  host: localhost
-  port: 5672
-  username: guest
-  password: guest
-  virtual-host: /
-  connection-timeout: 5s
-  publisher-confirm-type: correlated
-  publisher-returns: true
-  listener:
-    simple:
-      acknowledge-mode: manual
-      concurrency: 3
-      max-concurrency: 10
-      prefetch: 10
-  exchange: product.exchange
-  queue: product.events
-  routing-key-created: product.variant.created
-  routing-key-updated: product.variant.updated
-  routing-key-deleted: product.variant.deleted
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus,circuitbreakers,ratelimiters
-  endpoint:
-    health:
-      show-details: always
-      probes:
-        enabled: true
-  otlp:
-    metrics:
-      export:
-        url: http://otel-collector:4318/v1/metrics
-  health:
-    mongodb:
-      enabled: false
-    rabbit:
-      enabled: false
-    elasticsearch:
-      enabled: false
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
-
----
-spring:
-  config:
-    activate:
-      on-profile: dev
-  application:
-    name: product
-  data:
-    mongodb:
-      uri: mongodb://localhost:27017
-      database: product_db
-      auto-index-creation: true
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-    virtual-host: /
-    connection-timeout: 5s
-    publisher-confirm-type: correlated
-    publisher-returns: true
-    listener:
-      simple:
-        acknowledge-mode: manual
-        concurrency: 3
-        max-concurrency: 10
-        prefetch: 10
-  eureka:
-    client:
-      service-url:
-        defaultZone: http://localhost:8761/eureka/
-      register-with-eureka: true
-      fetch-registry: true
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus,circuitbreakers,ratelimiters
-  endpoint:
-    health:
-      show-details: always
-      probes:
-        enabled: true
-  otlp:
-    metrics:
-      export:
-        url: http://localhost:4318/v1/metrics
-  health:
-    mongodb:
-      enabled: false
-    rabbit:
-      enabled: false
-    elasticsearch:
-      enabled: false
+      on-profile: prod
+  r2dbc:
+    url: ${R2DBC_URL}
+    username: ${R2DBC_USERNAME}
+    password: ${R2DBC_PASSWORD}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
 
 logging:
   level:
-    root: DEBUG
-
----
-spring:
-  config:
-    activate:
-      on-profile: prod
-  data:
-    mongodb:
-      uri: ${MONGODB_URI}
-      database: ${MONGODB_DATABASE:product_db}
-      auto-index-creation: true
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USER:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
-    virtual-host: /
-    connection-timeout: 5s
-    publisher-confirm-type: correlated
-    publisher-returns: true
-    listener:
-      simple:
-        acknowledge-mode: manual
-        concurrency: 3
-        max-concurrency: 10
-        prefetch: 10
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus,circuitbreakers,ratelimiters
-  endpoint:
-    health:
-      show-details: always
-      probes:
-        enabled: true
-  otlp:
-    metrics:
-      export:
-        url: http://otel-collector:4318/v1/metrics
-  health:
-    mongodb:
-      enabled: false
-    rabbit:
-      enabled: false
-    elasticsearch:
-      enabled: false
+    root: INFO
